@@ -1,140 +1,101 @@
 import Image from "next/image";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { 
-  Card, 
-  CardContent
-} from "@/components/ui/card";
-import { 
-  ArrowRight,
-  CheckCircle2, 
-  Sparkles,
-  Zap 
-} from "lucide-react";
-import { TopToolbar } from "@/components/layout/top-toolbar";
-import { BottomStatusBar } from "@/components/layout/bottom-statusbar";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <TopToolbar />
-      
-      <main className="flex-grow">
-        {/* Hero Section */}
-        <section className="py-20 px-4 pt-32">
-          <div className="container mx-auto max-w-6xl">
-            <div className="flex flex-col items-center text-center space-y-8">
-              <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-6 py-2 mb-4">
-                <Sparkles className="h-4 w-4 mr-2 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">
-                  Launching our new platform
-                </span>
-              </div>
+    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+        <Image
+          className="dark:invert"
+          src="/next.svg"
+          alt="Next.js logo"
+          width={180}
+          height={38}
+          priority
+        />
+        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
+          <li className="mb-2">
+            Get started by editing{" "}
+            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+              app/page.tsx
+            </code>
+            .
+          </li>
+          <li>Save and see your changes instantly.</li>
+        </ol>
 
-              <h1 className="text-5xl font-bold tracking-tight max-w-3xl text-gray-900">
-                Build Better Software Faster with Our Platform
-              </h1>
-              
-              <p className="text-xl text-gray-700 max-w-2xl">
-                Streamline your development workflow with our modern tools and intuitive interface. 
-                Experience the future of software development.
-              </p>
-
-              <div className="flex items-center gap-4 pt-4">
-                <Button size="lg" className="h-12 px-6 bg-blue-600 hover:bg-blue-700">
-                  Get Started
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button size="lg" variant="outline" className="h-12 px-6 border-gray-300 text-gray-700 hover:bg-gray-50">
-                  View Demo
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-8 pt-8 text-gray-700">
-                <div className="flex items-center">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mr-2" />
-                  <span>Free Trial</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mr-2" />
-                  <span>No Credit Card</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mr-2" />
-                  <span>24/7 Support</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Features Section */}
-        <section className="py-20 bg-gray-100">
-          <div className="container mx-auto max-w-6xl px-4">
-            <div className="grid md:grid-cols-3 gap-8">
-              {features.map((feature, index) => (
-                <Card key={index} className="border border-gray-200 shadow-sm bg-white hover:shadow-md transition-shadow">
-                  <CardContent className="pt-6">
-                    <div className="rounded-full w-12 h-12 flex items-center justify-center bg-blue-100 mb-4">
-                      <Zap className="h-6 w-6 text-blue-700" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2 text-gray-900">{feature.title}</h3>
-                    <p className="text-gray-700">{feature.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Logos Section */}
-        <section className="py-20">
-          <div className="container mx-auto max-w-6xl px-4">
-            <p className="text-center text-gray-700 mb-12 text-lg">
-              Trusted by leading companies worldwide
-            </p>
-            <div className="flex justify-center items-center gap-12 opacity-80">
-              <Image 
-                src="/vercel.svg" 
-                alt="Vercel" 
-                width={120} 
-                height={40} 
-                className="h-8 object-contain filter grayscale" 
-              />
-              <Image 
-                src="/next.svg" 
-                alt="Next.js" 
-                width={120} 
-                height={40} 
-                className="h-8 object-contain filter grayscale" 
-              />
-              <div className="text-xl font-bold text-gray-600">
-                Company
-              </div>
-              <div className="text-xl font-bold text-gray-600">
-                Enterprise
-              </div>
-            </div>
-          </div>
-        </section>
+        <div className="flex gap-4 items-center flex-col sm:flex-row">
+          <a
+            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              className="dark:invert"
+              src="/vercel.svg"
+              alt="Vercel logomark"
+              width={20}
+              height={20}
+            />
+            Deploy now
+          </a>
+          <a
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read our docs
+          </a>
+        </div>
       </main>
-
-      <BottomStatusBar />
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/file.svg"
+            alt="File icon"
+            width={16}
+            height={16}
+          />
+          Learn
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/window.svg"
+            alt="Window icon"
+            width={16}
+            height={16}
+          />
+          Examples
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/globe.svg"
+            alt="Globe icon"
+            width={16}
+            height={16}
+          />
+          Go to nextjs.org →
+        </a>
+      </footer>
     </div>
   );
 }
-
-const features = [
-  {
-    title: "Lightning Fast",
-    description: "Experience unparalleled speed and performance with our optimized platform."
-  },
-  {
-    title: "Highly Secure",
-    description: "Enterprise-grade security to keep your data safe and protected."
-  },
-  {
-    title: "Easy to Scale",
-    description: "Grow your application without worrying about infrastructure limitations."
-  }
-];
