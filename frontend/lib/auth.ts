@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth/next";
 import NextAuth from "next-auth";
 import { authConfig } from "@/app/auth.config";
 import { cookies } from "next/headers";
-import { jwtVerify } from 'jose';
 
 const authHandler = NextAuth(authConfig);
 
@@ -32,12 +31,11 @@ export async function auth() {
       console.log("Session Token Cookie First 50 chars:", sessionTokenCookie.value.substring(0, 50));
       
       try {
-        // Manually verify the JWE token
-        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
-        const { payload } = await jwtVerify(sessionTokenCookie.value, secret);
-        console.log("Manually Verified Token Payload:", JSON.stringify(payload, null, 2));
-      } catch (verifyError) {
-        console.error("Manual Verify Error:", verifyError);
+        // Parse the token as JSON since we're using JSON.stringify in auth.config.ts
+        const payload = JSON.parse(sessionTokenCookie.value);
+        console.log("Parsed Token Payload:", JSON.stringify(payload, null, 2));
+      } catch (parseError) {
+        console.error("Token Parse Error:", parseError);
       }
     }
     
@@ -87,5 +85,5 @@ export const signOut = async () => {
 };
 
 // Fallback handlers
-export const GET = () => {};
-export const POST = () => {};
+export const GET = authHandler;
+export const POST = authHandler;
