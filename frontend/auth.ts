@@ -1,8 +1,10 @@
 import NextAuth from "next-auth";
+import type { Session, User, Account, Profile } from "next-auth";
+import type { JWT } from "next-auth/jwt";
+import type { AuthOptions, SessionStrategy } from "next-auth";
 import Google from "next-auth/providers/google";
-import { encode, decode } from 'jose';
 
-const authOptions = {
+const authOptions: AuthOptions = {
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
@@ -21,44 +23,25 @@ const authOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as SessionStrategy,
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  jwt: {
-    // Explicitly handle token encoding and decoding
-    encode: async ({ token, secret }) => {
-      console.log("Custom JWT Encode - Token:", JSON.stringify(token, null, 2));
-
-      // Convert token to a simple string representation
-      const tokenString = JSON.stringify(token);
-      
-      return tokenString;
-    },
-    decode: async ({ token, secret }) => {
-      console.log("Custom JWT Decode - Token:", token);
-      
-      try {
-        // Attempt to parse the token string back to an object
-        const parsedToken = JSON.parse(token || '{}');
-        console.log("Parsed Token:", JSON.stringify(parsedToken, null, 2));
-        return parsedToken;
-      } catch (error) {
-        console.error("JWT Decode Error:", error);
-        return {};
-      }
-    }
-  },
   callbacks: {
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       console.log("Session Callback - Token:", JSON.stringify(token, null, 2));
       if (token) {
-        session.user.id = token.sub;
-        session.user.email = token.email;
-        session.user.name = token.name;
+        session.user.id = token.sub ?? '';
+        session.user.email = token.email ?? session.user.email;
+        session.user.name = token.name ?? session.user.name;
       }
       return session;
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile }: {
+      token: JWT;
+      user?: User;
+      account?: Account | null;
+      profile?: Profile
+    }) {
       console.log("JWT Callback - Inputs:", {
         token: JSON.stringify(token, null, 2),
         user: JSON.stringify(user, null, 2),
@@ -83,11 +66,11 @@ const authOptions = {
   debug: true
 };
 
-export const { 
-  handlers = { GET: () => {}, POST: () => {} }, 
-  auth, 
-  signIn, 
-  signOut 
+export const {
+  handlers = { GET: () => {}, POST: () => {} },
+  auth,
+  signIn,
+  signOut
 } = NextAuth(authOptions);
 
 // Fallback handlers if destructuring fails

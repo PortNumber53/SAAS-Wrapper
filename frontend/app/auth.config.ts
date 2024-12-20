@@ -1,8 +1,9 @@
-import type { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions, Session, User } from "next-auth";
+import type { JWT, JWTEncodeParams, JWTDecodeParams } from "next-auth/jwt";
+import type { Account, Profile } from "next-auth";
 import Google from "next-auth/providers/google";
 
 const nextAuthSecret = process.env.NEXTAUTH_SECRET ?? '';
-const nextAuthUrl = process.env.NEXTAUTH_URL ?? '';
 const googleClientId = process.env.GOOGLE_CLIENT_ID ?? '';
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? '';
 console.log('>>>>>>>>>NEXTAUTH_SECRET:', nextAuthSecret ? `PRESENT:${nextAuthSecret}` : 'MISSING')
@@ -25,33 +26,43 @@ export const authConfig = {
     signIn: "/login",
   },
   secret: nextAuthSecret,
-  url: nextAuthUrl,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   jwt: {
-    // Disable encryption for debugging
-    encode: async ({ token }) => {
-      console.log("JWT Encode - Token:", JSON.stringify(token, null, 2));
-      return JSON.stringify(token);
+    // Edge compatible JWT handling
+    encode: async (params: JWTEncodeParams): Promise<string> => {
+      console.log("JWT Encode - Token:", JSON.stringify(params.token, null, 2));
+      return JSON.stringify(params.token);
     },
-    decode: async ({ token }) => {
-      console.log("JWT Decode - Token:", token);
-      return JSON.parse(token || '{}');
+    decode: async (params: JWTDecodeParams): Promise<JWT | null> => {
+      console.log("JWT Decode - Token:", params.token);
+      if (!params.token) return null;
+      return JSON.parse(params.token);
     }
   },
   callbacks: {
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }): Promise<Session> {
       console.log("Session Callback - Token:", JSON.stringify(token, null, 2));
       if (token) {
-        session.user.id = token.sub;
-        session.user.email = token.email;
-        session.user.name = token.name;
+        session.user.id = token.sub as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
       }
       return session;
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ 
+      token, 
+      user, 
+      account, 
+      profile 
+    }: { 
+      token: JWT; 
+      user?: User; 
+      account?: Account | null; 
+      profile?: Profile | undefined;
+    }): Promise<JWT> {
       console.log("JWT Callback - Inputs:", {
         token: JSON.stringify(token, null, 2),
         user: JSON.stringify(user, null, 2),
