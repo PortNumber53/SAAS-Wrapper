@@ -3,19 +3,61 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 240 5.9% 97.6%;
+  --foreground: 240 10% 10%; /* Darker foreground for better contrast */
+  
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  
+  --secondary: 158 64.4% 51.6%;
+  --secondary-foreground: 160 84.1% 95.5%;
+  
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 30%; /* Darker muted foreground */
+  
+  --accent: 221.2 83.2% 53.3%;
+  --accent-foreground: 210 40% 98%;
+  
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 80%; /* Slightly darker border */
+  --input: 214.3 31.8% 80%; /* Slightly darker input */
+  --ring: 221.2 83.2% 53.3%;
+  
+  --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 95%; /* Slightly softer white for dark mode */
+  
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  
+  --secondary: 158 64.4% 51.6%;
+  --secondary-foreground: 160 84.1% 95.5%;
+  
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 75%; /* Lighter muted foreground */
+  
+  --accent: 217.2 91.2% 59.8%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  
+  --destructive: 0 72.2% 50.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217.2 32.6% 25%; /* Slightly lighter border */
+  --input: 217.2 32.6% 25%; /* Slightly lighter input */
+  --ring: 224.3 76.3% 48%;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-family: 'Inter', sans-serif;
+}
+
+* {
+  border-color: hsl(var(--border));
 }
