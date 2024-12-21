@@ -112,12 +112,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // Type guard to ensure we have an active customer
   if ('metadata' in customer) {
     // Find and update user in nextauth_users table
-    const user = await xata.db.nextauth_users.filter({
-      email: customerEmail
-    }).getFirst()
+    const user = await findUserByEmailOrStripeCustomerId(customer)
 
     if (user) {
-      await xata.db.nextauth_users.update(user.xata_id, {
+      console.log('Prepared update data existingUser:', JSON.stringify(user, null, 2))
+
+      await xata.db.nextauth_users.update(user.id, {
         stripeCustomerId: customerId,
         stripeMetadata: JSON.stringify(customer.metadata || {})
       })
@@ -127,19 +127,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   } else {
     console.error('Customer has been deleted or is not retrievable')
   }
-}
-
-// Helper function to find user by Stripe Customer ID
-async function findUserByStripeCustomerId(stripeCustomerId: string) {
-  console.log(`Finding user for Stripe Customer ID: ${stripeCustomerId}`)
-
-  const user = await xata.db.nextauth_users.filter({
-    stripeCustomerId: stripeCustomerId
-  }).getFirst()
-
-  console.log(`User found: ${user ? user.xata_id : 'No user found'}`)
-
-  return user?.xata_id || null
 }
 
 // Handle new subscription creation
@@ -159,7 +146,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     }
 
     // Attempt to find the user
-    const userId = await findUserByStripeCustomerId(subscription.customer as string)
+    const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer
+    const userId = await findUserByEmailOrStripeCustomerId(customer)
 
     console.log(`Resolved User ID: ${userId}`)
 
@@ -196,7 +184,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     }).getFirst()
 
     // Attempt to find the user
-    const userId = await findUserByStripeCustomerId(subscription.customer as string)
+    const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer
+    const userId = await findUserByEmailOrStripeCustomerId(customer)
 
     console.log(`Resolved User ID: ${userId}`)
 
@@ -204,7 +193,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     const subscriptionData = {
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: subscription.customer as string,
-      status: subscription.status || 'active',
+      status: subscription.status,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
@@ -224,7 +213,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     }
 
     // Update the existing subscription
-    await xata.db.subscriptions.update(existingSub.xata_id, subscriptionData)
+    console.log('Prepared update data existingSubscription:', JSON.stringify(existingSub, null, 2))
+
+    await xata.db.subscriptions.update(existingSub.id, subscriptionData)
     console.log(`Updated subscription ${subscription.id} with status: ${subscription.status}`)
   } catch (error) {
     console.error('Error handling subscription update:', error)
@@ -238,6 +229,8 @@ async function handleSubscriptionCanceled(subscription: Stripe.Subscription) {
   }).getFirst()
 
   if (sub) {
+    console.log('Prepared update data existingSubscription:', JSON.stringify(sub, null, 2))
+
     await xata.db.subscriptions.update(sub.id, {
       status: 'canceled',
       canceledAt: new Date()
@@ -258,9 +251,8 @@ async function handleInvoiceEvent(eventType: string, invoice: Stripe.Invoice) {
     }).getFirst()
 
     // Find the user associated with this Stripe Customer ID
-    const user = await xata.db.nextauth_users.filter({
-      stripeCustomerId: invoice.customer as string
-    }).getFirst()
+    const customer = await stripe.customers.retrieve(invoice.customer as string) as Stripe.Customer
+    const user = await findUserByEmailOrStripeCustomerId(customer)
 
     const invoiceData = {
       stripeInvoiceId: invoice.id,
@@ -274,7 +266,7 @@ async function handleInvoiceEvent(eventType: string, invoice: Stripe.Invoice) {
       periodEnd: invoice.period_end ? new Date(invoice.period_end * 1000) : undefined,
       dueDate: invoice.due_date ? new Date(invoice.due_date * 1000) : undefined,
       hostedInvoiceUrl: invoice.hosted_invoice_url || undefined,
-      user: user?.xata_id || undefined
+      user: user?.id || undefined
     }
 
     if (!existingInvoice) {
@@ -282,11 +274,42 @@ async function handleInvoiceEvent(eventType: string, invoice: Stripe.Invoice) {
       await xata.db.invoices.create(invoiceData)
     } else {
       // Update existing invoice record
-      await xata.db.invoices.update(existingInvoice.xata_id, invoiceData)
+      console.log('Prepared update data existingInvoice:', JSON.stringify(existingInvoice, null, 2))
+
+      await xata.db.invoices.update(existingInvoice.id, invoiceData)
     }
   } catch (error) {
     console.error(`Error handling invoice event ${eventType}:`, error)
   }
+}
+
+// New function to find user by email or Stripe Customer ID
+async function findUserByEmailOrStripeCustomerId(customer: Stripe.Customer) {
+  console.log(`Searching for user: Email=${customer.email}, Stripe Customer ID=${customer.id}`)
+
+  // First, try to find by Stripe Customer ID
+  let existingUser = await xata.db.nextauth_users.filter({
+    stripeCustomerId: customer.id
+  }).getFirst()
+
+  // If not found by Stripe Customer ID, try to find by email
+  if (!existingUser && customer.email) {
+    existingUser = await xata.db.nextauth_users.filter({
+      email: customer.email
+    }).getFirst()
+
+    // If found by email, update with Stripe Customer ID
+    if (existingUser) {
+      console.log(`User found by email: ${customer.email}`)
+      console.log('Prepared update data existingUser:', JSON.stringify(existingUser, null, 2))
+
+      await xata.db.nextauth_users.update(existingUser.id, {
+        stripeCustomerId: customer.id
+      })
+    }
+  }
+
+  return existingUser
 }
 
 // New function to handle customer-related events
@@ -295,23 +318,57 @@ async function handleCustomerEvent(eventType: string, customer: Stripe.Customer)
   console.log('Customer details:', JSON.stringify(customer, null, 2))
 
   try {
-    // Find user by Stripe Customer ID in nextauth_users table
-    const existingUser = await xata.db.nextauth_users.filter({
-      stripeCustomerId: customer.id
-    }).getFirst()
+    // Use the new function to find the user
+    const existingUser = await findUserByEmailOrStripeCustomerId(customer)
 
     if (existingUser) {
-      // Update existing user record
-      await xata.db.nextauth_users.update(existingUser.xata_id, {
-        email: customer.email || existingUser.email,
-        stripeEmail: customer.email || existingUser.stripeEmail,
-        name: customer.name || existingUser.name
-      })
+      console.log('Existing user details:', JSON.stringify(existingUser, null, 2))
+
+      // Prepare update data with only valid fields
+      const updateData: Record<string, string> = {
+        stripeCustomerId: customer.id
+      }
+
+      // Only add non-null values to update
+      if (customer.email) {
+        updateData.email = customer.email
+      }
+
+      if (customer.name) {
+        updateData.name = customer.name
+      }
+
+      console.log('Prepared update data:', JSON.stringify(updateData, null, 2))
+      console.log('Prepared update data existingUser:', JSON.stringify(existingUser, null, 2))
+
+      try {
+        // Attempt to update user record
+        const updatedUser = await xata.db.nextauth_users.update(existingUser.id, updateData)
+        console.log(`Successfully updated user ${existingUser.id}:`, JSON.stringify(updatedUser, null, 2))
+      } catch (updateError) {
+        console.error('Error updating user record:', updateError)
+        console.error('Update data:', JSON.stringify(updateData, null, 2))
+        console.error('Existing user details:', JSON.stringify(existingUser, null, 2))
+
+        // Additional error investigation
+        if (updateError instanceof Error) {
+          console.error('Error name:', updateError.name)
+          console.error('Error message:', updateError.message)
+          console.error('Error stack:', updateError.stack)
+        }
+      }
     } else {
-      console.warn(`No user found for Stripe Customer ID: ${customer.id}`)
+      console.warn(`No user found for Stripe Customer ID: ${customer.id} or email: ${customer.email}`)
     }
   } catch (error) {
     console.error(`Error handling customer event ${eventType}:`, error)
+
+    // Log full error details
+    if (error instanceof Error) {
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
   }
 }
 
