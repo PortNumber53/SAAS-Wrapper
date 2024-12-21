@@ -97,21 +97,21 @@ export function Navbar() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuItem 
-                  onClick={() => router.push("/profile")}
+                  onClick={() => router.push("/account/profile")}
                   className="cursor-pointer"
                 >
                   <UserIcon className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => router.push("/settings")}
+                  onClick={() => router.push("/account/settings")}
                   className="cursor-pointer"
                 >
                   <SettingsIcon2 className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => router.push("/billing")}
+                  onClick={() => router.push("/account/billing")}
                   className="cursor-pointer"
                 >
                   <CreditCardIcon className="mr-2 h-4 w-4" />
