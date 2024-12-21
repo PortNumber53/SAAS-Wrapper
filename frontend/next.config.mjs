@@ -8,6 +8,26 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  // Explicitly load environment variables
+  env: {
+    XATA_API_KEY: process.env.XATA_API_KEY,
+    XATA_BRANCH: process.env.XATA_BRANCH || 'main',
+    XATA_DATABASE_URL: process.env.XATA_DATABASE_URL
+  },
+  
+  // Additional webpack configuration to ensure env vars are available
+  webpack: (config, { isServer }) => {
+    // Log environment variables during build
+    if (isServer) {
+      console.log('Server-side Environment Variables:', {
+        XATA_API_KEY: process.env.XATA_API_KEY ? '[REDACTED]' : 'UNDEFINED',
+        XATA_BRANCH: process.env.XATA_BRANCH,
+        XATA_DATABASE_URL: process.env.XATA_DATABASE_URL
+      });
+    }
+    return config;
+  }
+};
 
 export default nextConfig;
