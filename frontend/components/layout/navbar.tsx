@@ -11,6 +11,21 @@ import {
   LogOutIcon
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { 
+  UserIcon, 
+  SettingsIcon as SettingsIcon2, 
+  CreditCardIcon, 
+  LogOutIcon as LogOutIcon2 
+} from "lucide-react"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -61,23 +76,57 @@ export function Navbar() {
         {/* Authentication Button */}
         <div>
           {session ? (
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
-              >
-                <SettingsIcon className="w-4 h-4" />
-                <span>Dashboard</span>
-              </Link>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleSignOut}
-              >
-                <LogOutIcon className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="px-2">
+                  <Avatar className="w-8 h-8 mr-2">
+                    <AvatarImage 
+                      src={session.user?.image || undefined} 
+                      alt={session.user?.name || "User Avatar"} 
+                    />
+                    <AvatarFallback>
+                      {session.user?.name ? 
+                        session.user.name.charAt(0).toUpperCase() : 
+                        "U"
+                      }
+                    </AvatarFallback>
+                  </Avatar>
+                  {session.user?.name || "Account"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/profile")}
+                  className="cursor-pointer"
+                >
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/settings")}
+                  className="cursor-pointer"
+                >
+                  <SettingsIcon2 className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push("/billing")}
+                  className="cursor-pointer"
+                >
+                  <CreditCardIcon className="mr-2 h-4 w-4" />
+                  <span>Billing</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleSignOut}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOutIcon2 className="mr-2 h-4 w-4" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Link href="/login">
               <Button variant="default" size="sm">
