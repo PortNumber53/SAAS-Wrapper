@@ -1,58 +1,36 @@
-export const runtime = "edge";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { HomeIcon, SearchIcon } from "lucide-react"
+
+export const runtime = "edge"
 
 export default function NotFound() {
   return (
-    <>
-      <title>404: This page could not be found.</title>
-      <div style={styles.error}>
-        <div>
-          <style
-            dangerouslySetInnerHTML={{
-              __html: `body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}`,
-            }}
-          />
-          <h1 className="next-error-h1" style={styles.h1}>
-            404
-          </h1>
-          <div style={styles.desc}>
-            <h2 style={styles.h2}>This page could not be found.</h2>
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
+      <div className="max-w-md w-full text-center">
+        <div className="text-9xl font-bold text-primary/10 mb-4">404</div>
+        <h1 className="text-3xl font-semibold text-foreground mb-4">
+          Page Not Found
+        </h1>
+        <p className="text-muted-foreground mb-6">
+          Oops! The page you are looking for seems to have wandered off into the digital wilderness.
+        </p>
+        
+        <div className="flex justify-center space-x-4">
+          <Link href="/">
+            <Button variant="default" size="lg">
+              <HomeIcon className="mr-2 h-4 w-4" />
+              Go Home
+            </Button>
+          </Link>
+          <Link href="/search">
+            <Button variant="outline" size="lg">
+              <SearchIcon className="mr-2 h-4 w-4" />
+              Search Site
+            </Button>
+          </Link>
         </div>
       </div>
-    </>
-  );
+    </div>
+  )
 }
-
-const styles = {
-  error: {
-    fontFamily:
-      'system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji"',
-    height: "100vh",
-    textAlign: "center",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  desc: {
-    display: "inline-block",
-  },
-
-  h1: {
-    display: "inline-block",
-    margin: "0 20px 0 0",
-    padding: "0 23px 0 0",
-    fontSize: 24,
-    fontWeight: 500,
-    verticalAlign: "top",
-    lineHeight: "49px",
-  },
-
-  h2: {
-    fontSize: 14,
-    fontWeight: 400,
-    lineHeight: "49px",
-    margin: 0,
-  },
-} as const;
