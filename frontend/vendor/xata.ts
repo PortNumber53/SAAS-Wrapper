@@ -43,7 +43,7 @@ const tables = [
       },
       {
         name: "expires_at",
-        type: "datetime",
+        type: "int",
         notNull: false,
         unique: false,
         defaultValue: null,
@@ -117,7 +117,7 @@ const tables = [
         name: "user",
         type: "link",
         link: { table: "nextauth_users" },
-        notNull: true,
+        notNull: false,
         unique: false,
         defaultValue: null,
         comment: '{"xata.link":"nextauth_users"}',
@@ -166,13 +166,6 @@ const tables = [
       },
     },
     foreignKeys: {
-      session_link: {
-        name: "session_link",
-        columns: ["session"],
-        referencedTable: "nextauth_sessions",
-        referencedColumns: ["xata_id"],
-        onDelete: "SET NULL",
-      },
       user_link: {
         name: "user_link",
         columns: ["user"],
@@ -198,15 +191,6 @@ const tables = [
         comment: "",
       },
       {
-        name: "session",
-        type: "link",
-        link: { table: "nextauth_sessions" },
-        notNull: true,
-        unique: false,
-        defaultValue: null,
-        comment: '{"xata.link":"nextauth_sessions"}',
-      },
-      {
         name: "sessionToken",
         type: "text",
         notNull: false,
@@ -218,7 +202,7 @@ const tables = [
         name: "user",
         type: "link",
         link: { table: "nextauth_users" },
-        notNull: true,
+        notNull: false,
         unique: false,
         defaultValue: null,
         comment: '{"xata.link":"nextauth_users"}',
@@ -390,7 +374,7 @@ const tables = [
         name: "account",
         type: "link",
         link: { table: "nextauth_accounts" },
-        notNull: true,
+        notNull: false,
         unique: false,
         defaultValue: null,
         comment: '{"xata.link":"nextauth_accounts"}',
@@ -399,7 +383,7 @@ const tables = [
         name: "user",
         type: "link",
         link: { table: "nextauth_users" },
-        notNull: true,
+        notNull: false,
         unique: false,
         defaultValue: null,
         comment: '{"xata.link":"nextauth_users"}',
@@ -448,6 +432,13 @@ const tables = [
       },
     },
     foreignKeys: {
+      session_link: {
+        name: "session_link",
+        columns: ["session"],
+        referencedTable: "nextauth_sessions",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
       user_link: {
         name: "user_link",
         columns: ["user"],
@@ -465,10 +456,19 @@ const tables = [
     },
     columns: [
       {
+        name: "session",
+        type: "link",
+        link: { table: "nextauth_sessions" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_sessions"}',
+      },
+      {
         name: "user",
         type: "link",
         link: { table: "nextauth_users" },
-        notNull: true,
+        notNull: false,
         unique: false,
         defaultValue: null,
         comment: '{"xata.link":"nextauth_users"}',
@@ -621,7 +621,7 @@ const DatabaseClient = buildClient();
 
 const defaultOptions = {
   databaseURL:
-    "https://Mauricio-Otta-s-workspace-rr8013.eu-central-1.xata.sh/db/dbwebsites",
+    "https://Mauricio-Otta-s-workspace-rr8013.us-west-2.xata.sh/db/dbwebsites",
 };
 
 export class XataClient extends DatabaseClient<DatabaseSchema> {

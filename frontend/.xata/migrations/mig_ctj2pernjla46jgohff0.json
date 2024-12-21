@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj2pernjla46jgohff0",
+    "operations": [
+      {
+        "add_column": {
+          "table": "nextauth_accounts",
+          "column": {
+            "name": "expires_at",
+            "type": "int",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj2pernjla46jgohff0",
+  "parent": "mig_ctj2pcbnjla46jgohfe0",
+  "schema": "public",
+  "startedAt": "2024-12-21T02:49:32.605901Z"
+}

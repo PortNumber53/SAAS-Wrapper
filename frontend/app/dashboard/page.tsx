@@ -1,38 +1,32 @@
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/app/auth";
+import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 
-export const runtime = 'nodejs';
-
 export default async function DashboardPage() {
-  try {
-    console.log("Dashboard page: Fetching session");
-    const session = await auth();
-    console.log("Dashboard page: Session details", JSON.stringify(session, null, 2));
+  const session = await auth();
 
-    // More explicit session checking
-    if (!session) {
-      console.log("Dashboard page: No session found, redirecting to login");
-      return redirect("/login");
-    }
-
-    if (!session.user) {
-      console.log("Dashboard page: Session exists but no user data, redirecting to login");
-      return redirect("/login");
-    }
-
-    return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold">Welcome to your Dashboard, {session.user.name}&apos;s Workspace</h1>
-          <div className="mt-4 p-4 bg-white rounded-lg shadow">
-            <p className="text-lg">Hello, {session.user.name || 'User'}!</p>
-            <p className="text-gray-600 mt-2">You&apos;re signed in with: {session.user.email}</p>
-          </div>
-        </div>
-      </div>
-    );
-  } catch (error) {
-    console.error("Dashboard page error:", error);
-    return redirect("/login");
+  if (!session) {
+    redirect("/login");
   }
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <p>Welcome, {session.user?.name || 'User'}!</p>
+        <p>Email: {session.user?.email}</p>
+        <form 
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/" });
+          }}
+          className="mt-4"
+        >
+          <Button type="submit" variant="destructive">
+            Sign Out
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
 }

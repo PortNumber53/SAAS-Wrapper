@@ -1,0 +1,25 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj2ojrnjla46jgohf40",
+    "operations": [
+      {
+        "add_column": {
+          "up": "''",
+          "table": "nextauth_users",
+          "column": {
+            "name": "email",
+            "type": "text",
+            "unique": true,
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj2ojrnjla46jgohf40",
+  "parent": "mig_ctj2oh3njla46jgohf30",
+  "schema": "public",
+  "startedAt": "2024-12-21T02:47:44.13398Z"
+}
