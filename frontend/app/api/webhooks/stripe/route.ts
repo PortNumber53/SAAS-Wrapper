@@ -129,9 +129,24 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 }
 
+// Helper function to find user by Stripe Customer ID
+async function findUserByStripeCustomerId(stripeCustomerId: string) {
+  console.log(`Finding user for Stripe Customer ID: ${stripeCustomerId}`)
+
+  const user = await xata.db.nextauth_users.filter({
+    stripeCustomerId: stripeCustomerId
+  }).getFirst()
+
+  console.log(`User found: ${user ? user.xata_id : 'No user found'}`)
+
+  return user?.xata_id || null
+}
+
 // Handle new subscription creation
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   try {
+    console.log('Subscription details:', JSON.stringify(subscription, null, 2))
+
     // Find existing subscription
     const existingSub = await xata.db.subscriptions.filter({
       stripeSubscriptionId: subscription.id
@@ -143,20 +158,25 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
       return
     }
 
+    // Attempt to find the user
+    const userId = await findUserByStripeCustomerId(subscription.customer as string)
+
+    console.log(`Resolved User ID: ${userId}`)
+
     // Create a new subscription only if it doesn't exist
     await xata.db.subscriptions.create({
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: subscription.customer as string,
-      status: 'incomplete', // Always start with 'incomplete' for new subscriptions
+      status: subscription.status,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
       canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
       plan: subscription.items.data[0]?.price?.id || null,
       planAmount: subscription.items.data[0]?.price?.unit_amount || null,
-      
+
       // Link to the user via Stripe Customer ID
-      user: await findUserByStripeCustomerId(subscription.customer as string)
+      user: userId
     })
 
     console.log(`Created new subscription ${subscription.id}`)
@@ -168,25 +188,32 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 // Handle subscription updates
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   try {
+    console.log('Updated Subscription details:', JSON.stringify(subscription, null, 2))
+
     // Find the existing subscription by Stripe Subscription ID
     const existingSub = await xata.db.subscriptions.filter({
       stripeSubscriptionId: subscription.id
     }).getFirst()
 
+    // Attempt to find the user
+    const userId = await findUserByStripeCustomerId(subscription.customer as string)
+
+    console.log(`Resolved User ID: ${userId}`)
+
     // Prepare update/create data
     const subscriptionData = {
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: subscription.customer as string,
-      status: subscription.status,
+      status: subscription.status || 'active',
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end || false,
       canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
       plan: subscription.items.data[0]?.price?.id || null,
       planAmount: subscription.items.data[0]?.price?.unit_amount || null,
-      
+
       // Link to the user via Stripe Customer ID
-      user: await findUserByStripeCustomerId(subscription.customer as string)
+      user: userId
     }
 
     // If no existing subscription, create a new one
@@ -202,15 +229,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   } catch (error) {
     console.error('Error handling subscription update:', error)
   }
-}
-
-// Helper function to find user by Stripe Customer ID
-async function findUserByStripeCustomerId(stripeCustomerId: string) {
-  const user = await xata.db.nextauth_users.filter({
-    stripeCustomerId: stripeCustomerId
-  }).getFirst()
-
-  return user?.xata_id || null
 }
 
 // Handle subscription cancellation

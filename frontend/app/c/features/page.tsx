@@ -12,6 +12,8 @@ import {
   Zap 
 } from "lucide-react"
 
+export const runtime = 'edge'
+
 export default function FeaturesPage() {
   const features = [
     {

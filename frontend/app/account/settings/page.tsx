@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 
+export const runtime = 'edge'
+
 export default async function SettingsPage() {
   const session = await auth()
   
