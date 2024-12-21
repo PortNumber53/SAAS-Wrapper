@@ -22,22 +22,22 @@ export function Footer() {
           <h4 className="text-md font-semibold mb-4">Quick Links</h4>
           <div className="grid gap-2">
             <Link 
-              href="/features" 
+              href="/c/features" 
               className="text-muted-foreground hover:text-foreground"
             >
               Features
+            </Link>
+            <Link 
+              href="/c/docs" 
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Documentation
             </Link>
             <Link 
               href="/pricing" 
               className="text-muted-foreground hover:text-foreground"
             >
               Pricing
-            </Link>
-            <Link 
-              href="/docs" 
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Documentation
             </Link>
           </div>
         </div>
@@ -54,14 +54,14 @@ export function Footer() {
               <GithubIcon className="w-6 h-6" />
             </Link>
             <Link 
-              href="https://twitter.com/your-handle" 
+              href="https://twitter.com/your-org" 
               target="_blank" 
               className="text-muted-foreground hover:text-foreground"
             >
               <TwitterIcon className="w-6 h-6" />
             </Link>
             <Link 
-              href="https://linkedin.com/company/your-company" 
+              href="https://linkedin.com/company/your-org" 
               target="_blank" 
               className="text-muted-foreground hover:text-foreground"
             >
@@ -74,7 +74,7 @@ export function Footer() {
       {/* Bottom Status Bar */}
       <div className="bg-background border-t py-4 text-center">
         <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} SaaS Wrapper. All rights reserved.
+          {new Date().getFullYear()} SaaS Wrapper. All rights reserved.
         </p>
       </div>
     </footer>
