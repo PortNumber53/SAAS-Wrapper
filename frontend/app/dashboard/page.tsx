@@ -1,14 +1,34 @@
-import { auth, signOut } from "@/app/auth";
+"use client"
+
+import { auth } from "@/app/auth";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 
 export const runtime = 'edge';
 
-export default async function DashboardPage() {
-  const session = await auth();
+export default function DashboardPage() {
+  const { data: session } = useSession();
 
+  // If no session, redirect to login
+  useEffect(() => {
+    if (!session) {
+      redirect("/login");
+    }
+  }, [session]);
+
+  const handleSignOut = async () => {
+    await signOut({
+      redirect: true,
+      callbackUrl: '/'
+    });
+  }
+
+  // If session is not yet loaded, show a loading state
   if (!session) {
-    redirect("/login");
+    return <div>Loading...</div>;
   }
 
   return (
@@ -17,17 +37,13 @@ export default async function DashboardPage() {
       <div className="bg-white shadow-md rounded-lg p-6">
         <p>Welcome, {session.user?.name || 'User'}!</p>
         <p>Email: {session.user?.email}</p>
-        <form 
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/" });
-          }}
+        <Button
+          onClick={handleSignOut}
+          variant="destructive"
           className="mt-4"
         >
-          <Button type="submit" variant="destructive">
-            Sign Out
-          </Button>
-        </form>
+          Sign Out
+        </Button>
       </div>
     </div>
   );
