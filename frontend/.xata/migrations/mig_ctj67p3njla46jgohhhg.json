@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj67p3njla46jgohhhg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "invoices",
+          "column": {
+            "name": "stripeEmail",
+            "type": "text",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj67p3njla46jgohhhg",
+  "parent": "mig_ctj67mrnjla46jgohhgg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:44:53.366549Z"
+}

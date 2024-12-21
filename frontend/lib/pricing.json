@@ -4,6 +4,7 @@
       "id": "starter",
       "name": "Starter",
       "price": 100,
+      "stripePrice": "price_1QYLIGAzBzsI3nelxqcvZY4g",
       "description": "Perfect for small teams and individual projects",
       "features": [
         "Up to 5 projects",
@@ -22,6 +23,7 @@
       "id": "pro",
       "name": "Pro",
       "price": 499,
+      "stripePrice": "price_1QYLJCAzBzsI3nel9SlttbgZ",
       "description": "Ideal for growing teams with advanced needs",
       "featured": true,
       "features": [
@@ -41,6 +43,7 @@
       "id": "enterprise",
       "name": "Enterprise",
       "price": null,
+      "stripePrice": null,
       "description": "Tailored solutions for large organizations",
       "features": [
         "Unlimited projects",

@@ -1,5 +1,8 @@
 "use client"
 
+// Add Edge Runtime configuration
+export const runtime = 'edge'
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
@@ -8,8 +11,24 @@ import {
   StarIcon 
 } from "lucide-react"
 import pricingData from "@/lib/pricing.json"
+import { handleCheckout } from "./checkout"
+import { useSession } from "next-auth/react"
+import Link from "next/link"
 
 export default function PricingPage() {
+  const { data: session } = useSession()
+
+  const onCheckout = async (priceId: string | null) => {
+    if (!session) {
+      // Redirect to login if not authenticated
+      return window.location.href = "/login"
+    }
+
+    if (priceId) {
+      await handleCheckout(priceId)
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="text-center mb-12">
@@ -68,12 +87,27 @@ export default function PricingPage() {
                 )}
               </div>
 
-              <Button 
-                variant={tier.featured ? "default" : "outline"} 
-                className="w-full mt-auto"
-              >
-                {tier.cta}
-              </Button>
+              {tier.id === 'enterprise' ? (
+                <Link 
+                  href="mailto:sales@truvis.co" 
+                  className="w-full"
+                >
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    {tier.cta}
+                  </Button>
+                </Link>
+              ) : (
+                <Button 
+                  variant={tier.featured ? "default" : "outline"} 
+                  className="w-full mt-auto"
+                  onClick={() => onCheckout(tier.stripePrice)}
+                >
+                  {tier.cta}
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -81,7 +115,7 @@ export default function PricingPage() {
 
       <div className="text-center mt-12">
         <p className="text-muted-foreground">
-          Need a custom solution? <a href="#" className="text-primary hover:underline">Contact our sales team</a>
+          Need a custom solution? <a href="mailto:sales@truvis.co" className="text-primary hover:underline">Contact our sales team</a>
         </p>
       </div>
     </div>

@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj65e3njla46jgohhfg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "invoices",
+          "column": {
+            "name": "hostedInvoiceUrl",
+            "type": "text",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj65e3njla46jgohhfg",
+  "parent": "mig_ctj65cbnjla46jgohheg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:39:53.025312Z"
+}

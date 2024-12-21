@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj5rvc1dm7utqqfucag",
+    "operations": [
+      {
+        "add_column": {
+          "table": "nextauth_users",
+          "column": {
+            "name": "stripeMetadata",
+            "type": "json",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj5rvc1dm7utqqfucag",
+  "parent": "mig_ctj5rm41dm7utqqfuc9g",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:19:42.690254Z"
+}

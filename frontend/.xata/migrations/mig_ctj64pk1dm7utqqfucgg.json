@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj64pk1dm7utqqfucgg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "invoices",
+          "column": {
+            "name": "status",
+            "type": "text",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj64pk1dm7utqqfucgg",
+  "parent": "mig_ctj64nrnjla46jgohhbg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:38:31.4035Z"
+}

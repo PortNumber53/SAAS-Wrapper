@@ -1,0 +1,30 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj684s1dm7utqqfucmg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "invoices",
+          "column": {
+            "name": "user",
+            "type": "text",
+            "comment": "{\"xata.link\":\"nextauth_users\"}",
+            "nullable": true,
+            "references": {
+              "name": "user_link",
+              "table": "nextauth_users",
+              "column": "xata_id",
+              "on_delete": "SET NULL"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj684s1dm7utqqfucmg",
+  "parent": "mig_ctj67p3njla46jgohhhg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:45:39.551626Z"
+}

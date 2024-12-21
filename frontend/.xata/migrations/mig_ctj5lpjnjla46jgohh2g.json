@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj5lpjnjla46jgohh2g",
+    "operations": [
+      {
+        "add_column": {
+          "table": "subscriptions",
+          "column": {
+            "name": "stripeCustomerId",
+            "type": "text",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj5lpjnjla46jgohh2g",
+  "parent": "mig_ctj5lnjnjla46jgohh1g",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:06:31.151075Z"
+}
