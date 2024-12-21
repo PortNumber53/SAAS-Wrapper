@@ -2,6 +2,8 @@ import { auth, signOut } from "@/app/auth";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
 
+export const runtime = 'edge';
+
 export default async function DashboardPage() {
   const session = await auth();
 

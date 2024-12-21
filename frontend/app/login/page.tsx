@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { signIn } from "@/app/auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
