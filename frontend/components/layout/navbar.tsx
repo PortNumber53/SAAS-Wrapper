@@ -2,11 +2,9 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { signIn, signOut } from "@/app/auth"
 import { useSession } from "next-auth/react"
 import { 
   HomeIcon, 
-  InfoIcon, 
   SettingsIcon, 
   LogInIcon, 
   LogOutIcon 
@@ -61,24 +59,23 @@ export function Navbar() {
                 <SettingsIcon className="w-4 h-4" />
                 <span>Dashboard</span>
               </Link>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={() => signOut({ redirectTo: '/' })}
+              <Link 
+                href="/api/auth/signout"
+                className="inline-flex items-center"
               >
-                <LogOutIcon className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
+                <Button variant="destructive" size="sm">
+                  <LogOutIcon className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </Link>
             </div>
           ) : (
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={() => signIn()}
-            >
-              <LogInIcon className="w-4 h-4 mr-2" />
-              Login
-            </Button>
+            <Link href="/login">
+              <Button variant="default" size="sm">
+                <LogInIcon className="w-4 h-4 mr-2" />
+                Login
+              </Button>
+            </Link>
           )}
         </div>
       </div>
