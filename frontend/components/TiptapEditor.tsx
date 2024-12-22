@@ -32,7 +32,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     <div className={`tiptap-editor-container ${className}`}>
       <EditorContent 
         editor={editor} 
-        className="w-full min-h-[400px] border border-gray-300 rounded p-4 prose prose-lg max-w-none focus:outline-none [&>div]:outline-none [&>div]:focus:outline-none [&>div]:focus:ring-0 [&>div]:border-none tiptap-editor-content"
+        className="w-full h-full border border-gray-300 rounded p-4 prose prose-lg max-w-none focus:outline-none [&>div]:outline-none [&>div]:focus:outline-none [&>div]:focus:ring-0 [&>div]:border-none tiptap-editor-content overflow-auto flex-grow"
       />
     </div>
   );

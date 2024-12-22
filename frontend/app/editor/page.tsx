@@ -18,12 +18,12 @@ export default function EditorPage() {
   `.trim());
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Content Editor</h1>
+    <div className="w-full h-screen flex flex-col">
+      <h1 className="text-3xl font-bold px-4 py-2 shrink-0">Content Editor</h1>
       <TiptapEditor 
         initialContent={content}
         onChange={setContent}
-        className="mb-6"
+        className="flex-grow"
       />
     </div>
   );

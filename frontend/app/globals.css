@@ -57,6 +57,17 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  .tiptap-editor-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .tiptap-editor-content .ProseMirror {
+    height: 100% !important;
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: 2rem !important;
+  }
   .tiptap-editor-content .ProseMirror h1 {
     font-size: 2.25rem !important;
     line-height: 2.5rem !important;
