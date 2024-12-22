@@ -66,3 +66,23 @@ In order to enable the example:
 After doing this you can run the `dev` or `preview` script and visit the `/api/hello` route to see the example in action.
 
 Finally, if you also want to see the example work in the deployed application make sure to add a `MY_KV_NAMESPACE` binding to your Pages application in its [dashboard kv bindings settings section](https://dash.cloudflare.com/?to=/:account/pages/view/:pages-project/settings/functions#kv_namespace_bindings_section). After having configured it make sure to re-deploy your application.
+
+## StackEdit Integration
+
+We've integrated StackEdit, an open-source Markdown editor, to allow editing of mostly-static content pages.
+
+### Usage
+
+1. Navigate to `/editor` route
+2. The StackEdit editor will be directly rendered on the page
+3. Edit your content inline
+4. Changes will be reflected in real-time
+
+### Components
+
+- `components/StackEditEditor.tsx`: Reusable StackEdit editor component
+- `app/editor/page.tsx`: Example page demonstrating StackEdit integration
+
+### Customization
+
+You can customize the editor by modifying the `StackEditEditor` component. Additional configuration options are available through the StackEdit.js library.

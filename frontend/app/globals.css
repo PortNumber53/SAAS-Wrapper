@@ -57,6 +57,43 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  .tiptap-editor-content .ProseMirror h1 {
+    font-size: 2.25rem !important;
+    line-height: 2.5rem !important;
+    font-weight: bold !important;
+    margin-bottom: 1rem !important;
+  }
+  .tiptap-editor-content .ProseMirror h2 {
+    font-size: 1.875rem !important;
+    line-height: 2.25rem !important;
+    font-weight: bold !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .tiptap-editor-content .ProseMirror h3 {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+    font-weight: bold !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .tiptap-editor-content .ProseMirror h4 {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+    font-weight: bold !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .tiptap-editor-content .ProseMirror h5 {
+    font-size: 1.125rem !important;
+    line-height: 1.5rem !important;
+    font-weight: bold !important;
+    margin-bottom: 0.25rem !important;
+  }
+  .tiptap-editor-content .ProseMirror h6 {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+    font-weight: bold !important;
+    margin-bottom: 0.25rem !important;
+    opacity: 0.85 !important;
+  }
 }
 
 /* Custom scrollbar */
