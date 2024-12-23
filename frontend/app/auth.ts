@@ -26,15 +26,21 @@ export const {
     })
   ],
   callbacks: {
-    async session({ session, user }: any) {
+    async session({ session, token }: any) {
       if (session?.user) {
-        session.user.id = user.id;
+        session.user.id = token.sub;
       }
       return session;
+    },
+    async jwt({ token, user }: any) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
     }
   },
   session: {
-    strategy: "database"
+    strategy: "jwt"
   },
   pages: {
     signIn: '/login'

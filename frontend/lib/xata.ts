@@ -1,49 +1,31 @@
-import { XataClient } from "@/vendor/xata";
+import { buildClient } from "@xata.io/client";
+import type { BaseClientOptions } from "@xata.io/client";
+
+// Import the generated schema
+import { tables } from "../vendor/xata";
+
+// Create the client with the generated schema
+const DatabaseClient = buildClient<typeof tables>();
 
 // Lazy initialization to avoid multiple client creations
-let xataClient: XataClient | null = null;
+let xataClient: InstanceType<typeof DatabaseClient> | null = null;
 
-export function getXataClient(): XataClient {
-  // Log the entire process.env for debugging
-  console.log('Full Environment:', {
-    ...process.env,
-    XATA_API_KEY: process.env.XATA_API_KEY ? '[REDACTED]' : 'UNDEFINED'
-  });
-
+export function getXataClient(): InstanceType<typeof DatabaseClient> {
   if (!xataClient) {
-    // Detailed environment variable logging for debugging
-    console.log('Initializing Xata Client with:', {
-      XATA_API_KEY: process.env.XATA_API_KEY ? '[REDACTED]' : 'UNDEFINED',
-      XATA_BRANCH: process.env.XATA_BRANCH,
-      XATA_DATABASE_URL: process.env.XATA_DATABASE_URL
-    });
-
-    // Try multiple ways to get the API key
+    // Validate API key with more detailed error handling
     const apiKey = 
       process.env.XATA_API_KEY || 
       process.env.NEXT_PUBLIC_XATA_API_KEY ||
       '';
     const branch = process.env.XATA_BRANCH ?? 'main';
 
-    // More comprehensive logging
-    console.log('Attempting to initialize with:', {
-      apiKeyProvided: !!apiKey,
-      branch
-    });
-
-    // Validate API key with more detailed error handling
     if (!apiKey) {
       console.error('CRITICAL: XATA_API_KEY is not set.');
-      console.error('Checked environment variables:', {
-        'process.env.XATA_API_KEY': process.env.XATA_API_KEY,
-        'process.env.NEXT_PUBLIC_XATA_API_KEY': process.env.NEXT_PUBLIC_XATA_API_KEY
-      });
       throw new Error('XATA_API_KEY is required to initialize Xata client');
     }
 
     try {
-      // Explicitly type the options
-      const clientOptions = {
+      const clientOptions: BaseClientOptions = {
         apiKey,
         branch,
         fetch: globalThis.fetch,
@@ -51,16 +33,15 @@ export function getXataClient(): XataClient {
         clientName: 'saas-wrapper'
       };
 
-      console.log('Xata Client Options:', Object.keys(clientOptions));
-
-      xataClient = new XataClient(clientOptions);
+      xataClient = new DatabaseClient(clientOptions);
     } catch (error) {
-      console.error('Failed to initialize Xata Client:', error);
+      console.error('Failed to initialize Xata client:', error);
       throw error;
     }
   }
+
   return xataClient;
 }
 
 // Export the type for consistency
-export type { XataClient } from "@/vendor/xata";
+export type { BaseClientOptions } from "@xata.io/client";

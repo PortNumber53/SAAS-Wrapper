@@ -757,6 +757,111 @@ const tables = [
     ],
   },
   {
+    name: "pages",
+    checkConstraints: {
+      pages_xata_id_length_xata_id: {
+        name: "pages_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      owner_link: {
+        name: "owner_link",
+        columns: ["owner"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_pages_xata_id_key: {
+        name: "_pgroll_new_pages_xata_id_key",
+        columns: ["xata_id"],
+      },
+      pages__pgroll_new_uri_key: {
+        name: "pages__pgroll_new_uri_key",
+        columns: ["path"],
+      },
+    },
+    columns: [
+      {
+        name: "is_homepage",
+        type: "bool",
+        notNull: true,
+        unique: false,
+        defaultValue: "false",
+        comment: "",
+      },
+      {
+        name: "is_published",
+        type: "bool",
+        notNull: true,
+        unique: false,
+        defaultValue: "false",
+        comment: "",
+      },
+      {
+        name: "markdown_content",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "owner",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
+      },
+      {
+        name: "path",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "subscriptions",
     checkConstraints: {
       subscriptions_xata_id_length_xata_id: {
@@ -965,6 +1070,9 @@ export type NextauthVerificationTokens =
 export type NextauthVerificationTokensRecord = NextauthVerificationTokens &
   XataRecord;
 
+export type Pages = InferredTypes["pages"];
+export type PagesRecord = Pages & XataRecord;
+
 export type Subscriptions = InferredTypes["subscriptions"];
 export type SubscriptionsRecord = Subscriptions & XataRecord;
 
@@ -976,6 +1084,7 @@ export type DatabaseSchema = {
   nextauth_users_accounts: NextauthUsersAccountsRecord;
   nextauth_users_sessions: NextauthUsersSessionsRecord;
   nextauth_verificationTokens: NextauthVerificationTokensRecord;
+  pages: PagesRecord;
   subscriptions: SubscriptionsRecord;
 };
 

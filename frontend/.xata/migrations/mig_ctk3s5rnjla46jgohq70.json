@@ -1,0 +1,20 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctk3s5rnjla46jgohq70",
+    "operations": [
+      {
+        "alter_column": {
+          "name": "markdown_content",
+          "table": "pages",
+          "column": "content"
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctk3s5rnjla46jgohq70",
+  "parent": "mig_ctk3rujnjla46jgohq60",
+  "schema": "public",
+  "startedAt": "2024-12-22T16:28:08.018279Z"
+}

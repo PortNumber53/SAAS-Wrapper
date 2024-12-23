@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature')
 
     if (!signature) {
-      return NextResponse.json({ error: 'No signature' }, { status: 400 })
+      return NextResponse.json({ error: 'No signature' }, { 
+        status: 400,
+        headers: new Headers()
+      })
     }
 
     // Verify the webhook came from Stripe
@@ -36,7 +39,10 @@ export async function POST(request: NextRequest) {
       )
     } catch (err) {
       console.error('Webhook verification failed:', err)
-      return NextResponse.json({ error: 'Webhook error' }, { status: 400 })
+      return NextResponse.json({ error: 'Webhook error' }, { 
+        status: 400,
+        headers: new Headers()
+      })
     }
 
     // Log all incoming events for debugging
@@ -89,10 +95,15 @@ export async function POST(request: NextRequest) {
       console.error('Full error details:', JSON.stringify(handlerError, Object.getOwnPropertyNames(handlerError), 2))
     }
 
-    return NextResponse.json({ received: true })
+    return NextResponse.json({ received: true }, {
+      headers: new Headers()
+    })
   } catch (globalError) {
     console.error('Global webhook error:', globalError)
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Webhook processing failed' }, { 
+      status: 500,
+      headers: new Headers()
+    })
   }
 }
 
