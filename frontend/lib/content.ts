@@ -2,7 +2,7 @@ import { xata } from './xata';
 
 export type MarkdownContent = {
   current: string;
-  timestamp: string;
+  timestamp?: string;
 }
 
 export async function fetchContentByPath(path: string) {
@@ -36,8 +36,12 @@ export async function fetchContentByPath(path: string) {
 
         console.log('Parsed markdown content:', markdownContent);
 
-        // Return only the 'current' key
-        return markdownContent.current;
+        // Return a plain object with only the necessary properties
+        return {
+          id: record.id,
+          current: markdownContent.current || '',
+          path: record.path
+        };
       } catch (parseError) {
         console.error('Failed to parse markdown_content:', {
           rawContent: record.markdown_content,
@@ -46,12 +50,11 @@ export async function fetchContentByPath(path: string) {
         throw new Error('Failed to parse content');
       }
     }
+
+    // Return null if no record found
+    return null;
   } catch (error) {
     console.error('ERROR: Failed to fetch content', error);
     throw error;
   }
-
-  // If no record is found
-  console.warn(`No record found for path: ${cleanPath}`);
-  throw new Error(`No content found for path: ${cleanPath}`);
 }

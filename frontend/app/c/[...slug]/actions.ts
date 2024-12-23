@@ -1,7 +1,7 @@
 'use server';
 
 import { marked } from 'marked';
-import * as DOMPurify from 'dompurify';
+import DOMPurify from 'dompurify';
 import { fetchContentByPath } from '@/lib/content';
 
 // Configure marked to be more secure
@@ -12,22 +12,23 @@ marked.setOptions({
 
 // Server-side sanitization
 function sanitizeHtml(html: string): string {
-  // Ensure we're using the sanitize method correctly
-  if (typeof DOMPurify.sanitize === 'function') {
+  try {
     return DOMPurify.sanitize(html);
+  } catch (error) {
+    console.warn('HTML sanitization failed:', error);
+    return html;
   }
-  
-  // Fallback if sanitize is not available
-  console.warn('DOMPurify sanitize method not found, returning original HTML');
-  return html;
 }
 
 export async function getPageContent(path: string) {
   try {
     const markdownContent = await fetchContentByPath(path);
     
+    // Ensure we're passing a string to marked.parse()
+    const markdownString = markdownContent?.current || '';
+
     // Render markdown
-    const htmlContent = marked.parse(markdownContent) as string;
+    const htmlContent = marked.parse(markdownString) as string;
 
     // Sanitize HTML content
     const sanitizedContent = sanitizeHtml(htmlContent);
