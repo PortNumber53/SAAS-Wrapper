@@ -1,47 +1,37 @@
-import { buildClient } from "@xata.io/client";
-import type { BaseClientOptions } from "@xata.io/client";
+import { XataClient } from '../vendor/xata';
 
-// Import the generated schema
-import { tables } from "../vendor/xata";
+// Shared Xata client initialization for both server and client
+const initializeXataClient = () => {
+  const xataApiKey = process.env.XATA_API_KEY;
+  const xataDatabaseURL = process.env.XATA_DATABASE_URL;
 
-// Create the client with the generated schema
-const DatabaseClient = buildClient<typeof tables>();
-
-// Lazy initialization to avoid multiple client creations
-let xataClient: InstanceType<typeof DatabaseClient> | null = null;
-
-export function getXataClient(): InstanceType<typeof DatabaseClient> {
-  if (!xataClient) {
-    // Validate API key with more detailed error handling
-    const apiKey = 
-      process.env.XATA_API_KEY || 
-      process.env.NEXT_PUBLIC_XATA_API_KEY ||
-      '';
-    const branch = process.env.XATA_BRANCH ?? 'main';
-
-    if (!apiKey) {
-      console.error('CRITICAL: XATA_API_KEY is not set.');
-      throw new Error('XATA_API_KEY is required to initialize Xata client');
-    }
-
-    try {
-      const clientOptions: BaseClientOptions = {
-        apiKey,
-        branch,
-        fetch: globalThis.fetch,
-        enableBrowser: true,
-        clientName: 'saas-wrapper'
-      };
-
-      xataClient = new DatabaseClient(clientOptions);
-    } catch (error) {
-      console.error('Failed to initialize Xata client:', error);
-      throw error;
-    }
+  if (xataApiKey && xataDatabaseURL) {
+    return new XataClient({
+      apiKey: xataApiKey,
+      databaseURL: xataDatabaseURL
+    });
   }
 
-  return xataClient;
-}
+  console.warn('Xata client initialization failed: Missing API key or database URL');
 
-// Export the type for consistency
-export type { BaseClientOptions } from "@xata.io/client";
+  // Provide a more comprehensive dummy client
+  return {
+    db: {
+      pages: {
+        filter: () => ({
+          getFirst: () => null,
+          read: () => null
+        })
+      },
+      nextauth_users: {
+        filter: () => ({
+          getFirst: () => null,
+          read: () => null
+        })
+      }
+    }
+  } as any;
+};
+
+// Initialize Xata client
+export const xata = initializeXataClient();

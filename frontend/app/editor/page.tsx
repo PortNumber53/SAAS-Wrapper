@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { TiptapEditor } from '@/components/TiptapEditor';
 
+export const runtime = 'edge';
+
 export default function EditorPage() {
   const [content, setContent] = useState(`
     <h1>Welcome to the Editor</h1>
@@ -20,7 +22,7 @@ export default function EditorPage() {
   return (
     <div className="w-full h-screen flex flex-col">
       <h1 className="text-3xl font-bold px-4 py-2 shrink-0">Content Editor</h1>
-      <TiptapEditor 
+      <TiptapEditor
         initialContent={content}
         onChange={setContent}
         className="flex-grow"

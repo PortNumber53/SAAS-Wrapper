@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getXataClient } from '@/lib/xata';
+import { xata } from '@/lib/xata';
 
 export async function GET(req: NextRequest) {
   try {
-    const xata = getXataClient();
-
     // Fetch only published pages
     const pages = await xata.db.pages
       .filter()

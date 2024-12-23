@@ -2,10 +2,16 @@ import { auth } from "@/app/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getXataClient } from "@/lib/xata"
+import { xata } from "@/lib/xata"
+import { Kysely } from 'kysely'
+import { XataDialect } from '@xata.io/kysely'
 import { format } from "date-fns"
+import type { DatabaseSchema } from "@/vendor/xata"
+import type { SubscriptionsRecord } from "@/vendor/xata"
 
-const xata = getXataClient()
+const db = new Kysely<DatabaseSchema>({
+  dialect: new XataDialect({ xata })
+});
 
 export const runtime = 'edge'
 
@@ -17,32 +23,37 @@ function formatAmount(amountInCents?: number | null): string {
 
 export default async function BillingPage() {
   const session = await auth()
-  
+
   if (!session?.user) {
     redirect('/login')
   }
 
   // Fetch the user's active subscription
-  const userSubscription = await xata.db.subscriptions
-    .filter({
-      user: session.user.id,
-      status: 'active'
-    })
-    .sort('currentPeriodEnd', 'desc')
-    .getFirst()
+  if (!session?.user?.id) {
+    redirect('/login')
+  }
 
-  // Fetch billing history
-  const billingHistory = await xata.db.subscriptions
-    .filter({
-      user: session.user.id
-    })
-    .sort('currentPeriodEnd', 'desc')
-    .getMany()
+  const userSubscription = await db
+    .selectFrom('subscriptions')
+    .innerJoin('nextauth_users', 'subscriptions.user', 'nextauth_users.xata_id')
+    .where('nextauth_users.xata_id', '=', session.user.id)
+    .where('subscriptions.status', '=', 'active')
+    .orderBy('subscriptions.currentPeriodEnd', 'desc')
+    .selectAll()
+    .executeTakeFirst() as SubscriptionsRecord | null
+
+  const billingHistory = await db
+    .selectFrom('subscriptions')
+    .innerJoin('nextauth_users', 'subscriptions.user', 'nextauth_users.xata_id')
+    .where('nextauth_users.xata_id', '=', session.user.id)
+    .orderBy('subscriptions.currentPeriodEnd', 'desc')
+    .selectAll()
+    .execute() as SubscriptionsRecord[]
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Billing</h1>
-      
+
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -50,52 +61,19 @@ export default async function BillingPage() {
           </CardHeader>
           <CardContent>
             {userSubscription ? (
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-semibold">{userSubscription.tier || 'Pro Plan'} Plan</p>
-                  <p className="text-muted-foreground">
-                    Billed {userSubscription.billingCycle || 'Monthly'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold">
-                    ${formatAmount(userSubscription.planAmount)}/month
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Renews {userSubscription.currentPeriodEnd
-                      ? format(new Date(userSubscription.currentPeriodEnd), 'MMM dd, yyyy')
-                      : 'Soon'}
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Change Plan
-                  </Button>
-                </div>
+              <div className="space-y-2">
+                <p>Status: {userSubscription.status}</p>
+                <p>Amount: ${formatAmount(userSubscription.planAmount)}</p>
+                <p>
+                  Current Period End:{' '}
+                  {userSubscription.currentPeriodEnd
+                    ? format(new Date(userSubscription.currentPeriodEnd), 'PPP')
+                    : 'N/A'}
+                </p>
               </div>
             ) : (
-              <div className="text-center">
-                <p className="text-muted-foreground">No active subscription</p>
-                <Button variant="default" size="sm" className="mt-2">
-                  Choose a Plan
-                </Button>
-              </div>
+              <p>No active subscription</p>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Methods</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-semibold">Visa ••••  1234</p>
-                <p className="text-muted-foreground">Expires 12/25</p>
-              </div>
-              <Button variant="secondary" size="sm">
-                Update Payment Method
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -104,32 +82,26 @@ export default async function BillingPage() {
             <CardTitle>Billing History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="py-2 text-left">Date</th>
-                    <th className="py-2 text-left">Description</th>
-                    <th className="py-2 text-right">Amount</th>
-                    <th className="py-2 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {billingHistory.map((billing) => (
-                    <tr key={billing.xata_id}>
-                      <td className="py-2">
-                        {billing.currentPeriodEnd
-                          ? format(new Date(billing.currentPeriodEnd), 'MMM dd, yyyy')
-                          : 'N/A'}
-                      </td>
-                      <td>{billing.tier || 'Pro Plan'} - {billing.billingCycle || 'Monthly'} Subscription</td>
-                      <td className="text-right">${formatAmount(billing.planAmount)}</td>
-                      <td className="text-right uppercase">{billing.status || 'COMPLETED'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {billingHistory.length > 0 ? (
+              <ul className="space-y-2">
+                {billingHistory.map((subscription) => (
+                  <li
+                    key={subscription.xata_id}
+                    className="flex justify-between items-center"
+                  >
+                    <span>
+                      {subscription.currentPeriodEnd
+                        ? format(new Date(subscription.currentPeriodEnd), 'PPP')
+                        : 'N/A'}
+                    </span>
+                    <span>${formatAmount(subscription.planAmount)}</span>
+                    <span>{subscription.status}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No billing history</p>
+            )}
           </CardContent>
         </Card>
       </div>

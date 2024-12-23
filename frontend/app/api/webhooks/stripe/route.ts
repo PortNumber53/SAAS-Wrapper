@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { getXataClient } from '@/lib/xata'
+import { xata } from '@/lib/xata'
 
 // Ensure Stripe and Xata are properly initialized
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -10,8 +10,6 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia'
 })
-
-const xata = getXataClient()
 
 // Webhook secret for verifying the event came from Stripe
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -23,7 +21,7 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature')
 
     if (!signature) {
-      return NextResponse.json({ error: 'No signature' }, { 
+      return NextResponse.json({ error: 'No signature' }, {
         status: 400,
         headers: new Headers()
       })
@@ -39,7 +37,7 @@ export async function POST(request: NextRequest) {
       )
     } catch (err) {
       console.error('Webhook verification failed:', err)
-      return NextResponse.json({ error: 'Webhook error' }, { 
+      return NextResponse.json({ error: 'Webhook error' }, {
         status: 400,
         headers: new Headers()
       })
@@ -100,7 +98,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (globalError) {
     console.error('Global webhook error:', globalError)
-    return NextResponse.json({ error: 'Webhook processing failed' }, { 
+    return NextResponse.json({ error: 'Webhook processing failed' }, {
       status: 500,
       headers: new Headers()
     })

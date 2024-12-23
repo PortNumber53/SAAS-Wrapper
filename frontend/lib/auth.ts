@@ -1,14 +1,9 @@
-import NextAuth from "next-auth";
+import { NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { XataAdapter } from "@auth/xata-adapter";
 import { xata } from "@/lib/xata";
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut
-} = NextAuth({
+export const authOptions: NextAuthConfig = {
   adapter: XataAdapter(xata) as any,
   providers: [
     GoogleProvider({
@@ -43,4 +38,4 @@ export const {
   pages: {
     signIn: '/login'
   }
-});
+};

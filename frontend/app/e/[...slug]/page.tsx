@@ -6,18 +6,21 @@ import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { getXataClient } from '@/lib/xata';
+import { xata } from '@/lib/xata';
 import { fetchContentByPath, MarkdownContent } from '@/lib/content';
+import { getPageContent } from '../c/[...slug]/actions';
 
-export default function EditContentPage({ 
-  params 
-}: { 
-  params: { slug: string[] } 
+export const runtime = 'edge';
+
+export default function EditContentPage({
+  params
+}: {
+  params: { slug: string[] }
 }) {
   const { data: session, status } = useSession();
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
-  
+
   // Preserve the leading '/' for path consistency
   const path = `/${params.slug.join('/').replace(/^(c|e)\//, '')}`;
 
@@ -33,10 +36,10 @@ export default function EditContentPage({
     async function fetchContent() {
       try {
         const markdownContent = await fetchContentByPath(path);
-        
+
         // Get the current version of markdown content
         setContent(markdownContent.current);
-        
+
         setLoading(false);
       } catch (error) {
         console.error('Failed to fetch content', error);
@@ -50,8 +53,6 @@ export default function EditContentPage({
   // Save content
   const saveContent = async (publish = false) => {
     try {
-      const xata = getXataClient();
-      
       // First, unpublish any existing published records for this path
       await xata.db.pages
         .filter({ path, is_published: true })
@@ -60,9 +61,9 @@ export default function EditContentPage({
       // Upsert the new record
       await xata.db.pages.upsert({
         path,
-        markdown_content: JSON.stringify({ 
-          current: content, 
-          timestamp: new Date().toISOString() 
+        markdown_content: JSON.stringify({
+          current: content,
+          timestamp: new Date().toISOString()
         }),
         owner: session?.user?.id,
         is_homepage: false,
@@ -85,7 +86,7 @@ export default function EditContentPage({
       <div className="flex justify-between items-center p-4 border-b">
         <h1 className="text-2xl font-bold">Editing: {path}</h1>
         <div className="flex space-x-2">
-          <Button 
+          <Button
             variant="outline"
             onClick={() => saveContent(true)}
           >
@@ -94,11 +95,38 @@ export default function EditContentPage({
           <Button onClick={() => saveContent(false)}>Save Draft</Button>
         </div>
       </div>
-      <TiptapEditor 
+      <TiptapEditor
         initialContent={content}
         onChange={setContent}
         className="flex-grow"
       />
     </div>
   );
+}
+
+import { getPageContent } from '../c/[...slug]/actions';
+import { fetchContentByPath } from '@/lib/content';
+import { Editor } from './editor';
+
+export const runtime = 'edge';
+
+export default async function EditorPage({
+  params
+}: {
+  params: { slug: string[] }
+}) {
+  // Construct the full path with a leading '/'
+  const path = `/${params.slug.join('/')}`;
+  
+  const { content, error } = await getPageContent(path);
+
+  if (error) {
+    return (
+      <div className="p-4 text-red-500">
+        Error loading content: {error}
+      </div>
+    );
+  }
+
+  return <Editor initialContent={content || ''} />;
 }
