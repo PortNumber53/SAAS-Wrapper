@@ -4,11 +4,13 @@ import { XataClient } from '../vendor/xata';
 const initializeXataClient = () => {
   const xataApiKey = process.env.XATA_API_KEY;
   const xataDatabaseURL = process.env.XATA_DATABASE_URL;
+  const xataBranch = process.env.XATA_BRANCH || 'main';
 
   if (xataApiKey && xataDatabaseURL) {
     return new XataClient({
       apiKey: xataApiKey,
-      databaseURL: xataDatabaseURL
+      databaseURL: xataDatabaseURL,
+      branch: xataBranch
     });
   }
 
