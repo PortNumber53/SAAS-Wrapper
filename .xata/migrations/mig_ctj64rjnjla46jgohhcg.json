@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj64rjnjla46jgohhcg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "invoices",
+          "column": {
+            "name": "amount",
+            "type": "float",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj64rjnjla46jgohhcg",
+  "parent": "mig_ctj64pk1dm7utqqfucgg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:38:39.428259Z"
+}

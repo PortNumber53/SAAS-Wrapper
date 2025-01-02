@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj2qebnjla46jgohfp0",
+    "operations": [
+      {
+        "add_column": {
+          "table": "nextauth_sessions",
+          "column": {
+            "name": "expires",
+            "type": "timestamptz",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj2qebnjla46jgohfp0",
+  "parent": "mig_ctj2qcbnjla46jgohfo0",
+  "schema": "public",
+  "startedAt": "2024-12-21T02:51:38.172848Z"
+}

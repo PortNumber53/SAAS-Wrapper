@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj65ac1dm7utqqfuckg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "invoices",
+          "column": {
+            "name": "periodEnd",
+            "type": "timestamptz",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj65ac1dm7utqqfuckg",
+  "parent": "mig_ctj658s1dm7utqqfucjg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:39:38.972515Z"
+}

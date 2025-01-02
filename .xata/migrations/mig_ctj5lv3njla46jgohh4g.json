@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj5lv3njla46jgohh4g",
+    "operations": [
+      {
+        "add_column": {
+          "table": "subscriptions",
+          "column": {
+            "name": "status",
+            "type": "text",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj5lv3njla46jgohh4g",
+  "parent": "mig_ctj5lsjnjla46jgohh3g",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:06:53.238805Z"
+}

@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj6q9rnjla46jgohhsg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "subscriptions",
+          "column": {
+            "name": "cancelAtPeriodEnd",
+            "type": "bool",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj6q9rnjla46jgohhsg",
+  "parent": "mig_ctj6q7rnjla46jgohhrg",
+  "schema": "public",
+  "startedAt": "2024-12-21T07:24:24.475023Z"
+}

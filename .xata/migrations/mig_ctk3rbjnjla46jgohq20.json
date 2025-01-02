@@ -1,0 +1,25 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctk3rbjnjla46jgohq20",
+    "operations": [
+      {
+        "add_column": {
+          "up": "''",
+          "table": "pages",
+          "column": {
+            "name": "uri",
+            "type": "text",
+            "unique": true,
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctk3rbjnjla46jgohq20",
+  "parent": "mig_ctk3r6bnjla46jgohq10",
+  "schema": "public",
+  "startedAt": "2024-12-22T16:26:23.568538Z"
+}

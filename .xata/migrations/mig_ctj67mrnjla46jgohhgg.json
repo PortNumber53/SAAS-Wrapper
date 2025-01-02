@@ -1,0 +1,20 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj67mrnjla46jgohhgg",
+    "operations": [
+      {
+        "alter_column": {
+          "name": "stripeCustomerId",
+          "table": "invoices",
+          "column": "customerId"
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj67mrnjla46jgohhgg",
+  "parent": "mig_ctj664s1dm7utqqfuclg",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:44:44.380078Z"
+}

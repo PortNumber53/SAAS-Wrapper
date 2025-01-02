@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctj5m141dm7utqqfuc5g",
+    "operations": [
+      {
+        "add_column": {
+          "table": "subscriptions",
+          "column": {
+            "name": "currentPeriodStart",
+            "type": "timestamptz",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctj5m141dm7utqqfuc5g",
+  "parent": "mig_ctj5lv3njla46jgohh4g",
+  "schema": "public",
+  "startedAt": "2024-12-21T06:07:01.320413Z"
+}
