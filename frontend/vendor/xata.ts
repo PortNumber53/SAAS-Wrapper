@@ -8,6 +8,111 @@ import type {
 
 const tables = [
   {
+    name: "categories",
+    checkConstraints: {
+      categories_xata_id_length_xata_id: {
+        name: "categories_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      parent_id_link: {
+        name: "parent_id_link",
+        columns: ["parent_id"],
+        referencedTable: "categories",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_categories_xata_id_key: {
+        name: "_pgroll_new_categories_xata_id_key",
+        columns: ["xata_id"],
+      },
+      categories__pgroll_new_slug_key: {
+        name: "categories__pgroll_new_slug_key",
+        columns: ["slug"],
+      },
+    },
+    columns: [
+      {
+        name: "description",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "is_active",
+        type: "bool",
+        notNull: false,
+        unique: false,
+        defaultValue: "false",
+        comment: "",
+      },
+      {
+        name: "name",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "parent_id",
+        type: "link",
+        link: { table: "categories" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"categories"}',
+      },
+      {
+        name: "slug",
+        type: "text",
+        notNull: false,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "invoices",
     checkConstraints: {
       invoices_xata_id_length_xata_id: {
@@ -757,6 +862,240 @@ const tables = [
     ],
   },
   {
+    name: "order_items",
+    checkConstraints: {
+      order_items_xata_id_length_xata_id: {
+        name: "order_items_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      order_id_link: {
+        name: "order_id_link",
+        columns: ["order_id"],
+        referencedTable: "orders",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+      product_id_link: {
+        name: "product_id_link",
+        columns: ["product_id"],
+        referencedTable: "products",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_order_items_xata_id_key: {
+        name: "_pgroll_new_order_items_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "order_id",
+        type: "link",
+        link: { table: "orders" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"orders"}',
+      },
+      {
+        name: "price_at_time",
+        type: "float",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "product_id",
+        type: "link",
+        link: { table: "products" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"products"}',
+      },
+      {
+        name: "quantity",
+        type: "int",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "subtotal",
+        type: "float",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
+    name: "orders",
+    checkConstraints: {
+      orders_xata_id_length_xata_id: {
+        name: "orders_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      user_id_link: {
+        name: "user_id_link",
+        columns: ["user_id"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_orders_xata_id_key: {
+        name: "_pgroll_new_orders_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "billing_address",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "payment_method",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "shipping_address",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "shipping_amount",
+        type: "float",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "status",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "tax_amount",
+        type: "float",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "total_amount",
+        type: "float",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "user_id",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "pages",
     checkConstraints: {
       pages_xata_id_length_xata_id: {
@@ -834,6 +1173,333 @@ const tables = [
         unique: false,
         defaultValue: null,
         comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
+    name: "products",
+    checkConstraints: {
+      products_xata_id_length_xata_id: {
+        name: "products_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      category_id_link: {
+        name: "category_id_link",
+        columns: ["category_id"],
+        referencedTable: "categories",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_products_xata_id_key: {
+        name: "_pgroll_new_products_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "attributes",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "category_id",
+        type: "link",
+        link: { table: "categories" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"categories"}',
+      },
+      {
+        name: "description",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "images",
+        type: "multiple",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "inventory_count",
+        type: "int",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "is_active",
+        type: "bool",
+        notNull: false,
+        unique: false,
+        defaultValue: "false",
+        comment: "",
+      },
+      {
+        name: "name",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "price",
+        type: "float",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "sku",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
+    name: "shopping_cart_items",
+    checkConstraints: {
+      shopping_cart_items_xata_id_length_xata_id: {
+        name: "shopping_cart_items_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      cart_id_link: {
+        name: "cart_id_link",
+        columns: ["cart_id"],
+        referencedTable: "shopping_carts",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+      product_id_link: {
+        name: "product_id_link",
+        columns: ["product_id"],
+        referencedTable: "products",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_shopping_cart_items_xata_id_key: {
+        name: "_pgroll_new_shopping_cart_items_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "cart_id",
+        type: "link",
+        link: { table: "shopping_carts" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"shopping_carts"}',
+      },
+      {
+        name: "price_at_time",
+        type: "float",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "product_id",
+        type: "link",
+        link: { table: "products" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"products"}',
+      },
+      {
+        name: "quantity",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
+    name: "shopping_carts",
+    checkConstraints: {
+      shopping_carts_xata_id_length_xata_id: {
+        name: "shopping_carts_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      "session_id session_id_link": {
+        name: "session_id session_id_link",
+        columns: ["session_id session_id"],
+        referencedTable: "nextauth_sessions",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+      user_id_link: {
+        name: "user_id_link",
+        columns: ["user_id"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_shopping_carts_xata_id_key: {
+        name: "_pgroll_new_shopping_carts_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "session_id session_id",
+        type: "link",
+        link: { table: "nextauth_sessions" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_sessions"}',
+      },
+      {
+        name: "status",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "user_id",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
       },
       {
         name: "xata_createdat",
@@ -1055,6 +1721,9 @@ const tables = [
 export type SchemaTables = typeof tables;
 export type InferredTypes = SchemaInference<SchemaTables>;
 
+export type Categories = InferredTypes["categories"];
+export type CategoriesRecord = Categories & XataRecord;
+
 export type Invoices = InferredTypes["invoices"];
 export type InvoicesRecord = Invoices & XataRecord;
 
@@ -1078,13 +1747,29 @@ export type NextauthVerificationTokens =
 export type NextauthVerificationTokensRecord = NextauthVerificationTokens &
   XataRecord;
 
+export type OrderItems = InferredTypes["order_items"];
+export type OrderItemsRecord = OrderItems & XataRecord;
+
+export type Orders = InferredTypes["orders"];
+export type OrdersRecord = Orders & XataRecord;
+
 export type Pages = InferredTypes["pages"];
 export type PagesRecord = Pages & XataRecord;
+
+export type Products = InferredTypes["products"];
+export type ProductsRecord = Products & XataRecord;
+
+export type ShoppingCartItems = InferredTypes["shopping_cart_items"];
+export type ShoppingCartItemsRecord = ShoppingCartItems & XataRecord;
+
+export type ShoppingCarts = InferredTypes["shopping_carts"];
+export type ShoppingCartsRecord = ShoppingCarts & XataRecord;
 
 export type Subscriptions = InferredTypes["subscriptions"];
 export type SubscriptionsRecord = Subscriptions & XataRecord;
 
 export type DatabaseSchema = {
+  categories: CategoriesRecord;
   invoices: InvoicesRecord;
   nextauth_accounts: NextauthAccountsRecord;
   nextauth_sessions: NextauthSessionsRecord;
@@ -1092,7 +1777,12 @@ export type DatabaseSchema = {
   nextauth_users_accounts: NextauthUsersAccountsRecord;
   nextauth_users_sessions: NextauthUsersSessionsRecord;
   nextauth_verificationTokens: NextauthVerificationTokensRecord;
+  order_items: OrderItemsRecord;
+  orders: OrdersRecord;
   pages: PagesRecord;
+  products: ProductsRecord;
+  shopping_cart_items: ShoppingCartItemsRecord;
+  shopping_carts: ShoppingCartsRecord;
   subscriptions: SubscriptionsRecord;
 };
 

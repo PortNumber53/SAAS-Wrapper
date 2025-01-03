@@ -1,0 +1,22 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2g0k1dm7utqqg0gd0",
+    "operations": [
+      {
+        "alter_column": {
+          "up": "(SELECT CASE WHEN \"price_at_time\" IS NULL THEN 0 ELSE \"price_at_time\" END)",
+          "down": "(SELECT CASE WHEN \"price_at_time\" IS NULL THEN 0 ELSE \"price_at_time\" END)",
+          "table": "order_items",
+          "column": "price_at_time",
+          "nullable": false
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2g0k1dm7utqqg0gd0",
+  "parent": "mig_cts2fv41dm7utqqg0gc0",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:10:11.724475Z"
+}

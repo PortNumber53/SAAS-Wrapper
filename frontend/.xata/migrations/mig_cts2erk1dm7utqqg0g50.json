@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2erk1dm7utqqg0g50",
+    "operations": [
+      {
+        "add_column": {
+          "up": "0",
+          "table": "orders",
+          "column": {
+            "name": "shipping_amount",
+            "type": "float",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2erk1dm7utqqg0g50",
+  "parent": "mig_cts2eok1dm7utqqg0g40",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:07:43.054613Z"
+}

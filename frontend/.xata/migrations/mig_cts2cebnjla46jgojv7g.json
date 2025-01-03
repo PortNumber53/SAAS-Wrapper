@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2cebnjla46jgojv7g",
+    "operations": [
+      {
+        "add_column": {
+          "table": "products",
+          "column": {
+            "name": "price",
+            "type": "float",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2cebnjla46jgojv7g",
+  "parent": "mig_cts2cbrnjla46jgojv6g",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:02:34.646809Z"
+}

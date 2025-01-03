@@ -1,0 +1,30 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2fjc1dm7utqqg0g90",
+    "operations": [
+      {
+        "add_column": {
+          "table": "order_items",
+          "column": {
+            "name": "product_id",
+            "type": "text",
+            "comment": "{\"xata.link\":\"products\"}",
+            "nullable": true,
+            "references": {
+              "name": "product_id_link",
+              "table": "products",
+              "column": "xata_id",
+              "on_delete": "SET NULL"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2fjc1dm7utqqg0g90",
+  "parent": "mig_cts2fg3njla46jgojveg",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:09:18.509674Z"
+}

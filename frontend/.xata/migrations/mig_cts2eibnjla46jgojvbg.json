@@ -1,0 +1,30 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2eibnjla46jgojvbg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "orders",
+          "column": {
+            "name": "user_id",
+            "type": "text",
+            "comment": "{\"xata.link\":\"nextauth_users\"}",
+            "nullable": true,
+            "references": {
+              "name": "user_id_link",
+              "table": "nextauth_users",
+              "column": "xata_id",
+              "on_delete": "SET NULL"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2eibnjla46jgojvbg",
+  "parent": "mig_cts2eek1dm7utqqg0g20",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:07:05.906246Z"
+}

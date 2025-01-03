@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2f141dm7utqqg0g60",
+    "operations": [
+      {
+        "add_column": {
+          "table": "orders",
+          "column": {
+            "name": "payment_method",
+            "type": "text",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2f141dm7utqqg0g60",
+  "parent": "mig_cts2eu3njla46jgojvcg",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:08:05.184532Z"
+}

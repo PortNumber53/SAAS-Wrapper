@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2fv41dm7utqqg0gc0",
+    "operations": [
+      {
+        "add_column": {
+          "up": "0",
+          "table": "order_items",
+          "column": {
+            "name": "subtotal",
+            "type": "float",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2fv41dm7utqqg0gc0",
+  "parent": "mig_cts2fsk1dm7utqqg0gb0",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:10:04.71798Z"
+}

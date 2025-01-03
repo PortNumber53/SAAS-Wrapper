@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2f741dm7utqqg0g80",
+    "operations": [
+      {
+        "add_column": {
+          "table": "orders",
+          "column": {
+            "name": "billing_address",
+            "type": "json",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2f741dm7utqqg0g80",
+  "parent": "mig_cts2f4c1dm7utqqg0g70",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:08:29.334855Z"
+}

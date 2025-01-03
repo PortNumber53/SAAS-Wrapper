@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2e941dm7utqqg0g00",
+    "operations": [
+      {
+        "add_column": {
+          "up": "0",
+          "table": "shopping_cart_items",
+          "column": {
+            "name": "quantity",
+            "type": "int",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2e941dm7utqqg0g00",
+  "parent": "mig_cts2e5k1dm7utqqg0fv0",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:06:28.728919Z"
+}

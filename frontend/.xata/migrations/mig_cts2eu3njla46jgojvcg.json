@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cts2eu3njla46jgojvcg",
+    "operations": [
+      {
+        "add_column": {
+          "up": "''",
+          "table": "orders",
+          "column": {
+            "name": "status",
+            "type": "text",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cts2eu3njla46jgojvcg",
+  "parent": "mig_cts2erk1dm7utqqg0g50",
+  "schema": "public",
+  "startedAt": "2025-01-03T18:07:53.110176Z"
+}
