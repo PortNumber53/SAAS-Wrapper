@@ -16,20 +16,29 @@ export async function getPageContent(path: string) {
     console.log('Fetching content for path:', path);
 
     try {
-      const markdownContent = await fetchContentByPath(path);
+      const recordContent = await fetchContentByPath(path);
 
-      console.log('Raw markdown_content:', markdownContent);
+      if (!recordContent) {
+        return {
+          error: 'Page not found',
+          content: null
+        };
+      }
+
+      console.log('>>>>>Fetched content in page:', recordContent);
 
       return {
-        content: markdownContent?.current || '',
+        content: recordContent.current || '',
+        title: recordContent.title || '',
         error: null,
-        exists: !!markdownContent
+        exists: true
       };
     } catch (fetchError) {
       // If no content is found, return an empty string with a flag
       console.log('No content found for path:', path);
       return {
         content: '',
+        title: '',
         error: null,
         exists: false
       };
@@ -38,13 +47,14 @@ export async function getPageContent(path: string) {
     console.error('Unexpected content fetch error', error);
     return {
       content: '',
+      title: '',
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
       exists: false
     };
   }
 }
 
-export async function saveContent(path: string, content: string) {
+export async function saveContent(path: string, content: string, title?: string) {
   // Verify user is authenticated
   const session = await getSession();
   if (!session) {
@@ -54,14 +64,18 @@ export async function saveContent(path: string, content: string) {
   try {
     console.log('Saving content for path:', path);
     console.log('Content:', content);
+    console.log('Title:', title);
+
     // Fetch existing content record
     const existingContent = await fetchContentByPath(path);
+    console.log('>>>> Existing content:', existingContent);
 
     // Update the content record
     const updatedContent = await xata.db.pages.update(existingContent?.id || '', {
       markdown_content: JSON.stringify({
         current: content
       }),
+      title: title || existingContent?.title || '',
       path
     });
 
@@ -70,7 +84,8 @@ export async function saveContent(path: string, content: string) {
       content: {
         id: updatedContent.id,
         current: content,
-        path
+        path,
+        title: title || existingContent?.title || ''
       }
     };
   } catch (error) {
@@ -78,7 +93,7 @@ export async function saveContent(path: string, content: string) {
 
     // If content doesn't exist, create it
     try {
-      const newContent = await createContent(path, content);
+      const newContent = await createContent(path, content, title);
       return newContent;
     } catch (createError) {
       return {
@@ -88,7 +103,7 @@ export async function saveContent(path: string, content: string) {
   }
 }
 
-export async function createContent(path: string, content: string) {
+export async function createContent(path: string, content: string, title?: string) {
   // Verify user is authenticated
   const session = await getSession();
   if (!session) {
@@ -98,12 +113,15 @@ export async function createContent(path: string, content: string) {
   try {
     console.log('Creating content for path:', path);
     console.log('Content:', content);
+    console.log('Title:', title);
+
     // Create a new content record
     const newContent = await xata.db.pages.create({
       path,
       markdown_content: JSON.stringify({
         current: content
-      })
+      }),
+      title: title || ''
     });
 
     return {
@@ -111,7 +129,8 @@ export async function createContent(path: string, content: string) {
       content: {
         id: newContent.id,
         current: content,
-        path
+        path,
+        title: title || ''
       }
     };
   } catch (error) {

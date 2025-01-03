@@ -22,10 +22,11 @@ function sanitizeHtml(html: string): string {
 
 export async function getPageContent(path: string) {
   try {
-    const markdownContent = await fetchContentByPath(path);
-    
+    const fetchedContent = await fetchContentByPath(path);
+
     // Ensure we're passing a string to marked.parse()
-    const markdownString = markdownContent?.current || '';
+    const markdownString = fetchedContent?.current || '';
+    const title = fetchedContent?.title || '';
 
     // Render markdown
     const htmlContent = marked.parse(markdownString) as string;
@@ -35,6 +36,7 @@ export async function getPageContent(path: string) {
 
     return {
       content: sanitizedContent,
+      title,
       error: null
     };
   } catch (error) {

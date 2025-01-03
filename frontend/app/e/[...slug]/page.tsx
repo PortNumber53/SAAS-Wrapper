@@ -15,6 +15,7 @@ export default function EditContentPage({
 }) {
   const { data: session, status } = useSession();
   const [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exists, setExists] = useState(false);
@@ -34,22 +35,26 @@ export default function EditContentPage({
     async function fetchContent() {
       try {
         console.log('Fetching content for path in page:', path);
-        
-        const { content: fetchedContent, error: fetchError, exists: contentExists } = await getPageContent(path);
-        
+
+        const { content: fetchedContent, title: fetchedTitle, error: fetchError, exists: contentExists } = await getPageContent(path);
+
         console.log('Fetched content in page:', fetchedContent);
         console.log('Content exists:', contentExists);
-        
+        console.log('>>>>title:', fetchedTitle);
+
         if (fetchError) {
           setError(fetchError);
           setContent('');
+          setTitle('');
+          setExists(false);
         } else {
           // Ensure content is a string and not undefined
           // If fetchedContent is falsy, use an empty string
           setContent(fetchedContent || '');
+          setTitle(fetchedTitle || '');
           setExists(contentExists);
         }
-        
+
         setLoading(false);
       } catch (error) {
         console.error('Failed to fetch content', error);
@@ -74,9 +79,10 @@ export default function EditContentPage({
   }
 
   return (
-    <Editor 
-      initialContent={content} 
+    <Editor
+      initialContent={content}
       path={path}
+      initialTitle={title}
       exists={exists}
     />
   );

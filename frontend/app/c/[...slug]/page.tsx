@@ -9,8 +9,8 @@ export default async function ContentPage({
 }) {
   // Construct the full path with a leading '/'
   const path = `/${params.slug.join('/')}`;
-  
-  const { content, error } = await getPageContent(path);
+
+  const { content, title, error } = await getPageContent(path);
 
   if (error) {
     return (
@@ -21,9 +21,12 @@ export default async function ContentPage({
   }
 
   return (
-    <div 
-      className="prose max-w-full"
-      dangerouslySetInnerHTML={{ __html: content || '' }}
-    />
+    <div className="container mx-auto px-4 py-16">
+      <h1>{title}</h1>
+      <div
+        className="prose"
+        dangerouslySetInnerHTML={{ __html: content || '' }}
+      />
+    </div>
   );
 }

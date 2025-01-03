@@ -36,10 +36,11 @@ export async function fetchContentByPath(path: string) {
 
         console.log('Parsed markdown content:', markdownContent);
 
-        // Return a plain object with only the necessary properties
+        // Return a plain object with all necessary properties
         return {
           id: record.id,
           current: markdownContent.current || '',
+          title: record.title || '',  // Explicitly return title
           path: record.path
         };
       } catch (parseError) {
@@ -51,10 +52,9 @@ export async function fetchContentByPath(path: string) {
       }
     }
 
-    // Return null if no record found
     return null;
   } catch (error) {
-    console.error('ERROR: Failed to fetch content', error);
+    console.error('Error fetching content:', error);
     throw error;
   }
 }
