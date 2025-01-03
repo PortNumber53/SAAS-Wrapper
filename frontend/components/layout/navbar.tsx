@@ -10,7 +10,8 @@ import {
   RocketIcon,
   CreditCardIcon,
   LogInIcon,
-  LogOutIcon
+  LogOutIcon,
+  ShoppingCartIcon
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
@@ -123,6 +124,13 @@ export function Navbar() {
                 >
                   <BillingIcon className="mr-2 h-4 w-4" />
                   <span>Billing</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push('/account/ecommerce')}
+                  className="cursor-pointer"
+                >
+                  <ShoppingCartIcon className="mr-2 h-4 w-4" />
+                  <span>E-commerce</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
