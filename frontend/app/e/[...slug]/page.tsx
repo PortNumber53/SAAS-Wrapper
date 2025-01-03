@@ -52,7 +52,8 @@ export default function EditContentPage({
           // If fetchedContent is falsy, use an empty string
           setContent(fetchedContent || '');
           setTitle(fetchedTitle || '');
-          setExists(contentExists);
+          // Ensure contentExists is a boolean
+          setExists(!!contentExists);
         }
 
         setLoading(false);

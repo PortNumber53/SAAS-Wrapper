@@ -1,5 +1,7 @@
 "use client"
 
+export const runtime = 'edge';
+
 import { signOut } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import { useEffect } from "react"

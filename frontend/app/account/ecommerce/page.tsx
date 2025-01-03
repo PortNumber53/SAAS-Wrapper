@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { ShoppingCartIcon, PackageIcon, ReceiptIcon } from "lucide-react"
 
+export const runtime = 'edge';
+
 export default async function EcommercePage() {
   const session = await auth()
   
