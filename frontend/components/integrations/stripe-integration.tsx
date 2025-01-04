@@ -8,6 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 
+interface StripeIntegrationResponse {
+  integration: {
+    publishableKey?: string;
+    secretKey?: string;
+    webhookSecret?: string;
+  } | null;
+}
+
+interface StripeIntegrationErrorResponse {
+  error?: string;
+}
+
 export function StripeIntegration() {
   const { toast } = useToast()
   const [stripeSettings, setStripeSettings] = useState({
@@ -25,7 +37,7 @@ export function StripeIntegration() {
     const fetchStripeSettings = async () => {
       try {
         const response = await fetch('/api/integrations/stripe')
-        const data = await response.json()
+        const data = await response.json() as StripeIntegrationResponse
 
         console.log('Fetched Stripe integration data:', data)
 
@@ -36,9 +48,9 @@ export function StripeIntegration() {
         if (data.integration) {
           setStripeSettings(prev => ({
             ...prev,
-            publishableKey: data.integration.publishableKey || '',
-            secretKey: data.integration.secretKey || '',
-            webhookSecret: data.integration.webhookSecret || ''
+            publishableKey: data.integration?.publishableKey || '',
+            secretKey: data.integration?.secretKey || '',
+            webhookSecret: data.integration?.webhookSecret || ''
           }))
         }
       } catch (error) {
@@ -71,7 +83,7 @@ export function StripeIntegration() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json() as StripeIntegrationErrorResponse
         throw new Error(errorData.error || 'Failed to save Stripe settings')
       }
 

@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/auth'
 import { xata } from '@/lib/xata'
 
+export const runtime = 'edge'
+
+interface StripeIntegrationBody {
+  secretKey?: string;
+  publishableKey?: string;
+  webhookSecret?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Ensure user is authenticated
@@ -11,17 +19,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the request body
-    const body = await request.json()
-    const {
-      secretKey,
-      publishableKey,
-      webhookSecret
-    } = body
+    const body = await request.json() as StripeIntegrationBody
+
+    // Type guard and validation
+    const secretKey = body.secretKey || ''
+    const publishableKey = body.publishableKey || ''
+    const webhookSecret = body.webhookSecret || ''
 
     // Validate input
-    if (!secretKey || !publishableKey) {
+    if (!publishableKey) {
       return NextResponse.json(
-        { error: 'Secret Key and Publishable Key are required' },
+        { error: 'Publishable Key is required' },
         { status: 400 }
       )
     }
@@ -73,6 +81,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const params = url.searchParams
+
   try {
     // Ensure user is authenticated
     const session = await auth()
