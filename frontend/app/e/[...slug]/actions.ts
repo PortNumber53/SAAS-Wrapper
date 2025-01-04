@@ -20,42 +20,27 @@ export async function getPageContent(path: string) {
       throw new Error('Unauthorized');
     }
 
-    try {
-      const recordContent = await fetchContentByPath(path);
+    const recordContent = await fetchContentByPath(path);
 
-      if (!recordContent) {
-        return {
-          error: 'Page not found',
-          content: null
-        };
-      }
-
-      console.log('>>>>>Fetched content in page:', recordContent);
-
+    if (!recordContent) {
+      // Return a special object indicating the page doesn't exist
       return {
-        content: recordContent.current || '',
-        title: recordContent.title || '',
-        error: null,
-        exists: true
-      };
-    } catch (fetchError) {
-      // If no content is found, return an empty string with a flag
-      console.log('No content found for path:', path);
-      return {
+        notFound: true,
+        path: path,
         content: '',
-        title: '',
-        error: null,
-        exists: false
+        title: ''
       };
     }
-  } catch (error) {
-    console.error('Unexpected content fetch error', error);
+
     return {
-      content: '',
-      title: '',
-      error: error instanceof Error ? error.message : 'An unexpected error occurred',
-      exists: false
+      content: recordContent.current || '',
+      title: recordContent.title || '',
+      notFound: false,
+      exists: true
     };
+  } catch (error) {
+    console.error('Error fetching page content:', error);
+    throw error;
   }
 }
 

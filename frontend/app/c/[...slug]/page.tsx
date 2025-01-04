@@ -1,32 +1,41 @@
+import { Metadata } from 'next';
 import { getPageContent } from './actions';
+import ClientContentPage from './ClientContentPage';
 
 export const runtime = 'edge';
 
-export default async function ContentPage({
+export async function generateMetadata({
+  params
+}: {
+  params: { slug: string[] }
+}): Promise<Metadata> {
+  // Preserve the leading '/' for path consistency
+  const path = `/${params.slug.join('/').replace(/^(c|e)\//, '')}`;
+
+  try {
+    const result = await getPageContent(path);
+    
+    // Use the title if available, otherwise use a default
+    const title = result.title 
+      ? `${result.title} | Your Site Name`
+      : `${path.split('/').pop()} | Your Site Name`;
+
+    return {
+      title: title,
+      description: result.title ? `Page about ${result.title}` : 'Content Page'
+    };
+  } catch (error) {
+    return {
+      title: 'Page Not Found',
+      description: 'The requested page could not be loaded'
+    };
+  }
+}
+
+export default function ContentPage({
   params
 }: {
   params: { slug: string[] }
 }) {
-  // Construct the full path with a leading '/'
-  const path = `/${params.slug.join('/')}`;
-
-  const { content, title, error } = await getPageContent(path);
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-500">
-        Error loading content: {error}
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-16">
-      <h1>{title}</h1>
-      <div
-        className="prose"
-        dangerouslySetInnerHTML={{ __html: content || '' }}
-      />
-    </div>
-  );
+  return <ClientContentPage params={params} />;
 }
