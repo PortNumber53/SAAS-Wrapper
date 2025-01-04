@@ -48,7 +48,7 @@ export async function createProduct(formData: FormData) {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: Number(formData.get('price')),
-      inventory_count: Number(formData.get('inventory')),
+      inventory_count: Number(formData.get('inventory_count')),
     })
 
     revalidatePath('/account/ecommerce/products')
@@ -73,7 +73,7 @@ export async function updateProduct(formData: FormData) {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: Number(formData.get('price')),
-      inventory_count: Number(formData.get('inventory'))
+      inventory_count: Number(formData.get('inventory_count'))
     })
 
     revalidatePath('/account/ecommerce/products')
