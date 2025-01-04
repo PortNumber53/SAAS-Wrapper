@@ -113,6 +113,94 @@ const tables = [
     ],
   },
   {
+    name: "integrations",
+    checkConstraints: {
+      integrations_xata_id_length_xata_id: {
+        name: "integrations_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {},
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_integrations_xata_id_key: {
+        name: "_pgroll_new_integrations_xata_id_key",
+        columns: ["xata_id"],
+      },
+      integrations__pgroll_new_slug_key: {
+        name: "integrations__pgroll_new_slug_key",
+        columns: ["slug"],
+      },
+    },
+    columns: [
+      {
+        name: "is_active",
+        type: "bool",
+        notNull: true,
+        unique: false,
+        defaultValue: "false",
+        comment: "",
+      },
+      {
+        name: "name",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "settings",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "slug",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "invoices",
     checkConstraints: {
       invoices_xata_id_length_xata_id: {
@@ -1732,6 +1820,9 @@ export type InferredTypes = SchemaInference<SchemaTables>;
 export type Categories = InferredTypes["categories"];
 export type CategoriesRecord = Categories & XataRecord;
 
+export type Integrations = InferredTypes["integrations"];
+export type IntegrationsRecord = Integrations & XataRecord;
+
 export type Invoices = InferredTypes["invoices"];
 export type InvoicesRecord = Invoices & XataRecord;
 
@@ -1778,6 +1869,7 @@ export type SubscriptionsRecord = Subscriptions & XataRecord;
 
 export type DatabaseSchema = {
   categories: CategoriesRecord;
+  integrations: IntegrationsRecord;
   invoices: InvoicesRecord;
   nextauth_accounts: NextauthAccountsRecord;
   nextauth_sessions: NextauthSessionsRecord;

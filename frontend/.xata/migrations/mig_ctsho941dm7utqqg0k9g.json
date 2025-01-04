@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctsho941dm7utqqg0k9g",
+    "operations": [
+      {
+        "add_column": {
+          "table": "integrations",
+          "column": {
+            "name": "is_active",
+            "type": "bool",
+            "comment": "",
+            "default": "'false'"
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctsho941dm7utqqg0k9g",
+  "parent": "mig_ctsho641dm7utqqg0k8g",
+  "schema": "public",
+  "startedAt": "2025-01-04T11:31:48.861094Z"
+}
