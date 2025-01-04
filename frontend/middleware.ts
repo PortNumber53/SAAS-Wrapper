@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { xata } from '@/lib/xata'
+import { handleServerLogout, isSessionExpired, AUTH_ERROR_MESSAGES } from '@/lib/auth-utils'
 
 export async function middleware(request: NextRequest) {
   // Get the token from the request
@@ -10,43 +11,28 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET 
   })
 
-  // If no token, continue (login/auth pages should be accessible)
+  // If no token, allow access to public routes
   if (!token) {
     return NextResponse.next()
   }
 
-  // Check if the user exists in the database
   try {
+    // Check if the user exists in the database
     const user = await xata.db.nextauth_users.read(token.sub as string)
-
-    // If user doesn't exist, clear the session
     if (!user) {
-      // Redirect to logout or login page
-      const logoutUrl = new URL('/logout', request.url)
-      
-      // Optional: Add a query parameter to show an error message
-      logoutUrl.searchParams.set('error', 'invalid_session')
-
-      // Create a response to clear the session cookie
-      const response = NextResponse.redirect(logoutUrl)
-      response.cookies.delete('next-auth.session-token')
-
-      return response
+      return handleServerLogout(request, 'USER_NOT_FOUND')
     }
 
-    // Continue with the request if user exists
+    // Check session expiry (if available in token)
+    if (token.exp && isSessionExpired(new Date(token.exp * 1000))) {
+      return handleServerLogout(request, 'INVALID_SESSION')
+    }
+
+    // Continue with the request if all checks pass
     return NextResponse.next()
   } catch (error) {
-    console.error('Middleware user check error:', error)
-    
-    // Fallback to logout in case of any error
-    const logoutUrl = new URL('/logout', request.url)
-    logoutUrl.searchParams.set('error', 'session_verification_failed')
-
-    const response = NextResponse.redirect(logoutUrl)
-    response.cookies.delete('next-auth.session-token')
-
-    return response
+    console.error('Middleware authentication error:', error)
+    return handleServerLogout(request, 'VERIFICATION_FAILED')
   }
 }
 

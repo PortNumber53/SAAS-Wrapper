@@ -3,21 +3,15 @@ export const runtime = 'edge';
 import { signIn } from "@/app/auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AUTH_ERROR_MESSAGES } from "@/lib/auth-utils";
 
 export default function LoginPage({
   searchParams,
 }: {
   searchParams?: { error?: string };
 }) {
-  const errorMessages: { [key: string]: string } = {
-    OAuthAccountNotLinked: "This email is already associated with an account using a different sign-in method. Please contact support.",
-    AccessDenied: "Authentication was denied. Please try again or contact support.",
-    Configuration: "There was an issue with the authentication configuration. Please try again or contact support.",
-    Default: "An unexpected authentication error occurred. Please try again."
-  };
-
   const errorMessage = searchParams?.error 
-    ? errorMessages[searchParams.error] || errorMessages.Default
+    ? AUTH_ERROR_MESSAGES[searchParams.error as keyof typeof AUTH_ERROR_MESSAGES] || AUTH_ERROR_MESSAGES.GENERAL_ERROR
     : null;
 
   return (
@@ -35,8 +29,7 @@ export default function LoginPage({
           action={async () => {
             "use server";
             await signIn("google", { 
-              redirectTo: "/dashboard",
-              // Add any additional parameters if needed
+              redirectTo: "/dashboard"
             });
           }}
         >

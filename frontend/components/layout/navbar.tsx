@@ -37,6 +37,7 @@ import {
   LogOut
 } from "lucide-react"
 import { useEffect } from "react"
+import { handleLogout } from "@/lib/auth-utils"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -45,14 +46,6 @@ export function Navbar() {
 
   // Check if the current path is within the account section
   const isAccountPage = pathname && pathname.startsWith('/account/')
-
-  const handleSignOut = async () => {
-    try {
-      await signOut({ redirect: true, redirectTo: '/' })
-    } catch (error) {
-      console.error('Sign out error:', error)
-    }
-  }
 
   useEffect(() => {
     const handleResize = () => {
@@ -184,7 +177,7 @@ export function Navbar() {
 
                       <div className="border-t my-1"></div>
                       <DropdownMenuItem
-                        onSelect={() => signOut({ redirect: true, redirectTo: '/login' })}
+                        onSelect={() => handleLogout('/login')}
                         className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer text-red-500"
                       >
                         <LogOut className="h-4 w-4" />
