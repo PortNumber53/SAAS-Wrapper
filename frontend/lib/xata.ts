@@ -2,34 +2,30 @@ import { XataClient } from '../vendor/xata';
 
 // Shared Xata client initialization for both server and client
 const initializeXataClient = () => {
-  const xataApiKey = process.env.XATA_API_KEY;
-  const xataDatabaseURL = process.env.XATA_DATABASE_URL;
-  const xataBranch = process.env.XATA_BRANCH || 'main';
+  // Only allow server-side initialization
+  if (typeof window === 'undefined') {
+    const xataApiKey = process.env.XATA_API_KEY;
+    const xataDatabaseURL = process.env.XATA_DATABASE_URL;
+    const xataBranch = process.env.XATA_BRANCH || 'main';
 
-  if (xataApiKey && xataDatabaseURL) {
-    return new XataClient({
-      apiKey: xataApiKey,
-      databaseURL: xataDatabaseURL,
-      branch: xataBranch
-    });
+    if (xataApiKey && xataDatabaseURL) {
+      return new XataClient({
+        apiKey: xataApiKey,
+        databaseURL: xataDatabaseURL,
+        branch: xataBranch
+      });
+    }
+
+    console.warn('Xata client initialization failed: Missing API key or database URL');
   }
 
-  console.warn('Xata client initialization failed: Missing API key or database URL');
-
-  // Provide a more comprehensive dummy client
+  // Provide a dummy client for client-side to prevent API key exposure
   return {
     db: {
-      pages: {
-        filter: () => ({
-          getFirst: () => null,
-          read: () => null
-        })
-      },
-      nextauth_users: {
-        filter: () => ({
-          getFirst: () => null,
-          read: () => null
-        })
+      products: {
+        getMany: () => {
+          throw new Error('You are trying to use Xata from the browser, which is potentially a non-secure environment. Use server actions instead.');
+        }
       }
     }
   } as any;

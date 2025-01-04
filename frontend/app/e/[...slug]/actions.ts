@@ -3,7 +3,7 @@
 import { xata } from '@/lib/xata';
 import { fetchContentByPath } from '@/lib/content';
 import { marked } from 'marked';
-import { getSession } from '@/lib/auth';
+import { auth } from '@/app/auth';
 
 // Configure marked to be more secure
 marked.setOptions({
@@ -14,6 +14,11 @@ marked.setOptions({
 export async function getPageContent(path: string) {
   try {
     console.log('Fetching content for path:', path);
+
+    const session = await auth();
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
 
     try {
       const recordContent = await fetchContentByPath(path);
@@ -55,13 +60,12 @@ export async function getPageContent(path: string) {
 }
 
 export async function saveContent(path: string, content: string, title?: string) {
-  // Verify user is authenticated
-  const session = await getSession();
-  if (!session) {
-    return { error: 'Unauthorized' };
-  }
-
   try {
+    const session = await auth();
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
+
     console.log('Saving content for path:', path);
     console.log('Content:', content);
     console.log('Title:', title);
@@ -104,13 +108,12 @@ export async function saveContent(path: string, content: string, title?: string)
 }
 
 export async function createContent(path: string, content: string, title?: string) {
-  // Verify user is authenticated
-  const session = await getSession();
-  if (!session) {
-    return { error: 'Unauthorized' };
-  }
-
   try {
+    const session = await auth();
+    if (!session) {
+      throw new Error('Unauthorized');
+    }
+
     console.log('Creating content for path:', path);
     console.log('Content:', content);
     console.log('Title:', title);
