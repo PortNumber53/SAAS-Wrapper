@@ -9,20 +9,25 @@ type Product = {
   name: string
   description: string
   price: number
-  inventory: number
+  inventory_count: number
+  deleted_at?: string | null
 }
 
 export async function getProducts() {
   const session = await auth()
-  
+
   if (!session) {
     throw new Error('Unauthorized')
   }
 
   try {
-    const products = await xata.db.products
-      .filter({ user: session.user.id })
-      .getMany()
+    // Fetch products that are not soft-deleted
+    const products = await xata.db.products.filter({
+      deleted_at: null
+    }).getMany()
+
+    console.log('Fetched products:', products)
+    console.log('Current user ID:', session.user.id)
 
     return products as Product[]
   } catch (error) {
@@ -33,7 +38,7 @@ export async function getProducts() {
 
 export async function createProduct(formData: FormData) {
   const session = await auth()
-  
+
   if (!session) {
     throw new Error('Unauthorized')
   }
@@ -43,8 +48,7 @@ export async function createProduct(formData: FormData) {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: Number(formData.get('price')),
-      inventory: Number(formData.get('inventory')),
-      user: session.user.id
+      inventory_count: Number(formData.get('inventory')),
     })
 
     revalidatePath('/account/ecommerce/products')
@@ -57,7 +61,7 @@ export async function createProduct(formData: FormData) {
 
 export async function updateProduct(formData: FormData) {
   const session = await auth()
-  
+
   if (!session) {
     throw new Error('Unauthorized')
   }
@@ -69,7 +73,7 @@ export async function updateProduct(formData: FormData) {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: Number(formData.get('price')),
-      inventory: Number(formData.get('inventory'))
+      inventory_count: Number(formData.get('inventory'))
     })
 
     revalidatePath('/account/ecommerce/products')
@@ -82,18 +86,20 @@ export async function updateProduct(formData: FormData) {
 
 export async function deleteProduct(formData: FormData) {
   const session = await auth()
-  
+
   if (!session) {
     throw new Error('Unauthorized')
   }
 
-  const id = formData.get('id') as string
-
   try {
-    await xata.db.products.delete(id)
+    const productId = formData.get('id') as string
+
+    const product = await xata.db.products.update(productId, {
+      deleted_at: new Date().toISOString()
+    })
 
     revalidatePath('/account/ecommerce/products')
-    return { success: true }
+    return product
   } catch (error) {
     console.error('Error deleting product:', error)
     throw error

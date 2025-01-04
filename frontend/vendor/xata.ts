@@ -1252,6 +1252,14 @@ const tables = [
         comment: '{"xata.link":"categories"}',
       },
       {
+        name: "deleted_at",
+        type: "datetime",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
         name: "description",
         type: "text",
         notNull: false,

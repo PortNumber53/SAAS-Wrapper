@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_ctsa12c1dm7utqqg0i60",
+    "operations": [
+      {
+        "add_column": {
+          "table": "products",
+          "column": {
+            "name": "deleted_at",
+            "type": "timestamptz",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_ctsa12c1dm7utqqg0i60",
+  "parent": "mig_cts2g0k1dm7utqqg0gd0",
+  "schema": "public",
+  "startedAt": "2025-01-04T02:44:26.182942Z"
+}

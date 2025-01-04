@@ -5,6 +5,14 @@ import { getProducts } from "./actions"
 
 export const runtime = 'edge'
 
+type Product = {
+  id: string
+  name: string
+  description: string
+  price: number
+  inventory_count: number
+}
+
 export default async function ProductManagementPage() {
   const session = await auth()
 
