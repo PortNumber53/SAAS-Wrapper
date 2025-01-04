@@ -35,7 +35,6 @@ import { Inter } from 'next/font/google'
 
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-inter',
   display: 'swap'
 })
 
@@ -83,7 +82,7 @@ export default function AccountLayout({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className={`w-64 bg-white border rounded shadow-lg ${inter.variable}`}
+        className="w-64 bg-white border rounded shadow-lg"
       >
         <div className="py-1">
           <div className="px-4 py-2 font-semibold text-gray-600 border-b">My Account</div>
@@ -197,7 +196,7 @@ export default function AccountLayout({
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-5 w-5" />
-                <span>Profile Management</span>
+                <span className="text-sm font-medium">Profile Management</span>
               </div>
             </div>
             <AccountDropdown />
@@ -209,7 +208,7 @@ export default function AccountLayout({
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <ShoppingCart className="h-5 w-5" />
-                <span>E-commerce Management</span>
+                <span className="text-sm font-medium">E-commerce Management</span>
               </div>
             </div>
             <AccountDropdown />
@@ -223,12 +222,8 @@ export default function AccountLayout({
   return (
     <div className="flex">
       <VerticalSidebar />
-      <div className="flex-1 flex flex-col">
-        <div className="w-full bg-gray-50 border-b">
-        </div>
-        <div className="p-4 flex-1 overflow-auto">
-          {children}
-        </div>
+      <div className="flex-1 overflow-auto">
+        {children}
       </div>
     </div>
   )

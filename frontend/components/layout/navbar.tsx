@@ -44,13 +44,13 @@ export function Navbar() {
   const pathname = usePathname()
 
   // Check if the current path is within the account section
-  const isAccountPage = pathname.startsWith('/account/')
+  const isAccountPage = pathname && pathname.startsWith('/account/')
 
   const handleSignOut = async () => {
     try {
       await signOut({ redirect: true, redirectTo: '/' })
     } catch (error) {
-      console.error('Sign out failed:', error)
+      console.error('Sign out error:', error)
     }
   }
 
