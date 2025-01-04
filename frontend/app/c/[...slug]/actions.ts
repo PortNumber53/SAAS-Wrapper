@@ -24,6 +24,16 @@ export async function getPageContent(path: string) {
   try {
     const fetchedContent = await fetchContentByPath(path);
 
+    // Check if content is not found
+    if (!fetchedContent) {
+      return {
+        content: null,
+        title: null,
+        error: null,
+        notFound: true
+      };
+    }
+
     // Ensure we're passing a string to marked.parse()
     const markdownString = fetchedContent?.current || '';
     const title = fetchedContent?.title || '';
@@ -37,13 +47,16 @@ export async function getPageContent(path: string) {
     return {
       content: sanitizedContent,
       title,
-      error: null
+      error: null,
+      notFound: false
     };
   } catch (error) {
     console.error('Content fetch error', error);
     return {
       content: null,
-      error: error instanceof Error ? error.message : 'An unknown error occurred'
+      title: null,
+      error: error instanceof Error ? error.message : 'An unknown error occurred',
+      notFound: true
     };
   }
 }

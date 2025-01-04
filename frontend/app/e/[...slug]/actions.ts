@@ -48,7 +48,9 @@ export async function saveContent(path: string, content: string, title?: string)
   try {
     const session = await auth();
     if (!session) {
-      throw new Error('Unauthorized');
+      return {
+        error: 'Unauthorized'
+      };
     }
 
     console.log('Saving content for path:', path);
@@ -96,20 +98,22 @@ export async function createContent(path: string, content: string, title?: strin
   try {
     const session = await auth();
     if (!session) {
-      throw new Error('Unauthorized');
+      return {
+        error: 'Unauthorized'
+      };
     }
 
     console.log('Creating content for path:', path);
     console.log('Content:', content);
     console.log('Title:', title);
 
-    // Create a new content record
+    // Create the content record
     const newContent = await xata.db.pages.create({
-      path,
       markdown_content: JSON.stringify({
         current: content
       }),
-      title: title || ''
+      title: title || '',
+      path
     });
 
     return {

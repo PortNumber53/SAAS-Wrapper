@@ -24,7 +24,7 @@ export default function EcommercePage() {
 
   const handleSignOut = async () => {
     try {
-      await signOut({ callbackUrl: '/login' })
+      await signOut({ redirect: true, redirectTo: '/login' })
     } catch (error) {
       console.error('Sign out failed:', error)
     }
@@ -45,67 +45,28 @@ export default function EcommercePage() {
           <ShoppingCartIcon className="mr-3 w-8 h-8" />
           E-commerce Dashboard
         </h1>
-        <button 
-          onClick={handleSignOut}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-        >
-          Sign Out
-        </button>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Orders Section */}
-        <div className="bg-white dark:bg-black border rounded-lg p-6 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded shadow">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold flex items-center">
-              <ReceiptIcon className="mr-2 w-5 h-5" />
-              Orders
-            </h2>
-            <span className="text-muted-foreground">Recent</span>
+            <h3 className="font-semibold text-gray-600">Total Products</h3>
+            <PackageIcon className="w-6 h-6 text-blue-500" />
           </div>
-          <p className="text-sm text-muted-foreground">
-            View and manage your recent orders
-          </p>
-          <button className="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
-            View Orders
-          </button>
+          <p className="text-3xl font-bold text-blue-600 mt-2">42</p>
         </div>
-
-        {/* Products Section */}
-        <div className="bg-white dark:bg-black border rounded-lg p-6 space-y-4">
+        <div className="bg-white p-4 rounded shadow">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold flex items-center">
-              <PackageIcon className="mr-2 w-5 h-5" />
-              Products
-            </h2>
-            <span className="text-muted-foreground">Manage</span>
+            <h3 className="font-semibold text-gray-600">Total Sales</h3>
+            <ReceiptIcon className="w-6 h-6 text-green-500" />
           </div>
-          <p className="text-sm text-muted-foreground">
-            Add, edit, and track your product inventory
-          </p>
-          <button 
-            onClick={() => router.push('/account/ecommerce/products')}
-            className="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors"
-          >
-            Manage Products
-          </button>
+          <p className="text-3xl font-bold text-green-600 mt-2">$12,345</p>
         </div>
-
-        {/* Sales Section */}
-        <div className="bg-white dark:bg-black border rounded-lg p-6 space-y-4">
+        <div className="bg-white p-4 rounded shadow">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold flex items-center">
-              <ShoppingCartIcon className="mr-2 w-5 h-5" />
-              Sales
-            </h2>
-            <span className="text-muted-foreground">Overview</span>
+            <h3 className="font-semibold text-gray-600">Pending Orders</h3>
+            <ShoppingCartIcon className="w-6 h-6 text-yellow-500" />
           </div>
-          <p className="text-sm text-muted-foreground">
-            Track your sales performance
-          </p>
-          <button className="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-primary/90 transition-colors">
-            View Sales
-          </button>
+          <p className="text-3xl font-bold text-yellow-600 mt-2">7</p>
         </div>
       </div>
     </div>

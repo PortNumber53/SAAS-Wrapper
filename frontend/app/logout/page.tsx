@@ -10,13 +10,13 @@ import Link from "next/link"
 
 export default function LogoutPage() {
   const searchParams = useSearchParams()
-  const error = searchParams.get('error')
+  const error = searchParams?.get('error') || null
 
   useEffect(() => {
     // Force sign out
     signOut({
-      callbackUrl: '/login',
-      redirect: true
+      redirect: true,
+      redirectTo: '/login'
     })
   }, [])
 

@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+}
+
+body {
+  position: relative;
+  width: 100vw;
+  min-width: 320px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  overscroll-behavior-x: none;
+}
+
+#__next,
+[data-nextjs-scroll-focus-boundary] {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+#__next,
+[data-nextjs-scroll-focus-boundary] {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -24,6 +60,10 @@
     --destructive-foreground: 210 40% 98%;
     --ring: 215 20.2% 65.1%;
     --radius: 0.5rem;
+    --navbar-height: 4rem; /* 64px */
+    --features-bar-height: 30px;
+    --top-padding-account: 4rem; /* 64px for navbar */
+    --top-padding-non-account: calc(4rem + 30px); /* navbar + features bar */
   }
 
   .dark {
@@ -56,6 +96,10 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    padding-top: var(--top-padding-non-account);
+  }
+  body.account-page {
+    padding-top: var(--top-padding-account);
   }
   .tiptap-editor-container {
     height: 100%;
@@ -132,6 +176,16 @@
 
   h6 {
     @apply text-base mb-2 opacity-80;
+  }
+}
+
+@layer base {
+  .content-wrapper {
+    padding-top: var(--navbar-height);
+  }
+
+  .content-wrapper.with-features-bar {
+    padding-top: calc(var(--navbar-height) + var(--features-bar-height));
   }
 }
 

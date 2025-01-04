@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const handleSignOut = async () => {
     await signOut({
       redirect: true,
-      callbackUrl: '/'
+      redirectTo: '/'
     });
   }
 
