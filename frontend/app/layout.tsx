@@ -22,6 +22,7 @@ import { ChevronDown, LogOut } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { AccountDropdown } from "@/components/account-dropdown"
+import { IntegrationStatusLoader } from '@/components/integration-status-loader'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -115,9 +116,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
+    <html lang="en">
+      <body className={inter.className}>
         <SessionProvider>
+          <IntegrationStatusLoader />
+          <Toaster />
           <LayoutContent>{children}</LayoutContent>
         </SessionProvider>
       </body>

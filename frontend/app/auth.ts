@@ -24,9 +24,15 @@ export const {
     })
   ],
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (!user.email) {
+        return false;
+      }
+      return true;
+    },
     async session({ session, token }: any) {
       if (session?.user) {
-        session.user.id = token.sub;
+        session.user.id = token.id;
       }
       return session;
     },
@@ -35,7 +41,7 @@ export const {
         token.id = user.id;
       }
       return token;
-    }
+    },
   },
   session: {
     strategy: "jwt"

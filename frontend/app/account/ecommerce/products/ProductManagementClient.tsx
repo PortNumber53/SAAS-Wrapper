@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Table,
   TableBody,
@@ -14,12 +15,16 @@ import {
 } from "@/components/ui/table"
 import {
   EditIcon,
-  TrashIcon
+  TrashIcon,
+  AlertTriangleIcon,
+  Loader2Icon
 } from "lucide-react"
 import useToast from "@/components/ui/use-toast"
+import { getStoredIntegrationStatus } from '@/lib/integration-utils'
+import Link from 'next/link'
 
 // Server Actions
-import { createProduct, updateProduct, deleteProduct, getStripeIntegrationStatus } from './actions'
+import { createProduct, updateProduct, deleteProduct } from './actions'
 
 type Product = {
   id: string
@@ -34,49 +39,51 @@ type Product = {
 }
 
 export default function ProductManagementClient({
-  initialProducts
+  products: initialProducts = []
 }: {
-  initialProducts: Product[]
+  products: Product[];
 }) {
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [filteredProducts, setFilteredProducts] = useState(products)
+  const [products, setProducts] = useState<Product[]>(initialProducts || [])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>(initialProducts || [])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const [isStripeEnabled, setIsStripeEnabled] = useState(false)
+
+  // Get Stripe integration status from localStorage
+  const [isStripeEnabled] = useState(() => {
+    try {
+      return getStoredIntegrationStatus().stripe || false
+    } catch {
+      return false
+    }
+  })
+
+  // Update filtered products when products change
+  useEffect(() => {
+    setFilteredProducts(products || [])
+  }, [products])
 
   // State for form
-  const [isEditing, setIsEditing] = useState(false)
-  const [currentProduct, setCurrentProduct] = useState<Product | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
   const [inventoryCount, setInventoryCount] = useState('')
   const [stripePriceId, setStripePriceId] = useState('')
 
-  useEffect(() => {
-    const checkStripeStatus = async () => {
-      try {
-        const { isEnabled } = await getStripeIntegrationStatus()
-        setIsStripeEnabled(isEnabled)
-      } catch (error) {
-        console.error('Error checking Stripe status:', error)
-      }
-    }
-    checkStripeStatus()
-  }, [])
-
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault()
     const searchTerm = (e.target as HTMLFormElement).search.value.toLowerCase()
-    const filtered = products.filter(
-      product =>
-        product.name.toLowerCase().includes(searchTerm) ||
-        product.description.toLowerCase().includes(searchTerm)
+    const filtered = products.filter((product) =>
+      product.name.toLowerCase().includes(searchTerm) ||
+      (product.description || '').toLowerCase().includes(searchTerm)
     )
     setFilteredProducts(filtered)
   }
 
   const handleEditClick = (product: Product) => {
-    setCurrentProduct(product)
+    setSelectedProduct(product)
     setName(product.name)
     setDescription(product.description || '')
     setPrice(product.price.toString())
@@ -97,13 +104,13 @@ export default function ProductManagementClient({
       // Always send stripe_price_id when Stripe is enabled, even if empty
       formData.append('stripe_price_id', stripePriceId)
     }
-    if (isEditing && currentProduct) {
-      formData.append('id', currentProduct.id)
+    if (isEditing && selectedProduct) {
+      formData.append('id', selectedProduct.id)
     }
 
     try {
       let result: Product
-      if (isEditing && currentProduct) {
+      if (isEditing && selectedProduct) {
         result = await updateProduct(formData)
       } else {
         result = await createProduct(formData)
@@ -125,7 +132,7 @@ export default function ProductManagementClient({
       setInventoryCount('')
       setStripePriceId('')
       setIsEditing(false)
-      setCurrentProduct(null)
+      setSelectedProduct(null)
 
       toast({
         title: isEditing ? "Product Updated" : "Product Created",
@@ -175,7 +182,7 @@ export default function ProductManagementClient({
         <h1 className="text-2xl font-bold">Manage Products</h1>
         <Button onClick={() => {
           setIsEditing(false)
-          setCurrentProduct(null)
+          setSelectedProduct(null)
           setName('')
           setDescription('')
           setPrice('')
@@ -188,83 +195,122 @@ export default function ProductManagementClient({
 
       {/* Product Form */}
       <form onSubmit={handleSubmit} className="grid grid-cols-4 gap-4 p-4 bg-gray-100 rounded-lg">
-        <div className="col-span-4 grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="name" className="text-right">Name</Label>
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="col-span-3"
-            required
-          />
-        </div>
-        <div className="col-span-4 grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="description" className="text-right">Description</Label>
-          <Input
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="col-span-4 grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="price" className="text-right">Price</Label>
-          <Input
-            id="price"
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="col-span-3"
-            required
-            step="0.01"
-            min="0"
-          />
-        </div>
-        <div className="col-span-4 grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="inventory_count" className="text-right">Inventory Count</Label>
-          <Input
-            id="inventory_count"
-            type="number"
-            value={inventoryCount}
-            onChange={(e) => setInventoryCount(e.target.value)}
-            className="col-span-3"
-            required
-            min="0"
-          />
-        </div>
-        {isStripeEnabled && (
-          <div className="col-span-4 grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stripe_price_id" className="text-right">Stripe Price ID</Label>
-            <Input
-              id="stripe_price_id"
-              value={stripePriceId}
-              onChange={(e) => setStripePriceId(e.target.value)}
-              className="col-span-3"
-              placeholder="Enter Stripe Price ID"
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Product name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="price">Price</Label>
+              <Input
+                id="price"
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Product description"
             />
           </div>
-        )}
-        <div className="col-span-4 flex justify-end space-x-2">
-          <Button type="submit" variant="default">
-            {isEditing ? 'Update Product' : 'Create Product'}
-          </Button>
-          {isEditing && (
+
+          <div className="space-y-2">
+            <Label htmlFor="inventory_count">Inventory Count</Label>
+            <Input
+              id="inventory_count"
+              type="number"
+              value={inventoryCount}
+              onChange={(e) => setInventoryCount(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+
+          {isStripeEnabled ? (
+            <div className="space-y-2">
+              <Label htmlFor="stripe_price_id">
+                Stripe Price ID
+                <span className="ml-1 text-sm text-muted-foreground">
+                  (e.g., price_H5ggYwtDq4fbrJ)
+                </span>
+              </Label>
+              <Input
+                id="stripe_price_id"
+                value={stripePriceId}
+                onChange={(e) => setStripePriceId(e.target.value)}
+                placeholder="price_..."
+              />
+            </div>
+          ) : (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <AlertTriangleIcon className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">Stripe Integration Disabled</h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      Enable Stripe integration in your{' '}
+                      <Link href="/account/integrations" className="font-medium underline hover:text-yellow-800">
+                        integration settings
+                      </Link>{' '}
+                      to accept payments for this product.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4">
             <Button
-              type="button"
               variant="outline"
               onClick={() => {
                 setIsEditing(false)
-                setCurrentProduct(null)
+                setSelectedProduct(null)
                 setName('')
                 setDescription('')
                 setPrice('')
                 setInventoryCount('')
                 setStripePriceId('')
+                setIsDialogOpen(false)
               }}
             >
               Cancel
             </Button>
-          )}
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                isLoading ||
+                !name ||
+                !price ||
+                !inventoryCount
+              }
+            >
+              {isLoading ? (
+                <>
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>{isEditing ? 'Update Product' : 'Create Product'}</>
+              )}
+            </Button>
+          </div>
         </div>
       </form>
 

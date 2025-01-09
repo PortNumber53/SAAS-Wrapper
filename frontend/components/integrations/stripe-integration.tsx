@@ -7,12 +7,15 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { Checkbox } from '@/components/ui/checkbox'
+import { updateStoredIntegrationStatus } from '@/lib/integration-utils'
 
 interface StripeIntegrationResponse {
   integration: {
     publishableKey?: string;
     secretKey?: string;
     webhookSecret?: string;
+    is_active: boolean;
   } | null;
 }
 
@@ -25,7 +28,8 @@ export function StripeIntegration() {
   const [stripeSettings, setStripeSettings] = useState({
     publishableKey: '',
     secretKey: '',
-    webhookSecret: ''
+    webhookSecret: '',
+    is_active: false
   })
   const [showSecrets, setShowSecrets] = useState({
     secretKey: false,
@@ -50,7 +54,8 @@ export function StripeIntegration() {
             ...prev,
             publishableKey: data.integration?.publishableKey || '',
             secretKey: data.integration?.secretKey || '',
-            webhookSecret: data.integration?.webhookSecret || ''
+            webhookSecret: data.integration?.webhookSecret || '',
+            is_active: data.integration?.is_active || false
           }))
         }
       } catch (error) {
@@ -69,9 +74,9 @@ export function StripeIntegration() {
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      // Validate inputs
-      if (!stripeSettings.publishableKey || !stripeSettings.secretKey) {
-        throw new Error('Publishable Key and Secret Key are required')
+      // Validate input if integration is active
+      if (stripeSettings.is_active && !stripeSettings.publishableKey) {
+        throw new Error('Publishable Key is required when integration is active')
       }
 
       const response = await fetch('/api/integrations/stripe', {
@@ -86,6 +91,9 @@ export function StripeIntegration() {
         const errorData = await response.json() as StripeIntegrationErrorResponse
         throw new Error(errorData.error || 'Failed to save Stripe settings')
       }
+
+      // Update localStorage
+      updateStoredIntegrationStatus({ stripe: stripeSettings.is_active })
 
       // Show success toast
       toast({
@@ -122,6 +130,17 @@ export function StripeIntegration() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="is_active"
+              checked={stripeSettings.is_active}
+              onCheckedChange={(checked) => 
+                setStripeSettings(prev => ({...prev, is_active: checked === true}))
+              }
+            />
+            <Label htmlFor="is_active">Enable Stripe Integration</Label>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="publishableKey">Publishable Key</Label>
             <Input
@@ -130,6 +149,7 @@ export function StripeIntegration() {
               value={stripeSettings.publishableKey}
               onChange={(e) => setStripeSettings(prev => ({...prev, publishableKey: e.target.value}))}
               placeholder="pk_test_..."
+              disabled={!stripeSettings.is_active}
             />
           </div>
 
@@ -142,11 +162,13 @@ export function StripeIntegration() {
                 value={stripeSettings.secretKey}
                 onChange={(e) => setStripeSettings(prev => ({...prev, secretKey: e.target.value}))}
                 placeholder="sk_test_..."
+                disabled={!stripeSettings.is_active}
               />
               <button
                 type="button"
                 onClick={() => toggleSecretVisibility('secretKey')}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                disabled={!stripeSettings.is_active}
               >
                 {showSecrets.secretKey ? (
                   <EyeOffIcon className="h-4 w-4 text-gray-500" />
@@ -166,11 +188,13 @@ export function StripeIntegration() {
                 value={stripeSettings.webhookSecret}
                 onChange={(e) => setStripeSettings(prev => ({...prev, webhookSecret: e.target.value}))}
                 placeholder="whsec_..."
+                disabled={!stripeSettings.is_active}
               />
               <button
                 type="button"
                 onClick={() => toggleSecretVisibility('webhookSecret')}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                disabled={!stripeSettings.is_active}
               >
                 {showSecrets.webhookSecret ? (
                   <EyeOffIcon className="h-4 w-4 text-gray-500" />
@@ -181,12 +205,11 @@ export function StripeIntegration() {
             </div>
           </div>
 
-          <Button
-            onClick={handleSave}
-            className="w-full mt-6"
-            disabled={isLoading}
+          <Button 
+            onClick={handleSave} 
+            disabled={isLoading || (stripeSettings.is_active && (!stripeSettings.publishableKey || !stripeSettings.secretKey))}
           >
-            {isLoading ? 'Saving...' : 'Save Integration Settings'}
+            {isLoading ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
       </CardContent>

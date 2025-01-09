@@ -8,6 +8,7 @@ interface StripeIntegrationBody {
   secretKey?: string;
   publishableKey?: string;
   webhookSecret?: string;
+  is_active: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -25,11 +26,12 @@ export async function POST(request: NextRequest) {
     const secretKey = body.secretKey || ''
     const publishableKey = body.publishableKey || ''
     const webhookSecret = body.webhookSecret || ''
+    const is_active = body.is_active
 
-    // Validate input
-    if (!publishableKey) {
+    // Validate input if integration is active
+    if (is_active && !publishableKey) {
       return NextResponse.json(
-        { error: 'Publishable Key is required' },
+        { error: 'Publishable Key is required when integration is active' },
         { status: 400 }
       )
     }
@@ -46,29 +48,36 @@ export async function POST(request: NextRequest) {
       .filter({ slug: 'stripe' })
       .getFirst()
 
-    console.log('existingIntegration', existingIntegration)
-
     if (existingIntegration) {
       // Update existing record
       const updatedRecord = await xata.db.integrations.update(existingIntegration.id, {
-        settings: stripeSettings
+        settings: stripeSettings,
+        is_active
       })
 
       return NextResponse.json({
         message: 'Stripe integration settings updated successfully',
-        integration: updatedRecord
+        integration: {
+          ...stripeSettings,
+          is_active: updatedRecord.is_active
+        }
       }, { status: 200 })
     }
 
     // Create new record if not exists
     const newRecord = await xata.db.integrations.create({
       slug: 'stripe',
-      settings: stripeSettings
+      settings: stripeSettings,
+      is_active,
+      name: 'Stripe'
     })
 
     return NextResponse.json({
       message: 'Stripe integration settings saved successfully',
-      integration: newRecord
+      integration: {
+        ...stripeSettings,
+        is_active: newRecord.is_active
+      }
     }, { status: 201 })
 
   } catch (error) {
@@ -81,9 +90,6 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const url = new URL(request.url)
-  const params = url.searchParams
-
   try {
     // Ensure user is authenticated
     const session = await auth()
@@ -96,23 +102,22 @@ export async function GET(request: NextRequest) {
       .filter({ slug: 'stripe' })
       .getFirst()
 
-    console.log('Stripe integration record:', stripeIntegration)
+    if (!stripeIntegration) {
+      return NextResponse.json({
+        integration: null
+      })
+    }
 
     return NextResponse.json({
-      integration: stripeIntegration?.settings
-        ? {
-            publishableKey: stripeIntegration.settings.publishableKey,
-            secretKey: stripeIntegration.settings.secretKey,
-            hasSecretKey: !!stripeIntegration.settings.secretKey,
-            webhookSecret: stripeIntegration.settings.webhookSecret
-          }
-        : null
-    }, { status: 200 })
-
+      integration: {
+        ...(stripeIntegration.settings as any),
+        is_active: stripeIntegration.is_active
+      }
+    })
   } catch (error) {
-    console.error('Stripe integration retrieve error:', error)
+    console.error('Stripe integration fetch error:', error)
     return NextResponse.json(
-      { error: 'Failed to retrieve Stripe integration settings' },
+      { error: 'Failed to fetch Stripe integration settings' },
       { status: 500 }
     )
   }

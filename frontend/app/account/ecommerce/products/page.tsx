@@ -16,24 +16,21 @@ type Product = {
 export default async function ProductManagementPage() {
   const session = await auth()
 
-  console.log('Server-side session check for Products page:', JSON.stringify(session, null, 2))
-
-  if (!session) {
-    console.log('No session found, redirecting to login')
-    redirect('/login')
-  }
-
-  // Explicitly check for user and user ID
-  if (!session.user || !session.user.id) {
-    console.log('Invalid session: missing user or user ID')
+  if (!session?.user?.id) {
     redirect('/login')
   }
 
   try {
-    const initialProducts = await getProducts()
-    return <ProductManagementClient initialProducts={initialProducts} />
+    const products = await getProducts()
+    
+    if (!Array.isArray(products)) {
+      console.error('Products is not an array:', products)
+      return <ProductManagementClient products={[]} />
+    }
+
+    return <ProductManagementClient products={products} />
   } catch (error) {
     console.error('Failed to fetch products:', error)
-    redirect('/login')
+    return <ProductManagementClient products={[]} />
   }
 }

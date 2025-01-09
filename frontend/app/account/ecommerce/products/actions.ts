@@ -230,24 +230,3 @@ export async function deleteProduct(formData: FormData) {
     throw error
   }
 }
-
-export async function getStripeIntegrationStatus() {
-  const session = await auth()
-
-  if (!session) {
-    throw new Error('Unauthorized')
-  }
-
-  try {
-    const stripeIntegration = await xata.db.integrations
-      .filter({ slug: 'stripe' })
-      .getFirst()
-
-    return {
-      isEnabled: !!(stripeIntegration?.settings?.publishableKey && stripeIntegration?.settings?.secretKey)
-    }
-  } catch (error) {
-    console.error('Error checking Stripe integration status:', error)
-    return { isEnabled: false }
-  }
-}
