@@ -1323,14 +1323,6 @@ const tables = [
     },
     columns: [
       {
-        name: "attributes",
-        type: "json",
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: "",
-      },
-      {
         name: "category_id",
         type: "link",
         link: { table: "categories" },
@@ -1377,6 +1369,14 @@ const tables = [
         notNull: false,
         unique: false,
         defaultValue: "false",
+        comment: "",
+      },
+      {
+        name: "meta",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
         comment: "",
       },
       {
