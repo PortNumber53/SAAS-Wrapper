@@ -7,6 +7,7 @@ export const runtime = 'edge'
 interface InstagramTokenResponse {
   access_token: string;
   token_type: string;
+  user_id?: string;
 }
 
 interface InstagramUserResponse {
@@ -15,7 +16,7 @@ interface InstagramUserResponse {
   account_type: string;
 }
 
-async function exchangeCodeForToken(code: string, redirectUri: string): Promise<{ accessToken: string; username: string }> {
+async function exchangeCodeForToken(code: string, redirectUri: string): Promise<{ accessToken: string; userId: string; username: string }> {
   const instagramClientId = process.env.INSTAGRAM_CLIENT_ID
   const instagramClientSecret = process.env.INSTAGRAM_CLIENT_SECRET
 
@@ -47,7 +48,11 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
   }
 
   const tokenData = await tokenResponse.json() as InstagramTokenResponse
-  const { access_token: accessToken } = tokenData
+  const { access_token: accessToken, user_id: initialUserId } = tokenData
+
+  if (!initialUserId) {
+    throw new Error('No user ID returned from Instagram')
+  }
 
   // Get long-lived token
   const longLivedTokenResponse = await fetch(
@@ -80,6 +85,7 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
 
   return {
     accessToken: longLivedToken,
+    userId: initialUserId,
     username: userData.username
   }
 }
@@ -112,7 +118,7 @@ export async function GET(request: NextRequest) {
     const redirectUri = `${url.protocol}//${url.host}/api/integrations/instagram/callback`
 
     // Exchange the code for an access token and get user info
-    const { accessToken, username } = await exchangeCodeForToken(code, redirectUri)
+    const { accessToken, userId, username } = await exchangeCodeForToken(code, redirectUri)
 
     // Find or create Instagram integration
     const integration = await xata.db.integrations
@@ -121,6 +127,7 @@ export async function GET(request: NextRequest) {
 
     const instagramSettings = {
       access_token: accessToken,
+      user_id: userId,
       username
     }
 

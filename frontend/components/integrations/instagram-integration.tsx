@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from '@/components/ui/use-toast'
-import { Checkbox } from '@/components/ui/checkbox'
 import { updateStoredIntegrationStatus } from '@/lib/integration-utils'
-import { InstagramIcon } from 'lucide-react'
+import { InstagramIcon as Instagram } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { LogOut } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 
 interface InstagramIntegrationResponse {
   integration: {
@@ -157,54 +160,71 @@ export function InstagramIntegration() {
     }
   }
 
+  const handleConnect = async () => {
+    handleInstagramAuth()
+  }
+
+  const handleDisconnect = async () => {
+    disconnectInstagram()
+  }
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle>Instagram Business</CardTitle>
-            <CardDescription>
-              Connect your Instagram Business account to automatically publish content.
-            </CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={instagramSettings.is_active}
-              onCheckedChange={handleStatusChange}
-              disabled={!instagramSettings.accessToken}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {!instagramSettings.accessToken ? (
-            <Button
-              onClick={handleInstagramAuth}
-              className="w-full"
-              disabled={isLoading}
-            >
-              <InstagramIcon className="w-4 h-4 mr-2" />
-              Connect Instagram Business Account
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Connected Account</p>
-                  <p className="text-sm text-muted-foreground">@{instagramSettings.username}</p>
-                </div>
-                <Button
-                  variant="destructive"
-                  onClick={disconnectInstagram}
-                  disabled={isLoading}
-                >
-                  Disconnect
-                </Button>
-              </div>
+        <CardTitle className="flex items-center gap-2">
+          <Instagram className="h-5 w-5" />
+          Instagram Business
+        </CardTitle>
+        <CardDescription>
+          Connect your Instagram Business account to automatically publish content.
+          {instagramSettings.username && (
+            <div className="mt-2 text-sm">
+              <span className="font-medium">Connected Account:</span>{' '}
+              <a
+                href={`https://instagram.com/${instagramSettings.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                @{instagramSettings.username}
+              </a>
             </div>
           )}
-        </div>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {instagramSettings.is_active ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Connected and ready to use
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => handleDisconnect()}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="mr-2 h-4 w-4" />
+              )}
+              Disconnect
+            </Button>
+          </div>
+        ) : (
+          <Button
+            onClick={() => handleConnect()}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LogIn className="mr-2 h-4 w-4" />
+            )}
+            Connect Instagram
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
