@@ -57,8 +57,10 @@ function LayoutContent({
       return (
         <div className="w-full bg-white border-b px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">SW</div>
-            <span className="text-xl font-bold text-gray-800 pr-16">SaaS Wrapper</span>
+            <Link href="/" className="flex items-center space-x-2">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">SW</div>
+              <span className="text-xl font-bold text-gray-800 pr-16">SaaS Wrapper</span>
+            </Link>
             <div className="ml-6 flex items-center space-x-2">
               {managementIcon}
               <span>{managementTitle}</span>
@@ -72,8 +74,10 @@ function LayoutContent({
     return (
       <div className="w-full bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">SW</div>
-          <span className="text-xl font-bold text-gray-800 pr-16">SaaS Wrapper</span>
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">SW</div>
+            <span className="text-xl font-bold text-gray-800 pr-16">SaaS Wrapper</span>
+          </Link>
           <nav className="ml-6 flex space-x-4">
             <Link href="#features" className="text-sm font-medium text-gray-700 hover:text-gray-900">Features</Link>
             <Link href="#docs" className="text-sm font-medium text-gray-700 hover:text-gray-900">Docs</Link>

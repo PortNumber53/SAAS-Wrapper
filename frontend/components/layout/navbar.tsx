@@ -58,6 +58,13 @@ export function Navbar() {
                   <span>Features</span>
                 </Link>
                 <Link
+                  href="/ecommerce/browse"
+                  className="text-muted-foreground hover:text-foreground flex items-center space-x-2"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Products</span>
+                </Link>
+                <Link
                   href="/c/docs"
                   className="text-muted-foreground hover:text-foreground flex items-center space-x-2"
                 >
