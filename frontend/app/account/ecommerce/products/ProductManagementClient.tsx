@@ -17,8 +17,10 @@ import {
   EditIcon,
   TrashIcon,
   AlertTriangleIcon,
-  Loader2Icon
+  Loader2Icon,
+  AlertCircle
 } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import useToast from "@/components/ui/use-toast"
 import { getStoredIntegrationStatus } from '@/lib/integration-utils'
 import Link from 'next/link'
@@ -38,6 +40,11 @@ type Product = {
   }
 }
 
+interface ValidationError {
+  field: string;
+  message: string;
+}
+
 export default function ProductManagementClient({
   products: initialProducts = []
 }: {
@@ -49,6 +56,7 @@ export default function ProductManagementClient({
   const [isEditing, setIsEditing] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<ValidationError[]>([])
   const { toast } = useToast()
 
   // Get Stripe integration status from localStorage
@@ -94,29 +102,32 @@ export default function ProductManagementClient({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
+    setErrors([]) // Clear previous errors
 
     const formData = new FormData()
     formData.append('name', name)
-    formData.append('description', description)
+    formData.append('description', description || '')
     formData.append('price', price)
     formData.append('inventory_count', inventoryCount)
+
     if (isStripeEnabled) {
-      // Always send stripe_price_id when Stripe is enabled, even if empty
       formData.append('stripe_price_id', stripePriceId)
     }
+
     if (isEditing && selectedProduct) {
       formData.append('id', selectedProduct.id)
     }
 
     try {
-      let result: Product
+      let result
       if (isEditing && selectedProduct) {
         result = await updateProduct(formData)
       } else {
         result = await createProduct(formData)
       }
 
-      // Update both products and filteredProducts with the new data
+      // Update products list
       if (isEditing) {
         setProducts(products.map(p => p.id === result.id ? result : p))
         setFilteredProducts(filteredProducts.map(p => p.id === result.id ? result : p))
@@ -133,32 +144,29 @@ export default function ProductManagementClient({
       setStripePriceId('')
       setIsEditing(false)
       setSelectedProduct(null)
+      setIsDialogOpen(false)
 
       toast({
         title: isEditing ? "Product Updated" : "Product Created",
-        description: `Successfully ${isEditing ? 'updated' : 'created'} product ${result.name}`,
+        description: `Successfully ${isEditing ? 'updated' : 'created'} ${result.name}`,
+        variant: "default",
       })
     } catch (error) {
-      if (error instanceof Error) {
-        try {
-          const validationErrors = JSON.parse(error.message)
-          const errorMessages = validationErrors.map((err: any) =>
-            `${err.field}: ${err.message}`
-          ).join('\n')
-
-          toast({
-            title: "Validation Error",
-            description: errorMessages,
-            variant: "destructive"
-          })
-        } catch {
-          toast({
-            title: "Error",
-            description: "An unexpected error occurred",
-            variant: "destructive"
-          })
-        }
+      console.error('Error saving product:', error)
+      try {
+        // Try to parse validation errors
+        const validationErrors = JSON.parse((error as Error).message) as ValidationError[]
+        setErrors(validationErrors)
+      } catch {
+        // If error is not in expected format, show generic error
+        toast({
+          title: "Error",
+          description: (error as Error).message || "Failed to save product",
+          variant: "destructive",
+        })
       }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -174,6 +182,37 @@ export default function ProductManagementClient({
     } catch (error) {
       console.error('Failed to delete product:', error)
     }
+  }
+
+  // Add this mapping for user-friendly error messages
+  const getErrorMessage = (error: ValidationError) => {
+    const fieldDisplayNames: Record<string, string> = {
+      name: 'Product name',
+      description: 'Description',
+      price: 'Price',
+      inventory_count: 'Inventory count',
+      stripe_price_id: 'Stripe price ID'
+    }
+
+    const maxValues: Record<string, number> = {
+      name: 100,
+      price: 1000000,
+      inventory_count: 10000
+    }
+
+    if (error.message.includes('too high')) {
+      return `Maximum ${fieldDisplayNames[error.field].toLowerCase()} allowed is ${maxValues[error.field].toLocaleString()}`
+    }
+
+    if (error.message.includes('must be at least')) {
+      return `${fieldDisplayNames[error.field]} is too short`
+    }
+
+    if (error.message.includes('must be a positive')) {
+      return `${fieldDisplayNames[error.field]} must be greater than 0`
+    }
+
+    return error.message
   }
 
   return (
@@ -194,8 +233,23 @@ export default function ProductManagementClient({
       </div>
 
       {/* Product Form */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-4 gap-4 p-4 bg-gray-100 rounded-lg">
-        <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-100 rounded-lg p-6">
+        {errors.length > 0 && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <ul className="list-disc list-inside">
+                {errors.map((error, index) => (
+                  <li key={index} className="text-sm">
+                    {getErrorMessage(error)}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid gap-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
@@ -214,6 +268,8 @@ export default function ProductManagementClient({
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0.00"
+                step="0.01"
+                min="0"
               />
             </div>
           </div>
@@ -236,6 +292,7 @@ export default function ProductManagementClient({
               value={inventoryCount}
               onChange={(e) => setInventoryCount(e.target.value)}
               placeholder="0"
+              min="0"
             />
           </div>
 
@@ -276,8 +333,9 @@ export default function ProductManagementClient({
             </div>
           )}
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2">
             <Button
+              type="button"
               variant="outline"
               onClick={() => {
                 setIsEditing(false)
@@ -293,7 +351,7 @@ export default function ProductManagementClient({
               Cancel
             </Button>
             <Button
-              onClick={handleSubmit}
+              type="submit"
               disabled={
                 isLoading ||
                 !name ||
