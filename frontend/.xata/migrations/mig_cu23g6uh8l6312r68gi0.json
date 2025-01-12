@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu23g6uh8l6312r68gi0",
+    "operations": [
+      {
+        "add_column": {
+          "table": "webhook_events",
+          "column": {
+            "name": "metadata",
+            "type": "json",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu23g6uh8l6312r68gi0",
+  "parent": "mig_cu23g4eh8l6312r68gh0",
+  "schema": "public",
+  "startedAt": "2025-01-12T21:46:03.384848Z"
+}

@@ -1,0 +1,30 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu23fmi853mohf6tat00",
+    "operations": [
+      {
+        "add_column": {
+          "table": "webhook_events",
+          "column": {
+            "name": "user",
+            "type": "text",
+            "comment": "{\"xata.link\":\"nextauth_users\"}",
+            "nullable": true,
+            "references": {
+              "name": "user_link",
+              "table": "nextauth_users",
+              "column": "xata_id",
+              "on_delete": "SET NULL"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu23fmi853mohf6tat00",
+  "parent": "mig_cu23fhmh8l6312r68ge0",
+  "schema": "public",
+  "startedAt": "2025-01-12T21:44:59.118191Z"
+}

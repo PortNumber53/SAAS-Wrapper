@@ -92,39 +92,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing signed_request' }, { status: 400 })
     }
 
-    // Verify the signed request
-    const parsedRequest = await parseSignedRequest(signed_request)
-    if (!parsedRequest) {
-      return NextResponse.json({ error: 'Invalid signed request' }, { status: 403 })
+    // Parse the signed request
+    const data = await parseSignedRequest(signed_request)
+    if (!data) {
+      return NextResponse.json({ error: 'Invalid signed request data' }, { status: 400 })
     }
 
-    // Find and delete all Instagram-related data
+    // Find the integration record
     const integration = await xata.db.integrations
       .filter({ 
-        slug: 'instagram-business',
-        'settings.user_id': parsedRequest.user_id.toString()
+        platform: 'instagram-business',
+        'settings.user_id': data.user_id 
       })
       .getFirst()
 
-    if (integration) {
-      // Clear all Instagram data
-      await xata.db.integrations.update(integration.id, {
-        settings: {},
-        is_active: false
-      })
-
-      // Record deletion request in a separate table for tracking
-      await xata.db.deletion_requests.create({
-        integration_id: integration.id,
-        user_id: parsedRequest.user_id.toString(),
-        platform: 'instagram',
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      })
+    if (!integration) {
+      return NextResponse.json({ error: 'Integration not found' }, { status: 404 })
     }
 
+    // Create webhook event record
+    await xata.db.webhook_events.create({
+      integration_id: integration.id,
+      user_id: integration.user_id,
+      platform: 'instagram',
+      event_type: 'data_deletion',
+      status: 'pending',
+      metadata: data,
+      processed_at: null
+    })
+
+    // Create deletion request record
+    await xata.db.deletion_requests.create({
+      integration_id: integration.id,
+      user_id: integration.user_id,
+      platform: 'instagram',
+      status: 'pending'
+    })
+
     // Return confirmation URL where the user can check deletion status
-    const statusUrl = `${request.nextUrl.origin}/api/integrations/instagram/data-deletion/status?id=${parsedRequest.user_id}`
+    const statusUrl = `${request.nextUrl.origin}/api/integrations/instagram/data-deletion/status?id=${data.user_id}`
     
     return NextResponse.json({ 
       message: 'Data deletion request received',

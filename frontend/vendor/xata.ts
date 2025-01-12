@@ -1913,6 +1913,131 @@ const tables = [
       },
     ],
   },
+  {
+    name: "webhook_events",
+    checkConstraints: {
+      webhook_events_xata_id_length_xata_id: {
+        name: "webhook_events_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      integration_link: {
+        name: "integration_link",
+        columns: ["integration"],
+        referencedTable: "integrations",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+      user_link: {
+        name: "user_link",
+        columns: ["user"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_webhook_events_xata_id_key: {
+        name: "_pgroll_new_webhook_events_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "event_type",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "integration",
+        type: "link",
+        link: { table: "integrations" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"integrations"}',
+      },
+      {
+        name: "metadata",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "platform",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "processed_at",
+        type: "datetime",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "status",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: "'pending'::text",
+        comment: "",
+      },
+      {
+        name: "user",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
 ] as const;
 
 export type SchemaTables = typeof tables;
@@ -1971,6 +2096,9 @@ export type ShoppingCartsRecord = ShoppingCarts & XataRecord;
 export type Subscriptions = InferredTypes["subscriptions"];
 export type SubscriptionsRecord = Subscriptions & XataRecord;
 
+export type WebhookEvents = InferredTypes["webhook_events"];
+export type WebhookEventsRecord = WebhookEvents & XataRecord;
+
 export type DatabaseSchema = {
   categories: CategoriesRecord;
   deletion_requests: DeletionRequestsRecord;
@@ -1989,6 +2117,7 @@ export type DatabaseSchema = {
   shopping_cart_items: ShoppingCartItemsRecord;
   shopping_carts: ShoppingCartsRecord;
   subscriptions: SubscriptionsRecord;
+  webhook_events: WebhookEventsRecord;
 };
 
 const DatabaseClient = buildClient();
