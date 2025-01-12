@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu226sa853mohf6tasig",
+    "operations": [
+      {
+        "add_column": {
+          "up": "''",
+          "table": "deletion_requests",
+          "column": {
+            "name": "integration_slug",
+            "type": "text",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu226sa853mohf6tasig",
+  "parent": "mig_cu226luh8l6312r68fvg",
+  "schema": "public",
+  "startedAt": "2025-01-12T20:17:54.072132Z"
+}

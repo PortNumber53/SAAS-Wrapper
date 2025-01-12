@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Find the Instagram integration record
     const existingIntegration = await xata.db.integrations
-      .filter({ slug: 'instagram' })
+      .filter({ slug: 'instagram-business' })
       .getFirst()
 
     if (existingIntegration) {

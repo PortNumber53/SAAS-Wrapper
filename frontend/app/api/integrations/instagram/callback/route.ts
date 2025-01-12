@@ -24,6 +24,8 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
     throw new Error('Instagram credentials not configured')
   }
 
+  console.log('Starting token exchange...')
+  
   // Exchange code for access token using Instagram Business API
   const tokenResponse = await fetch(
     'https://api.instagram.com/oauth/access_token',
@@ -44,16 +46,24 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
 
   if (!tokenResponse.ok) {
     const errorData = await tokenResponse.text()
+    console.error('Token exchange failed:', {
+      status: tokenResponse.status,
+      statusText: tokenResponse.statusText,
+      error: errorData
+    })
     throw new Error(`Failed to exchange code for token: ${errorData}`)
   }
 
+  console.log('Got initial token response')
   const tokenData = await tokenResponse.json() as InstagramTokenResponse
   const { access_token: accessToken, user_id: initialUserId } = tokenData
 
   if (!initialUserId) {
+    console.error('No user ID in token response:', tokenData)
     throw new Error('No user ID returned from Instagram')
   }
 
+  console.log('Getting long-lived token...')
   // Get long-lived token
   const longLivedTokenResponse = await fetch(
     `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${instagramClientSecret}&access_token=${accessToken}`
@@ -61,12 +71,19 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
 
   if (!longLivedTokenResponse.ok) {
     const errorData = await longLivedTokenResponse.text()
+    console.error('Long-lived token exchange failed:', {
+      status: longLivedTokenResponse.status,
+      statusText: longLivedTokenResponse.statusText,
+      error: errorData
+    })
     throw new Error(`Failed to get long-lived token: ${errorData}`)
   }
 
+  console.log('Got long-lived token')
   const longLivedTokenData = await longLivedTokenResponse.json() as InstagramTokenResponse
   const longLivedToken = longLivedTokenData.access_token
 
+  console.log('Getting user info...')
   // Get user info
   const userResponse = await fetch(
     `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${longLivedToken}`
@@ -74,13 +91,24 @@ async function exchangeCodeForToken(code: string, redirectUri: string): Promise<
 
   if (!userResponse.ok) {
     const errorData = await userResponse.text()
+    console.error('User info fetch failed:', {
+      status: userResponse.status,
+      statusText: userResponse.statusText,
+      error: errorData
+    })
     throw new Error(`Failed to get user info: ${errorData}`)
   }
 
   const userData = await userResponse.json() as InstagramUserResponse
+  console.log('Got user info:', {
+    id: userData.id,
+    username: userData.username,
+    accountType: userData.account_type
+  })
   
-  if (userData.account_type !== 'BUSINESS') {
-    throw new Error('Instagram account must be a business account')
+  if (!['BUSINESS', 'CREATOR'].includes(userData.account_type)) {
+    console.error('Invalid account type:', userData.account_type)
+    throw new Error('Instagram account must be a business or creator account')
   }
 
   return {

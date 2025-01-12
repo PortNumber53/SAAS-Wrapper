@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu227bi853mohf6taskg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "deletion_requests",
+          "column": {
+            "name": "completed_at",
+            "type": "timestamptz",
+            "comment": "",
+            "nullable": true
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu227bi853mohf6taskg",
+  "parent": "mig_cu2278mh8l6312r68g1g",
+  "schema": "public",
+  "startedAt": "2025-01-12T20:18:55.329357Z"
+}

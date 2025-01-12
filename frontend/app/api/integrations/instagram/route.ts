@@ -106,11 +106,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const settings = instagramIntegration.settings as { accessToken?: string; username?: string }
+    const settings = instagramIntegration.settings as { access_token?: string; user_id?: string; username?: string }
 
     return NextResponse.json({
       integration: {
-        accessToken: settings?.accessToken || '',
+        accessToken: settings?.access_token || '',
         username: settings?.username || '',
         is_active: instagramIntegration.is_active
       }

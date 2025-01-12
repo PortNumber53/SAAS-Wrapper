@@ -113,6 +113,107 @@ const tables = [
     ],
   },
   {
+    name: "deletion_requests",
+    checkConstraints: {
+      deletion_requests_xata_id_length_xata_id: {
+        name: "deletion_requests_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      user_link: {
+        name: "user_link",
+        columns: ["user"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_deletion_requests_xata_id_key: {
+        name: "_pgroll_new_deletion_requests_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "completed_at",
+        type: "datetime",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "integration_slug",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "platform",
+        type: "text",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "status",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: "'pending'::text",
+        comment: "",
+      },
+      {
+        name: "user",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "integrations",
     checkConstraints: {
       integrations_xata_id_length_xata_id: {
@@ -1820,6 +1921,9 @@ export type InferredTypes = SchemaInference<SchemaTables>;
 export type Categories = InferredTypes["categories"];
 export type CategoriesRecord = Categories & XataRecord;
 
+export type DeletionRequests = InferredTypes["deletion_requests"];
+export type DeletionRequestsRecord = DeletionRequests & XataRecord;
+
 export type Integrations = InferredTypes["integrations"];
 export type IntegrationsRecord = Integrations & XataRecord;
 
@@ -1869,6 +1973,7 @@ export type SubscriptionsRecord = Subscriptions & XataRecord;
 
 export type DatabaseSchema = {
   categories: CategoriesRecord;
+  deletion_requests: DeletionRequestsRecord;
   integrations: IntegrationsRecord;
   invoices: InvoicesRecord;
   nextauth_accounts: NextauthAccountsRecord;
