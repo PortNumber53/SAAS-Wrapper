@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { StripeIntegration } from '@/components/integrations/stripe-integration'
+import { InstagramIntegration } from '@/components/integrations/instagram-integration'
 
 export default function IntegrationsPage() {
   const [activeIntegration, setActiveIntegration] = useState<string | null>(null)
@@ -13,6 +14,13 @@ export default function IntegrationsPage() {
       description: 'Payment processing and billing',
       icon: '/icons/stripe.svg',
       component: StripeIntegration
+    },
+    {
+      id: 'instagram',
+      name: 'Instagram',
+      description: 'Connect your Instagram feed and showcase your content',
+      icon: '/icons/instagram.svg',
+      component: InstagramIntegration
     }
   ]
 

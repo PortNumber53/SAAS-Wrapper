@@ -4,16 +4,19 @@ const INTEGRATION_STATUS_KEY = 'integrationStatus'
 
 interface IntegrationStatus {
   stripe?: boolean;
+  instagram?: boolean;
 }
 
 export async function fetchIntegrationStatus(): Promise<IntegrationStatus> {
   try {
-    const stripeIntegration = await xata.db.integrations
-      .filter({ slug: 'stripe' })
-      .getFirst()
+    const [stripeIntegration, instagramIntegration] = await Promise.all([
+      xata.db.integrations.filter({ slug: 'stripe' }).getFirst(),
+      xata.db.integrations.filter({ slug: 'instagram-business' }).getFirst()
+    ])
 
     const status = {
-      stripe: stripeIntegration?.is_active || false
+      stripe: stripeIntegration?.is_active || false,
+      instagram: instagramIntegration?.is_active || false
     }
 
     // Store in localStorage for quick access
@@ -24,20 +27,20 @@ export async function fetchIntegrationStatus(): Promise<IntegrationStatus> {
     return status
   } catch (error) {
     console.error('Error fetching integration status:', error)
-    return { stripe: false }
+    return { stripe: false, instagram: false }
   }
 }
 
 export function getStoredIntegrationStatus(): IntegrationStatus {
   if (typeof window === 'undefined') {
-    return { stripe: false }
+    return { stripe: false, instagram: false }
   }
 
   try {
     const stored = localStorage.getItem(INTEGRATION_STATUS_KEY)
-    return stored ? JSON.parse(stored) : { stripe: false }
+    return stored ? JSON.parse(stored) : { stripe: false, instagram: false }
   } catch {
-    return { stripe: false }
+    return { stripe: false, instagram: false }
   }
 }
 
