@@ -4,6 +4,12 @@ import { xata } from '@/lib/xata'
 
 export const runtime = 'edge'
 
+interface WebhookEventBody {
+  integration_id: string
+  event_type: string
+  metadata: Record<string, any>
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Ensure user is authenticated
@@ -60,8 +66,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await request.json() as WebhookEventBody
     const { integration_id, event_type, metadata } = body
+
+    // Validate required fields
+    if (!integration_id || !event_type) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
 
     // Create webhook event
     const event = await xata.db.webhook_events.create({
