@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu2dani853mohf6tavpg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "social_content",
+          "column": {
+            "name": "interval_monitor",
+            "type": "int",
+            "comment": "",
+            "default": "'86400'"
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu2dani853mohf6tavpg",
+  "parent": "mig_cu2da8a853mohf6tavog",
+  "schema": "public",
+  "startedAt": "2025-01-13T08:57:03.217685Z"
+}

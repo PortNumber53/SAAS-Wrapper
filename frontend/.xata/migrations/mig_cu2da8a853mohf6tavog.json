@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu2da8a853mohf6tavog",
+    "operations": [
+      {
+        "add_column": {
+          "table": "social_content",
+          "column": {
+            "name": "is_monitored",
+            "type": "bool",
+            "comment": "",
+            "default": "'true'"
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu2da8a853mohf6tavog",
+  "parent": "mig_cu2d6pi853mohf6tavng",
+  "schema": "public",
+  "startedAt": "2025-01-13T08:56:02.04882Z"
+}

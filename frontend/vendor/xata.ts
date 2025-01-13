@@ -1733,6 +1733,299 @@ const tables = [
     ],
   },
   {
+    name: "social_content",
+    checkConstraints: {
+      social_content_xata_id_length_xata_id: {
+        name: "social_content_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {},
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_social_content_xata_id_key: {
+        name: "_pgroll_new_social_content_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "interval_monitor",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "86400",
+        comment: "",
+      },
+      {
+        name: "is_monitored",
+        type: "bool",
+        notNull: true,
+        unique: false,
+        defaultValue: "true",
+        comment: "",
+      },
+      {
+        name: "last_processed",
+        type: "datetime",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "metadata",
+        type: "json",
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "network_slug",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "post_url",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
+    name: "social_networks",
+    checkConstraints: {
+      social_networks_xata_id_length_xata_id: {
+        name: "social_networks_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {},
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_social_networks_xata_id_key: {
+        name: "_pgroll_new_social_networks_xata_id_key",
+        columns: ["xata_id"],
+      },
+      social_networks__pgroll_new_name_key: {
+        name: "social_networks__pgroll_new_name_key",
+        columns: ["name"],
+      },
+      social_networks__pgroll_new_network_id_key: {
+        name: "social_networks__pgroll_new_network_id_key",
+        columns: ["network_id"],
+      },
+      social_networks__pgroll_new_short_slug_key: {
+        name: "social_networks__pgroll_new_short_slug_key",
+        columns: ["short_slug"],
+      },
+      social_networks__pgroll_new_slug_key: {
+        name: "social_networks__pgroll_new_slug_key",
+        columns: ["slug"],
+      },
+    },
+    columns: [
+      {
+        name: "name",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "network_id",
+        type: "int",
+        notNull: true,
+        unique: true,
+        defaultValue: "0",
+        comment: "",
+      },
+      {
+        name: "short_slug",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "slug",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
+    name: "social_profiles",
+    checkConstraints: {
+      social_profiles_xata_id_length_xata_id: {
+        name: "social_profiles_xata_id_length_xata_id",
+        columns: ["xata_id"],
+        definition: "CHECK ((length(xata_id) < 256))",
+      },
+    },
+    foreignKeys: {
+      user_link: {
+        name: "user_link",
+        columns: ["user"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
+    primaryKey: [],
+    uniqueConstraints: {
+      _pgroll_new_social_profiles_xata_id_key: {
+        name: "_pgroll_new_social_profiles_xata_id_key",
+        columns: ["xata_id"],
+      },
+    },
+    columns: [
+      {
+        name: "network_id",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "network_user_id",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "user",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
+      },
+      {
+        name: "username",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: null,
+        comment: "",
+      },
+      {
+        name: "xata_createdat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_id",
+        type: "text",
+        notNull: true,
+        unique: true,
+        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
+        comment: "",
+      },
+      {
+        name: "xata_updatedat",
+        type: "datetime",
+        notNull: true,
+        unique: false,
+        defaultValue: "now()",
+        comment: "",
+      },
+      {
+        name: "xata_version",
+        type: "int",
+        notNull: true,
+        unique: false,
+        defaultValue: "0",
+        comment: "",
+      },
+    ],
+  },
+  {
     name: "subscriptions",
     checkConstraints: {
       subscriptions_xata_id_length_xata_id: {
@@ -2093,6 +2386,15 @@ export type ShoppingCartItemsRecord = ShoppingCartItems & XataRecord;
 export type ShoppingCarts = InferredTypes["shopping_carts"];
 export type ShoppingCartsRecord = ShoppingCarts & XataRecord;
 
+export type SocialContent = InferredTypes["social_content"];
+export type SocialContentRecord = SocialContent & XataRecord;
+
+export type SocialNetworks = InferredTypes["social_networks"];
+export type SocialNetworksRecord = SocialNetworks & XataRecord;
+
+export type SocialProfiles = InferredTypes["social_profiles"];
+export type SocialProfilesRecord = SocialProfiles & XataRecord;
+
 export type Subscriptions = InferredTypes["subscriptions"];
 export type SubscriptionsRecord = Subscriptions & XataRecord;
 
@@ -2116,6 +2418,9 @@ export type DatabaseSchema = {
   products: ProductsRecord;
   shopping_cart_items: ShoppingCartItemsRecord;
   shopping_carts: ShoppingCartsRecord;
+  social_content: SocialContentRecord;
+  social_networks: SocialNetworksRecord;
+  social_profiles: SocialProfilesRecord;
   subscriptions: SubscriptionsRecord;
   webhook_events: WebhookEventsRecord;
 };

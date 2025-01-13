@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu2dota853mohf6tavvg",
+    "operations": [
+      {
+        "add_column": {
+          "up": "0",
+          "table": "social_profiles",
+          "column": {
+            "name": "network_id",
+            "type": "int",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu2dota853mohf6tavvg",
+  "parent": "mig_cu2dnki853mohf6tavug",
+  "schema": "public",
+  "startedAt": "2025-01-13T09:27:18.086411Z"
+}
