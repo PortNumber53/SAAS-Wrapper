@@ -9,7 +9,9 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  CreditCard
+  CreditCard,
+  PlugIcon,
+  RocketIcon
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
@@ -23,7 +25,7 @@ const inter = Inter({
   display: 'swap'
 })
 
-type Section = 'Integrations' | 'E-commerce' | 'Products' | 'Orders' | 'Sales' | 'Profile' | 'Settings' | 'Billing'
+type Section = 'Integrations' | 'E-commerce' | 'Products' | 'Orders' | 'Sales' | 'Profile' | 'Settings' | 'Billing' | 'Social Media' | 'Creators' | 'Campaigns' | 'Posts'
 
 export default function AccountLayout({
   children
@@ -44,7 +46,10 @@ export default function AccountLayout({
     if (path.includes('/account/ecommerce/products')) return 'Products'
     if (path.includes('/account/ecommerce/orders')) return 'Orders'
     if (path.includes('/account/ecommerce/sales')) return 'Sales'
-    if (path === '/account/ecommerce') return 'E-commerce'
+    if (path.includes('/account/ecommerce')) return 'E-commerce'
+    if (path.includes('/account/social-media/creators')) return 'Creators'
+    if (path.includes('/account/social-media/campaigns')) return 'Campaigns'
+    if (path.includes('/account/social-media/posts')) return 'Posts'
     return 'E-commerce'
   }
 
@@ -94,11 +99,30 @@ export default function AccountLayout({
                   : 'hover:bg-gray-200 text-gray-600'
               }`}
             >
-              {section === 'Orders' && <ShoppingCart className="h-5 w-5" />}
-              {section === 'Products' && <Package className="h-5 w-5" />}
-              {section === 'Sales' && <List className="h-5 w-5" />}
+              {section === 'Integrations' && <PlugIcon className="h-5 w-5" />}
               {section === 'E-commerce' && <ShoppingCart className="h-5 w-5" />}
-              {section === 'Integrations' && <List className="h-5 w-5" />}
+              {section === 'Products' && <List className="h-5 w-5" />}
+              {section === 'Orders' && <List className="h-5 w-5" />}
+              {section === 'Sales' && <CreditCard className="h-5 w-5" />}
+              <span>{section}</span>
+            </Link>
+          ))}
+        </div>
+        <h3 className="font-bold text-gray-600 uppercase text-xs tracking-wider pl-2 mt-4">Social Media</h3>
+        <div className="space-y-1">
+          {(['Creators', 'Campaigns', 'Posts'] as Section[]).map((section) => (
+            <Link
+              key={section}
+              href={`/account/social-media/${section.toLowerCase()}`}
+              className={`flex items-center space-x-2 p-2 rounded cursor-pointer ${
+                selectedSection === section
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'hover:bg-gray-200 text-gray-600'
+              }`}
+            >
+              {section === 'Creators' && <User className="h-5 w-5" />}
+              {section === 'Campaigns' && <RocketIcon className="h-5 w-5" />}
+              {section === 'Posts' && <List className="h-5 w-5" />}
               <span>{section}</span>
             </Link>
           ))}

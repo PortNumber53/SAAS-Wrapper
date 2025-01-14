@@ -13,7 +13,8 @@ import {
   CreditCard,
   ChevronDown,
   LogOut,
-  List
+  List,
+  Rocket
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
@@ -85,6 +86,31 @@ export const AccountDropdown = () => {
           >
             <List className="h-4 w-4" />
             <span>SaaS (Coming Soon)</span>
+          </DropdownMenuItem>
+
+          <div className="border-t my-1"></div>
+          <div className="px-4 py-2 font-semibold text-gray-600 border-b">Social Media</div>
+
+          <DropdownMenuItem
+            onSelect={() => router.push('/account/social-media/creators')}
+            className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+          >
+            <User className="h-4 w-4" />
+            <span>Creators</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => router.push('/account/social-media/campaigns')}
+            className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+          >
+            <Rocket className="h-4 w-4" />
+            <span>Campaigns</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => router.push('/account/social-media/posts')}
+            className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer"
+          >
+            <List className="h-4 w-4" />
+            <span>Posts</span>
           </DropdownMenuItem>
 
           <div className="border-t my-1"></div>
