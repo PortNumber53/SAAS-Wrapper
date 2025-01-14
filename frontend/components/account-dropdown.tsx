@@ -64,7 +64,7 @@ export const AccountDropdown = () => {
             <span>Billing</span>
           </DropdownMenuItem>
 
-          <div className="border-t my-1"></div>
+          <div className="border-t my-1" />
           <div className="px-4 py-2 font-semibold text-gray-600 border-b">Workspaces</div>
 
           <DropdownMenuItem
@@ -88,7 +88,7 @@ export const AccountDropdown = () => {
             <span>SaaS (Coming Soon)</span>
           </DropdownMenuItem>
 
-          <div className="border-t my-1"></div>
+          <div className="border-t my-1" />
           <div className="px-4 py-2 font-semibold text-gray-600 border-b">Social Media</div>
 
           <DropdownMenuItem
@@ -113,7 +113,7 @@ export const AccountDropdown = () => {
             <span>Posts</span>
           </DropdownMenuItem>
 
-          <div className="border-t my-1"></div>
+          <div className="border-t my-1" />
           <DropdownMenuItem
             onSelect={() => signOut({ redirect: true, redirectTo: '/login' })}
             className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-2 cursor-pointer text-red-500"
