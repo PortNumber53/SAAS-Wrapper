@@ -101,9 +101,12 @@ function LayoutContent({
         disableTransitionOnChange
       >
         <ToastProvider>
-          <TopNavbar />
-          <div className="flex flex-1">
+          {pathname?.startsWith('/account') ? (
+            <TopNavbar />
+          ) : (
             <Navbar />
+          )}
+          <div className="flex flex-1">
             <main className="flex-1">
               {children}
             </main>
