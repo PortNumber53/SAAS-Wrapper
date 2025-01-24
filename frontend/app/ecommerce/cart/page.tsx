@@ -160,6 +160,7 @@ export default function CartPage() {
               <Button
                 className="w-full mt-6 bg-gnome-blue hover:bg-gnome-blue/90 text-white"
                 disabled={cartItems.length === 0}
+                onClick={() => router.push("/ecommerce/checkout")}
               >
                 Proceed to Checkout
               </Button>

@@ -1,14 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
-type CartItem = {
+export interface CartItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
   savedForLater?: boolean;
-};
+}
 
 type CartContextType = {
   items: CartItem[];
@@ -22,8 +23,9 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [shouldSave, setShouldSave] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -39,8 +41,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(items));
-  }, [items]);
+    if (shouldSave) {
+      localStorage.setItem("cart", JSON.stringify(items));
+      setShouldSave(false);
+    }
+  }, [items, shouldSave]);
 
   const addItem = (newItem: Omit<CartItem, "quantity" | "savedForLater">) => {
     setItems((currentItems) => {
@@ -61,10 +66,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         { ...newItem, quantity: 1, savedForLater: false },
       ];
     });
+    setShouldSave(true);
   };
 
   const removeItem = (id: string) => {
     setItems((currentItems) => currentItems.filter((item) => item.id !== id));
+    setShouldSave(true);
   };
 
   const updateQuantity = (id: string, quantity: number) => {
@@ -74,6 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         item.id === id ? { ...item, quantity } : item
       )
     );
+    setShouldSave(true);
   };
 
   const toggleSaveForLater = (id: string) => {
@@ -82,10 +90,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         item.id === id ? { ...item, savedForLater: !item.savedForLater } : item
       )
     );
+    setShouldSave(true);
   };
 
   const clearCart = () => {
     setItems([]);
+    localStorage.removeItem("cart");
   };
 
   const getSubtotal = () => {
