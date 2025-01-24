@@ -59,7 +59,7 @@ const xataClient = getXataClient();
 export async function getProducts(): Promise<Product[]> {
   const records = await xata.db.products
     .filter({
-      is_active: true,
+      deleted_at: null,
     })
     .getAll();
 

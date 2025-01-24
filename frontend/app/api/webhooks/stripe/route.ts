@@ -164,6 +164,7 @@ async function handleCheckoutSessionCompleted(
     // Update order status
     await xata.db.orders.update(order.id, {
       status: "completed",
+      payment_method: "stripe",
       meta: {
         ...order.meta,
         stripe_payment_status: session.payment_status || "unknown",
