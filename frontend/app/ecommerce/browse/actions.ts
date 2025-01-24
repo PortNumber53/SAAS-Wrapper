@@ -21,6 +21,7 @@ export async function getPublicProducts() {
     const products = await xata.db.products
       .filter({
         deleted_at: null,
+        is_active: true,
       })
       .getAll();
 

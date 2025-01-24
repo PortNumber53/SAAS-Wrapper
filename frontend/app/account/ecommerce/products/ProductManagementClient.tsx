@@ -38,6 +38,7 @@ type Product = {
     stripe_price_id?: string;
     [key: string]: string | number | boolean | null | undefined;
   };
+  is_active: boolean;
 };
 
 interface ValidationError {
@@ -79,6 +80,7 @@ export default function ProductManagementClient({
   const [price, setPrice] = useState("");
   const [inventoryCount, setInventoryCount] = useState("");
   const [stripePriceId, setStripePriceId] = useState("");
+  const [isActive, setIsActive] = useState(true);
 
   const resetForm = () => {
     setName("");
@@ -86,6 +88,7 @@ export default function ProductManagementClient({
     setPrice("");
     setInventoryCount("");
     setStripePriceId("");
+    setIsActive(true);
     setIsEditing(false);
     setSelectedProduct(null);
     setErrors([]);
@@ -110,6 +113,7 @@ export default function ProductManagementClient({
     setPrice(product.price.toString());
     setInventoryCount(product.inventory_count.toString());
     setStripePriceId(product.meta?.stripe_price_id || "");
+    setIsActive(product.is_active || false);
     setIsEditing(true);
   };
 
@@ -140,6 +144,7 @@ export default function ProductManagementClient({
           description: formData.get("description") as string,
           price: Number(formData.get("price")),
           inventory_count: Number(formData.get("inventory_count")),
+          is_active: isActive,
           ...(isStripeEnabled && {
             meta: {
               stripe_price_id: formData.get("stripe_price_id") as string,
@@ -153,6 +158,7 @@ export default function ProductManagementClient({
           description: formData.get("description") as string,
           price: Number(formData.get("price")),
           inventory_count: Number(formData.get("inventory_count")),
+          is_active: isActive,
           ...(isStripeEnabled && {
             meta: {
               stripe_price_id: formData.get("stripe_price_id") as string,
@@ -386,6 +392,22 @@ export default function ProductManagementClient({
                 />
               </div>
 
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="h-4 w-4 rounded border-gnome-dark/20 dark:border-white/20 text-gnome-blue focus:ring-gnome-blue"
+                />
+                <Label
+                  htmlFor="is_active"
+                  className="text-gnome-dark dark:text-white cursor-pointer"
+                >
+                  Active (visible to customers)
+                </Label>
+              </div>
+
               {isStripeEnabled ? (
                 <div className="space-y-2">
                   <Label
@@ -475,7 +497,18 @@ export default function ProductManagementClient({
                     className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5"
                   >
                     <TableCell className="text-gnome-dark dark:text-white">
-                      {product.name}
+                      <Link
+                        href={`/ecommerce/products/${product.id}`}
+                        className="hover:text-gnome-blue hover:underline"
+                        target="_blank"
+                      >
+                        {product.name}
+                      </Link>
+                      {!product.is_active && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gnome-dark/10 dark:bg-white/10 text-gnome-dark/70 dark:text-white/70">
+                          Inactive
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-gnome-dark/70 dark:text-white/70">
                       {product.description}
