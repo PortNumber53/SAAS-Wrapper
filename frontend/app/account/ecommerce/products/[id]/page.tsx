@@ -1,6 +1,8 @@
 import { getXataClient } from "@/lib/xata";
 import { notFound } from "next/navigation";
-import { auth } from "@/auth";
+import { auth } from "@/app/auth";
+
+export const runtime = "edge";
 
 const xata = getXataClient();
 

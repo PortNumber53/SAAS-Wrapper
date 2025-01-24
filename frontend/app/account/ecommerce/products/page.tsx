@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import { usePageTitle } from "@/lib/page-title-context";
 import { Package } from "lucide-react";
 import { getProducts } from "./actions";
-import type { ProductsRecord } from "@/vendor/xata";
 import ProductManagementClient from "./ProductManagementClient";
 import type { Product } from "./types";
 
@@ -34,23 +33,11 @@ export default function ProductsPage() {
 
   const loadProducts = async () => {
     try {
+      setIsLoading(true);
       const data = await getProducts();
-      // Convert ProductsRecord to Product
-      const convertedProducts = data.map(
-        (record: ProductsRecord): Product => ({
-          id: record.id,
-          name: record.name || "",
-          description: record.description || "",
-          price: record.price || 0,
-          inventory_count: record.inventory_count || 0,
-          meta: {
-            stripe_price_id: record.meta?.stripe_price_id,
-          },
-        })
-      );
-      setProducts(convertedProducts);
+      setProducts(data);
     } catch (error) {
-      console.error("Failed to load products:", error);
+      console.error("Error loading products:", error);
     } finally {
       setIsLoading(false);
     }

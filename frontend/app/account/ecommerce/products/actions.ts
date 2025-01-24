@@ -5,23 +5,8 @@ import { auth } from "@/app/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { ProductsRecord } from "@/vendor/xata";
-
-type Product = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  inventory_count: number;
-  deleted_at?: string | null;
-  is_active?: boolean;
-  category_id?: string;
-  images?: string[];
-  sku?: string;
-  meta?: {
-    stripe_price_id?: string;
-    [key: string]: string | number | boolean | null | undefined;
-  };
-};
+import { getXataClient } from "@/lib/xata";
+import type { Product } from "./types";
 
 type ProductMeta = {
   stripe_price_id?: string;
@@ -69,43 +54,32 @@ function validateProductData(formData: FormData) {
   return validationResult.data;
 }
 
-export async function getProducts() {
-  const session = await auth();
+const xataClient = getXataClient();
 
-  if (!session) {
-    throw new Error("Unauthorized");
-  }
+export async function getProducts(): Promise<Product[]> {
+  const records = await xata.db.products
+    .filter({
+      is_active: true,
+    })
+    .getAll();
 
-  try {
-    const products = await xata.db.products
-      .filter({
-        deleted_at: null,
-      })
-      .sort("xata_createdat", "desc")
-      .getAll();
-
-    // Convert Xata records to plain objects
-    return products.map((record: ProductsRecord) => {
-      const meta = record.meta || {};
-      const product = {
-        id: record.id,
-        name: record.name || "",
-        description: record.description || "",
-        price: record.price || 0,
-        inventory_count: record.inventory_count || 0,
-        meta: {
-          ...meta,
-          stripe_price_id: meta.stripe_price_id || "",
-        },
-        is_active: record.is_active || false,
-        sku: record.sku || "",
-      };
-      return product;
-    });
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    throw error;
-  }
+  return records.map((record: ProductsRecord) => ({
+    id: record.id,
+    name: record.name || "",
+    description: record.description || "",
+    price: record.price || 0,
+    inventory_count: record.inventory_count || 0,
+    is_active: record.is_active ?? false,
+    category_id: record.category_id,
+    images: record.images,
+    sku: record.sku,
+    meta: record.meta
+      ? {
+          stripe_price_id: record.meta.stripe_price_id,
+          ...record.meta,
+        }
+      : undefined,
+  }));
 }
 
 export async function createProduct(data: {
@@ -123,7 +97,7 @@ export async function createProduct(data: {
   }
 
   try {
-    const record = await xata.db.products.create({
+    const record = await xataClient.db.products.create({
       ...data,
       is_active: true,
     });
@@ -168,7 +142,7 @@ export async function updateProduct(
   }
 
   try {
-    const record = await xata.db.products.update(id, data);
+    const record = await xataClient.db.products.update(id, data);
     if (!record) throw new Error("Product not found");
 
     // Convert to plain object
@@ -200,7 +174,7 @@ export async function deleteProduct(id: string) {
   }
 
   try {
-    await xata.db.products.update(id, {
+    await xataClient.db.products.update(id, {
       deleted_at: new Date().toISOString(),
     });
   } catch (error) {

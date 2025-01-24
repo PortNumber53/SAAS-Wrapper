@@ -7,6 +7,12 @@ import type { Product } from "@/app/account/ecommerce/products/types";
 import { notFound } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { getXataClient } from "@/lib/xata";
+import { auth } from "@/app/auth";
+
+export const runtime = "edge";
+
+const xata = getXataClient();
 
 async function getProduct(id: string): Promise<Product | null> {
   const response = await fetch(`/api/products/${id}`);

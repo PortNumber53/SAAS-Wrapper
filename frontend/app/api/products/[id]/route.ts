@@ -1,5 +1,8 @@
 import { getXataClient } from "@/lib/xata";
 import { NextResponse } from "next/server";
+import { auth } from "@/app/auth";
+
+export const runtime = "edge";
 
 const xata = getXataClient();
 

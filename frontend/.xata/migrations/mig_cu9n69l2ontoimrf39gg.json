@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cu9n69l2ontoimrf39gg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "orders",
+          "column": {
+            "name": "meta",
+            "type": "json",
+            "comment": "",
+            "default": "'{}'"
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cu9n69l2ontoimrf39gg",
+  "parent": "mig_cu52ctd955p070mhn400",
+  "schema": "public",
+  "startedAt": "2025-01-24T11:01:58.654242Z"
+}

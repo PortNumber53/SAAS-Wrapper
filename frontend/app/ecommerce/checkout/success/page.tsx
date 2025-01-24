@@ -6,6 +6,8 @@ import { useCart } from "@/lib/cart-context";
 import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+export const runtime = "edge";
+
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();

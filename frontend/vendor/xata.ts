@@ -1202,6 +1202,14 @@ const tables = [
         comment: "",
       },
       {
+        name: "meta",
+        type: "json",
+        notNull: true,
+        unique: false,
+        defaultValue: "'{}'::json",
+        comment: "",
+      },
+      {
         name: "payment_method",
         type: "text",
         notNull: false,

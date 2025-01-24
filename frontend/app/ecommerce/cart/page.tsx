@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
 import { Input } from "@/components/ui/input";
 
+export const runtime = "edge";
+
 export default function CartPage() {
   const router = useRouter();
   const { items, removeItem, updateQuantity, toggleSaveForLater, getSubtotal } =

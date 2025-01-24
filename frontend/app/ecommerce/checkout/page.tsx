@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { ShoppingCart, CreditCard } from "lucide-react";
 
+export const runtime = "edge";
+
 interface CheckoutResponse {
   url: string;
 }

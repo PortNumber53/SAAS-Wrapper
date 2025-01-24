@@ -5,7 +5,7 @@ export type Product = {
   price: number;
   inventory_count: number;
   deleted_at?: string | null;
-  is_active?: boolean;
+  is_active: boolean;
   category_id?: string;
   images?: string[];
   sku?: string;
