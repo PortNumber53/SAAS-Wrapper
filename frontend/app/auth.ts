@@ -5,6 +5,7 @@ import { getXataClient } from "@/lib/xata";
 import type { User, Account, Profile, Session } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import type { Adapter } from "next-auth/adapters";
+import { UserProfile } from "@/lib/profile-utils";
 
 const xata = getXataClient();
 
@@ -16,6 +17,10 @@ export const authOptions: NextAuthConfig = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
   ],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   pages: {
     signIn: "/login",
     // signOut: '/auth/signout',
@@ -51,11 +56,11 @@ export const authOptions: NextAuthConfig = {
           console.log("Creating new user");
           // Create new user in Xata
           await xata.db.nextauth_users.create({
-            email: user.email,
+            email: user.email || "",
             name: user.name,
             image: user.image,
             emailVerified: new Date().toISOString(),
-            profile: "user", // This is required based on your schema
+            profile: "user" as UserProfile, // Default profile type
           });
         }
         return true;
@@ -64,36 +69,31 @@ export const authOptions: NextAuthConfig = {
         return false;
       }
     },
-    async session({ session, user }: { session: Session; user: User }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       console.log("[Auth] Session callback", {
-        user: { id: user.id, email: user.email },
+        user: { id: token.sub, email: token.email },
         sessionUser: session.user,
         timestamp: new Date().toISOString(),
       });
 
-      if (session.user && user.id) {
-        session.user.id = user.id;
+      if (session.user) {
+        session.user.id = token.sub as string;
+        session.user.profile = (token.profile || "user") as UserProfile;
       }
       return session;
     },
-    async jwt({
-      token,
-      user,
-      account,
-    }: {
-      token: JWT;
-      user?: User;
-      account?: Account | null;
-    }) {
+    async jwt({ token, user }) {
       console.log("[Auth] JWT callback", {
         tokenSub: token.sub,
         userId: user?.id,
-        accountProvider: account?.provider,
+        accountProvider: (user as User & { account?: { provider?: string } })
+          ?.account?.provider,
         timestamp: new Date().toISOString(),
       });
 
       if (user?.id) {
         token.id = user.id;
+        token.profile = "user" as UserProfile;
       }
       return token;
     },

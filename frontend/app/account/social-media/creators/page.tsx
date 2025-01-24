@@ -1,10 +1,10 @@
 "use client";
 
-export const runtime = "edge";
-
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "./columns";
 import type { Creator } from "./columns";
+
+export const runtime = "edge";
 
 export default function CreatorsPage() {
   // TODO: Fetch creators from database

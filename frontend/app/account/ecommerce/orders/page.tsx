@@ -21,6 +21,11 @@ interface Order {
   total: number;
 }
 
+interface ApiResponse {
+  orders: Order[];
+  error?: string;
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +37,17 @@ export default function OrdersPage() {
         if (!response.ok) {
           throw new Error("Failed to fetch orders");
         }
-        const data = await response.json();
+        const result = await response.json();
+        const data = result as ApiResponse;
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        if (!data.orders || !Array.isArray(data.orders)) {
+          throw new Error("Invalid response format");
+        }
+
         setOrders(data.orders);
       } catch (error) {
         console.error("Error fetching orders:", error);

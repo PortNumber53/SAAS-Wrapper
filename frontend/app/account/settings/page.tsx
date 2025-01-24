@@ -1,13 +1,18 @@
-import { auth } from "@/app/auth";
+"use client";
+
+import { useState } from "react";
 import { redirect } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 export const runtime = "edge";
 
-export default async function SettingsPage() {
-  const session = await auth();
+export default function SettingsPage() {
+  const { data: session } = useSession();
+  const [darkMode, setDarkMode] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
 
   if (!session) {
     redirect("/login");
@@ -32,32 +37,32 @@ export default async function SettingsPage() {
                 Dark Mode
               </Label>
               <p className="text-sm text-gnome-dark/70 dark:text-white/70">
-                Toggle between light and dark themes
+                Enable dark mode for a better viewing experience at night
               </p>
             </div>
             <Switch
               id="dark-mode"
-              defaultChecked={true}
-              className="data-[state=checked]:bg-gnome-blue data-[state=unchecked]:bg-gnome-dark/20"
+              checked={darkMode}
+              onCheckedChange={setDarkMode}
             />
           </div>
 
           <div className="flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 rounded-md mb-4">
             <div>
               <Label
-                htmlFor="notifications"
+                htmlFor="email-notifications"
                 className="text-gnome-dark dark:text-white"
               >
                 Email Notifications
               </Label>
               <p className="text-sm text-gnome-dark/70 dark:text-white/70">
-                Receive updates and important alerts
+                Receive email notifications about your account activity
               </p>
             </div>
             <Switch
-              id="notifications"
-              defaultChecked={true}
-              className="data-[state=checked]:bg-gnome-blue data-[state=unchecked]:bg-gnome-dark/20"
+              id="email-notifications"
+              checked={emailNotifications}
+              onCheckedChange={setEmailNotifications}
             />
           </div>
         </div>

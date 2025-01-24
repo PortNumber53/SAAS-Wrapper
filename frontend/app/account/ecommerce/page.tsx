@@ -1,83 +1,91 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { redirect } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ShoppingCartIcon, PackageIcon, ReceiptIcon } from "lucide-react";
-import { signOut } from "@/app/auth";
+import { getStoredIntegrationStatus } from "@/lib/integration-utils";
 
 export const runtime = "edge";
 
 export default function EcommercePage() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
+  const [isStripeEnabled, setIsStripeEnabled] = useState(false);
 
   useEffect(() => {
-    console.log("Ecommerce Page Session Status:", status);
-    console.log("Ecommerce Page Session Data:", session);
+    setIsStripeEnabled(getStoredIntegrationStatus().stripe || false);
+  }, []);
 
-    if (status === "unauthenticated") {
-      console.log("No session found, redirecting to login");
-      router.push("/login");
-    }
-  }, [status, session, router]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut({ redirect: true, redirectTo: "/login" });
-    } catch (error) {
-      console.error("Sign out failed:", error);
-    }
-  };
-
-  if (status === "loading") {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
-      </div>
-    );
-  }
-
-  if (status === "unauthenticated") {
-    return null;
+  if (!session) {
+    redirect("/login");
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="gnome-header flex items-center">
-          <ShoppingCartIcon className="mr-3 w-8 h-8 text-gnome-blue" />
-          E-commerce Dashboard
-        </h1>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="gnome-card hover:shadow-gnome transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gnome-dark dark:text-white">
-              Total Products
-            </h3>
-            <PackageIcon className="w-6 h-6 text-gnome-blue" />
-          </div>
-          <p className="text-3xl font-bold text-gnome-blue mt-2">42</p>
+      <h1 className="gnome-header">E-commerce</h1>
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="gnome-card">
+          <h2 className="text-lg font-medium text-gnome-dark dark:text-white mb-2">
+            Products
+          </h2>
+          <p className="text-gnome-dark/70 dark:text-white/70 mb-4">
+            Manage your products and inventory
+          </p>
+          <a
+            href="/account/ecommerce/products"
+            className="text-gnome-blue hover:text-gnome-blue/90"
+          >
+            View Products →
+          </a>
         </div>
-        <div className="gnome-card hover:shadow-gnome transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gnome-dark dark:text-white">
-              Total Sales
-            </h3>
-            <ReceiptIcon className="w-6 h-6 text-gnome-green" />
-          </div>
-          <p className="text-3xl font-bold text-gnome-green mt-2">$12,345</p>
+
+        <div className="gnome-card">
+          <h2 className="text-lg font-medium text-gnome-dark dark:text-white mb-2">
+            Orders
+          </h2>
+          <p className="text-gnome-dark/70 dark:text-white/70 mb-4">
+            View and manage customer orders
+          </p>
+          <a
+            href="/account/ecommerce/orders"
+            className="text-gnome-blue hover:text-gnome-blue/90"
+          >
+            View Orders →
+          </a>
         </div>
-        <div className="gnome-card hover:shadow-gnome transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gnome-dark dark:text-white">
-              Pending Orders
-            </h3>
-            <ShoppingCartIcon className="w-6 h-6 text-gnome-yellow" />
+
+        {isStripeEnabled ? (
+          <div className="gnome-card">
+            <h2 className="text-lg font-medium text-gnome-dark dark:text-white mb-2">
+              Stripe Dashboard
+            </h2>
+            <p className="text-gnome-dark/70 dark:text-white/70 mb-4">
+              View your Stripe payments and analytics
+            </p>
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gnome-blue hover:text-gnome-blue/90"
+            >
+              Open Stripe →
+            </a>
           </div>
-          <p className="text-3xl font-bold text-gnome-yellow mt-2">7</p>
-        </div>
+        ) : (
+          <div className="gnome-card">
+            <h2 className="text-lg font-medium text-gnome-dark dark:text-white mb-2">
+              Enable Payments
+            </h2>
+            <p className="text-gnome-dark/70 dark:text-white/70 mb-4">
+              Connect Stripe to start accepting payments
+            </p>
+            <a
+              href="/account/integrations"
+              className="text-gnome-blue hover:text-gnome-blue/90"
+            >
+              Setup Stripe →
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );

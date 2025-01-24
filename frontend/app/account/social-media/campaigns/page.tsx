@@ -1,10 +1,10 @@
 "use client";
 
-export const runtime = "edge";
-
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "./columns";
 import type { Campaign } from "./columns";
+
+export const runtime = "edge";
 
 export default function CampaignsPage() {
   // TODO: Fetch campaigns from database
