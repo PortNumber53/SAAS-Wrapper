@@ -1,54 +1,43 @@
-import NextAuth from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
-import { XataAdapter } from "@auth/xata-adapter"
-import { xata } from "@/lib/xata"
+import NextAuth from "next-auth";
+import type { DefaultSession, NextAuthConfig } from "next-auth";
 
-export const runtime = 'edge'
-
-const handler = NextAuth({
-  adapter: XataAdapter(xata) as any,
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code"
-        }
-      }
-    })
-  ],
-  callbacks: {
-    async signIn({ user, account, profile }) {
-      if (!user.email) {
-        return false
-      }
-      return true
-    },
-    async session({ session, token }) {
-      if (session?.user) {
-        session.user.id = token.id
-        session.user.profile = token.profile
-      }
-      return session
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.profile = user.profile
-      }
-      return token
-    },
-  },
-  session: {
-    strategy: "jwt"
-  },
-  pages: {
-    signIn: '/login'
+declare module "next-auth" {
+  interface Session extends DefaultSession {
+    user: {
+      id: string;
+    } & DefaultSession["user"];
   }
-})
+}
 
-export const { auth, signIn, signOut } = handler
-export const { GET, POST } = handler
+export const authOptions: NextAuthConfig = {
+  providers: [
+    // Add your auth providers here
+  ],
+  pages: {
+    signIn: "/auth/signin",
+    // signOut: '/auth/signout',
+    // error: '/auth/error',
+    // verifyRequest: '/auth/verify-request',
+    // newUser: '/auth/new-user'
+  },
+  callbacks: {
+    session: async ({ session, token }) => {
+      if (session?.user) {
+        session.user.id = token.sub as string;
+      }
+      return session;
+    },
+    jwt: async ({ token, user }) => {
+      if (user) {
+        token.sub = user.id;
+      }
+      return token;
+    },
+  },
+};
+
+// Create and export Next-Auth handlers and auth function
+export const {
+  handlers: { GET, POST },
+  auth,
+} = NextAuth(authOptions);
