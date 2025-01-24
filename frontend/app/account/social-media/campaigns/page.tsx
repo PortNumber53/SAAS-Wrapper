@@ -1,12 +1,14 @@
-"use client"
+"use client";
 
-import { DataTable } from "@/components/ui/data-table"
-import { columns } from "./columns"
-import type { Campaign } from "./columns"
+export const runtime = "edge";
+
+import { DataTable } from "@/components/ui/data-table";
+import { columns } from "./columns";
+import type { Campaign } from "./columns";
 
 export default function CampaignsPage() {
   // TODO: Fetch campaigns from database
-  const campaigns: Campaign[] = []
+  const campaigns: Campaign[] = [];
 
   return (
     <div className="space-y-6">
@@ -20,5 +22,5 @@ export default function CampaignsPage() {
         <DataTable columns={columns} data={campaigns} />
       </div>
     </div>
-  )
+  );
 }

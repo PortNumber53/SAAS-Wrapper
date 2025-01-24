@@ -1,24 +1,19 @@
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from "@/components/ui/accordion"
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card"
-import { 
-  Book, 
-  Code, 
-  Settings, 
-  Terminal 
-} from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Book, Code, Settings, Terminal } from "lucide-react";
 
-export const runtime = 'edge'
+export const runtime = "edge";
 
 export default function DocsPage() {
   const documentationSections = [
@@ -28,13 +23,15 @@ export default function DocsPage() {
       content: [
         {
           question: "Installation",
-          answer: "To get started, run `npm install our-package` in your project directory."
+          answer:
+            "To get started, run `npm install our-package` in your project directory.",
         },
         {
           question: "Basic Configuration",
-          answer: "Configure your project by creating a `config.json` file with your specific settings."
-        }
-      ]
+          answer:
+            "Configure your project by creating a `config.json` file with your specific settings.",
+        },
+      ],
     },
     {
       title: "API Reference",
@@ -42,13 +39,15 @@ export default function DocsPage() {
       content: [
         {
           question: "Authentication",
-          answer: "Use API keys and OAuth 2.0 for secure access to our services."
+          answer:
+            "Use API keys and OAuth 2.0 for secure access to our services.",
         },
         {
           question: "Endpoints",
-          answer: "Explore our comprehensive list of REST API endpoints for various functionalities."
-        }
-      ]
+          answer:
+            "Explore our comprehensive list of REST API endpoints for various functionalities.",
+        },
+      ],
     },
     {
       title: "Advanced Configuration",
@@ -56,18 +55,20 @@ export default function DocsPage() {
       content: [
         {
           question: "Environment Variables",
-          answer: "Set up environment-specific configurations for development, staging, and production."
+          answer:
+            "Set up environment-specific configurations for development, staging, and production.",
         },
         {
           question: "Performance Tuning",
-          answer: "Optimize your application with our advanced configuration options."
-        }
-      ]
-    }
-  ]
+          answer:
+            "Optimize your application with our advanced configuration options.",
+        },
+      ],
+    },
+  ];
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-24">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Documentation</h1>
         <p className="text-muted-foreground">
@@ -85,7 +86,10 @@ export default function DocsPage() {
             <CardContent>
               <Accordion type="single" collapsible>
                 {section.content.map((item, itemIndex) => (
-                  <AccordionItem key={itemIndex} value={`item-${index}-${itemIndex}`}>
+                  <AccordionItem
+                    key={itemIndex}
+                    value={`item-${index}-${itemIndex}`}
+                  >
                     <AccordionTrigger>{item.question}</AccordionTrigger>
                     <AccordionContent>
                       <code className="bg-muted p-2 rounded text-sm">
@@ -100,5 +104,5 @@ export default function DocsPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }

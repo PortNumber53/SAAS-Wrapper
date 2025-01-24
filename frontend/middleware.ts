@@ -1,3 +1,4 @@
+import { auth } from "@/app/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
@@ -5,30 +6,47 @@ import { xata } from "@/lib/xata";
 import { handleServerLogout } from "@/lib/auth-utils";
 import { isRouteAccessible } from "@/lib/profile-utils";
 
+const publicPaths = ["/login", "/api/auth"];
+
 export async function middleware(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
+  const { pathname } = request.nextUrl;
+
+  console.log("[Middleware] Processing request", {
+    pathname,
+    timestamp: new Date().toISOString(),
   });
 
-  // Get the pathname
-  const pathname = request.nextUrl.pathname;
-
-  // If no token, redirect to login for protected routes
-  if (!token) {
-    if (
-      pathname.startsWith("/account") ||
-      pathname.startsWith("/admin") ||
-      pathname.startsWith("/e/")
-    ) {
-      return Response.redirect(new URL("/login", request.url));
-    }
+  // Allow public paths
+  if (publicPaths.some((path) => pathname.startsWith(path))) {
+    console.log("[Middleware] Public path, allowing access", { pathname });
     return NextResponse.next();
+  }
+
+  const session = await auth();
+
+  console.log("[Middleware] Auth check result", {
+    pathname,
+    hasSession: !!session,
+    userId: session?.user?.id,
+    timestamp: new Date().toISOString(),
+  });
+
+  // If there's no session and we're not on a public path, redirect to login
+  if (!session) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+
+    console.log("[Middleware] No session, redirecting to login", {
+      from: pathname,
+      to: loginUrl.toString(),
+    });
+
+    return NextResponse.redirect(loginUrl);
   }
 
   try {
     // Check if the user exists in the database
-    const user = await xata.db.nextauth_users.read(token.sub as string);
+    const user = await xata.db.nextauth_users.read(session.user.id as string);
     if (!user) {
       return handleServerLogout(request, "USER_NOT_FOUND");
     }
@@ -49,12 +67,13 @@ export async function middleware(request: NextRequest) {
 // Specify which routes this middleware should run on
 export const config = {
   matcher: [
-    // Protected routes
-    "/account/:path*",
-    "/admin/:path*",
-    "/e/:path*",
-    "/dashboard/:path*",
-    "/billing/:path*",
-    "/settings/:path*",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

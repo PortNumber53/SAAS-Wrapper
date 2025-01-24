@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { getXataClient } from "@/lib/xata";
 import { NextResponse } from "next/server";
 import { auth } from "@/app/auth";

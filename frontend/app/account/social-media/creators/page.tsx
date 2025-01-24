@@ -1,12 +1,14 @@
-"use client"
+"use client";
 
-import { DataTable } from "@/components/ui/data-table"
-import { columns } from "./columns"
-import type { Creator } from "./columns"
+export const runtime = "edge";
+
+import { DataTable } from "@/components/ui/data-table";
+import { columns } from "./columns";
+import type { Creator } from "./columns";
 
 export default function CreatorsPage() {
   // TODO: Fetch creators from database
-  const creators: Creator[] = []
+  const creators: Creator[] = [];
 
   return (
     <div className="space-y-6">
@@ -20,5 +22,5 @@ export default function CreatorsPage() {
         <DataTable columns={columns} data={creators} />
       </div>
     </div>
-  )
+  );
 }

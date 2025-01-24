@@ -1,43 +1,33 @@
-export const runtime = 'edge';
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
 
-import { signIn } from "@/app/auth";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { AUTH_ERROR_MESSAGES } from "@/lib/auth-utils";
+export const runtime = "edge";
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams?: { error?: string };
-}) {
-  const errorMessage = searchParams?.error
-    ? AUTH_ERROR_MESSAGES[searchParams.error as keyof typeof AUTH_ERROR_MESSAGES] || AUTH_ERROR_MESSAGES.GENERAL_ERROR
-    : null;
+export const metadata: Metadata = {
+  title: "Login",
+  description: "Login to your account",
+};
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Sign In</h1>
-
-        {errorMessage && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <span className="block sm:inline">{errorMessage}</span>
-          </div>
-        )}
-
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", {
-              redirectTo: "/account/dashboard"
-            });
-          }}
-        >
-          <Button type="submit" className="w-full">
-            Sign in with Google
-          </Button>
-        </form>
+const LoadingFallback = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+      <div className="flex flex-col space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Loading...</h1>
       </div>
     </div>
+  </div>
+);
+
+const LoginForm = dynamic(() => import("./login-form"), {
+  ssr: true,
+  loading: LoadingFallback,
+});
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }

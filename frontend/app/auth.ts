@@ -1,19 +1,15 @@
-import NextAuth from "next-auth";
-import type { DefaultSession, NextAuthConfig } from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import { XataAdapter } from "@auth/xata-adapter";
 import { getXataClient } from "@/lib/xata";
-
-declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-    } & DefaultSession["user"];
-  }
-}
+import type { User, Account, Profile, Session } from "next-auth";
+import type { JWT } from "next-auth/jwt";
+import type { Adapter } from "next-auth/adapters";
 
 const xata = getXataClient();
 
 export const authOptions: NextAuthConfig = {
+  adapter: XataAdapter(xata) as Adapter,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -28,7 +24,20 @@ export const authOptions: NextAuthConfig = {
     // newUser: '/auth/new-user'
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({
+      user,
+      account,
+      profile,
+    }: {
+      user: User;
+      account: Account | null;
+      profile?: Profile;
+    }) {
+      console.log("[Auth] SignIn callback", {
+        user: { id: user.id, email: user.email },
+        account: { provider: account?.provider, type: account?.type },
+        timestamp: new Date().toISOString(),
+      });
       try {
         console.log("Signing in user:", user);
         // Check if user exists
@@ -55,30 +64,36 @@ export const authOptions: NextAuthConfig = {
         return false;
       }
     },
-    async session({ session, token }) {
-      if (session?.user) {
-        // Get user from Xata to ensure we have the latest data
-        const xataUser = await xata.db.nextauth_users
-          .filter({
-            email: session.user.email,
-          })
-          .getFirst();
-        if (xataUser) {
-          session.user.id = xataUser.id;
-        }
+    async session({ session, user }: { session: Session; user: User }) {
+      console.log("[Auth] Session callback", {
+        user: { id: user.id, email: user.email },
+        sessionUser: session.user,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (session.user && user.id) {
+        session.user.id = user.id;
       }
       return session;
     },
-    async jwt({ token, user, account, profile }) {
-      if (user) {
-        const xataUser = await xata.db.nextauth_users
-          .filter({
-            email: user.email,
-          })
-          .getFirst();
-        if (xataUser) {
-          token.sub = xataUser.id;
-        }
+    async jwt({
+      token,
+      user,
+      account,
+    }: {
+      token: JWT;
+      user?: User;
+      account?: Account | null;
+    }) {
+      console.log("[Auth] JWT callback", {
+        tokenSub: token.sub,
+        userId: user?.id,
+        accountProvider: account?.provider,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (user?.id) {
+        token.id = user.id;
       }
       return token;
     },
@@ -88,12 +103,10 @@ export const authOptions: NextAuthConfig = {
       console.log("New user created:", user);
     },
   },
+  debug: true, // Enable debug logs in production temporarily
 };
 
-// Create and export Next-Auth handlers and auth function
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth(authOptions);
+const { auth, handlers, signIn, signOut } = NextAuth(authOptions);
+
+export { auth, signIn, signOut };
+export const { GET, POST } = handlers;

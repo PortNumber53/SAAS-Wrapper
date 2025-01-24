@@ -1,12 +1,14 @@
-"use client"
+"use client";
 
-import { DataTable } from "@/components/ui/data-table"
-import { columns } from "./columns"
-import type { Post } from "./columns"
+export const runtime = "edge";
+
+import { DataTable } from "@/components/ui/data-table";
+import { columns } from "./columns";
+import type { Post } from "./columns";
 
 export default function PostsPage() {
   // TODO: Fetch posts from database
-  const posts: Post[] = []
+  const posts: Post[] = [];
 
   return (
     <div className="space-y-6">
@@ -20,5 +22,5 @@ export default function PostsPage() {
         <DataTable columns={columns} data={posts} />
       </div>
     </div>
-  )
+  );
 }
