@@ -98,22 +98,20 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        <ToastProvider>
-          <PageTitleProvider>
-            {pathname?.startsWith("/account") ? <TopNavbar /> : <Navbar />}
-            <div className="flex flex-1">
-              <main className="flex-1">
-                {status === "loading" ? (
-                  <div className="flex items-center justify-center h-screen">
-                    Loading...
-                  </div>
-                ) : (
-                  children
-                )}
-              </main>
-            </div>
-          </PageTitleProvider>
-        </ToastProvider>
+        <PageTitleProvider>
+          {pathname?.startsWith("/account") ? <TopNavbar /> : <Navbar />}
+          <div className="flex flex-1">
+            <main className="flex-1">
+              {status === "loading" ? (
+                <div className="flex items-center justify-center h-screen">
+                  Loading...
+                </div>
+              ) : (
+                children
+              )}
+            </main>
+          </div>
+        </PageTitleProvider>
       </ThemeProvider>
     </div>
   );

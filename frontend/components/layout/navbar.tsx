@@ -84,7 +84,16 @@ export function Navbar() {
             {/* Authentication and User Menu */}
             <div className="flex items-center space-x-4 min-h-[40px]">
               {session ? (
-                <AccountDropdown />
+                <>
+                  <Link
+                    href="/ecommerce/cart"
+                    className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Cart</span>
+                  </Link>
+                  <AccountDropdown />
+                </>
               ) : (
                 <div className="w-[180px] min-h-[40px] flex items-center">
                   <Link href="/login" className="text-sm font-medium">
