@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useSession } from "next-auth/react"
-import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   HomeIcon,
   BookIcon,
@@ -14,25 +14,25 @@ import {
   Settings,
   ShoppingCart,
   List,
-  LogOut
-} from "lucide-react"
+  LogOut,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { handleLogout } from "@/lib/auth-utils"
-import { AccountDropdown } from "@/components/account-dropdown"
+} from "@/components/ui/dropdown-menu";
+import { handleLogout } from "@/lib/auth-utils";
+import { AccountDropdown } from "@/components/account-dropdown";
 
 export function Navbar() {
-  const { data: session } = useSession()
-  const router = useRouter()
-  const pathname = usePathname()
+  const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Check if the current path is within the account section
-  const isAccountPage = pathname && pathname.startsWith('/account/')
+  const isAccountPage = pathname && pathname.startsWith("/account/");
 
   return (
     <>
@@ -97,5 +97,5 @@ export function Navbar() {
         </nav>
       )}
     </>
-  )
+  );
 }

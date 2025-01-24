@@ -747,6 +747,14 @@ const tables = [
         comment: "",
       },
       {
+        name: "profile",
+        type: "text",
+        notNull: true,
+        unique: false,
+        defaultValue: "'user'::text",
+        comment: "",
+      },
+      {
         name: "stripeCustomerId",
         type: "text",
         notNull: false,

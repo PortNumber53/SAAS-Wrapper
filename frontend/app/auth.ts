@@ -1,14 +1,11 @@
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import { XataAdapter } from "@auth/xata-adapter";
-import { xata } from "@/lib/xata";
+import NextAuth from "next-auth"
+import GoogleProvider from "next-auth/providers/google"
+import { XataAdapter } from "@auth/xata-adapter"
+import { xata } from "@/lib/xata"
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut
-} = NextAuth({
+export const runtime = 'edge'
+
+const handler = NextAuth({
   adapter: XataAdapter(xata) as any,
   providers: [
     GoogleProvider({
@@ -26,21 +23,23 @@ export const {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (!user.email) {
-        return false;
+        return false
       }
-      return true;
+      return true
     },
-    async session({ session, token }: any) {
+    async session({ session, token }) {
       if (session?.user) {
-        session.user.id = token.id;
+        session.user.id = token.id
+        session.user.profile = token.profile
       }
-      return session;
+      return session
     },
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = user.id
+        token.profile = user.profile
       }
-      return token;
+      return token
     },
   },
   session: {
@@ -49,4 +48,7 @@ export const {
   pages: {
     signIn: '/login'
   }
-});
+})
+
+export const { auth, signIn, signOut } = handler
+export const { GET, POST } = handler
