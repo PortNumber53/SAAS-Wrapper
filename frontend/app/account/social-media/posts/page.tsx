@@ -3,12 +3,19 @@
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "./columns";
 import type { Post } from "./columns";
+import { useEffect } from "react";
+import { usePageTitle } from "@/lib/page-title-context";
+import { MessageSquare } from "lucide-react";
 
 export const runtime = "edge";
 
 export default function PostsPage() {
-  // TODO: Fetch posts from database
+  const { setPageTitle } = usePageTitle();
   const posts: Post[] = [];
+
+  useEffect(() => {
+    setPageTitle("Social Media Posts", MessageSquare);
+  }, [setPageTitle]);
 
   return (
     <div className="container mx-auto px-4 py-8">

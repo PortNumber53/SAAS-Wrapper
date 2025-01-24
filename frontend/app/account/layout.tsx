@@ -30,6 +30,7 @@ type Section =
   | "E-commerce"
   | "Products"
   | "Orders"
+  | "Subscriptions"
   | "Profile"
   | "Settings"
   | "Billing"
@@ -56,6 +57,8 @@ export default function AccountLayout({
     if (path.includes("/account/integrations")) return "Integrations";
     if (path.includes("/account/ecommerce/products")) return "Products";
     if (path.includes("/account/ecommerce/orders")) return "Orders";
+    if (path.includes("/account/ecommerce/subscriptions"))
+      return "Subscriptions";
     if (path.includes("/account/ecommerce")) return "E-commerce";
     if (path.includes("/account/social-media/creators")) return "Creators";
     if (path.includes("/account/social-media/campaigns")) return "Campaigns";
@@ -101,7 +104,13 @@ export default function AccountLayout({
         </h3>
         <div className="space-y-1">
           {(
-            ["Integrations", "E-commerce", "Products", "Orders"] as Section[]
+            [
+              "Integrations",
+              "E-commerce",
+              "Products",
+              "Orders",
+              "Subscriptions",
+            ] as Section[]
           ).map((section) => (
             <Link
               key={section}
@@ -122,6 +131,7 @@ export default function AccountLayout({
               {section === "E-commerce" && <ShoppingCart className="h-5 w-5" />}
               {section === "Products" && <List className="h-5 w-5" />}
               {section === "Orders" && <List className="h-5 w-5" />}
+              {section === "Subscriptions" && <List className="h-5 w-5" />}
               <span>{section}</span>
             </Link>
           ))}

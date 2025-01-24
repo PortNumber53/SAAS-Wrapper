@@ -23,6 +23,11 @@ type Product = {
   };
 };
 
+type ProductMeta = {
+  stripe_price_id?: string;
+  [key: string]: string | undefined;
+};
+
 // Product validation schema
 const ProductSchema = z.object({
   name: z
@@ -72,36 +77,45 @@ export async function getProducts() {
   }
 
   try {
-    // Use getAll instead of getMany to handle pagination
     const products = await xata.db.products
       .filter({
         deleted_at: null,
       })
-      .getAll(); // This will automatically handle pagination
+      .sort("xata_createdat", "desc")
+      .getAll();
 
     // Convert Xata records to plain objects
-    const plainProducts = products.map((product: ProductsRecord) => ({
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      inventory_count: product.inventory_count,
-      is_active: product.is_active,
-      category_id: product.category_id?.id, // Handle linked record
-      deleted_at: product.deleted_at,
-      images: product.images,
-      sku: product.sku,
-      meta: product.meta || {},
-    }));
-
-    return plainProducts as Product[];
+    return products.map((record: ProductsRecord) => {
+      const meta = record.meta || {};
+      const product = {
+        id: record.id,
+        name: record.name || "",
+        description: record.description || "",
+        price: record.price || 0,
+        inventory_count: record.inventory_count || 0,
+        meta: {
+          ...meta,
+          stripe_price_id: meta.stripe_price_id || "",
+        },
+        is_active: record.is_active || false,
+        sku: record.sku || "",
+      };
+      return product;
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
     throw error;
   }
 }
 
-export async function createProduct(formData: FormData) {
+export async function createProduct(data: {
+  name: string;
+  description?: string;
+  price: number;
+  inventory_count: number;
+  sku?: string;
+  meta?: ProductMeta;
+}) {
   const session = await auth();
 
   if (!session) {
@@ -109,104 +123,76 @@ export async function createProduct(formData: FormData) {
   }
 
   try {
-    // Validate input first
-    const validatedData = validateProductData(formData);
-    const { stripe_price_id, ...productData } = validatedData;
-
-    // Prepare meta data
-    const meta = stripe_price_id ? { stripe_price_id } : {};
-
-    const product = await xata.db.products.create({
-      ...productData,
-      meta,
+    const record = await xata.db.products.create({
+      ...data,
+      is_active: true,
     });
 
-    // Convert Xata record to plain object
-    const plainProduct = {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      inventory_count: product.inventory_count,
-      is_active: product.is_active,
-      category_id: product.category_id,
-      deleted_at: product.deleted_at,
-      images: product.images,
-      sku: product.sku,
-      meta: product.meta || {},
+    // Convert to plain object
+    const meta = record.meta || {};
+    return {
+      id: record.id,
+      name: record.name || "",
+      description: record.description || "",
+      price: record.price || 0,
+      inventory_count: record.inventory_count || 0,
+      meta: {
+        ...meta,
+        stripe_price_id: meta.stripe_price_id || "",
+      },
+      is_active: record.is_active || false,
+      sku: record.sku || "",
     };
-
-    revalidatePath("/account/ecommerce/products");
-    return plainProduct;
   } catch (error) {
     console.error("Error creating product:", error);
     throw error;
   }
 }
 
-export async function updateProduct(formData: FormData) {
+export async function updateProduct(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    price?: number;
+    inventory_count?: number;
+    is_active?: boolean;
+    sku?: string;
+    meta?: ProductMeta;
+  }
+) {
   const session = await auth();
 
   if (!session) {
     throw new Error("Unauthorized");
   }
 
-  const id = formData.get("id") as string;
-  if (!id) {
-    throw new Error("Product ID is required");
-  }
-
   try {
-    // Get existing product first
-    const existingProduct = await xata.db.products.read(id);
-    if (!existingProduct) {
-      throw new Error("Product not found");
-    }
+    const record = await xata.db.products.update(id, data);
+    if (!record) throw new Error("Product not found");
 
-    // Validate input
-    const validatedData = validateProductData(formData);
-    const { stripe_price_id, ...productData } = validatedData;
-
-    // Prepare meta data - preserve existing meta fields
-    const existingMeta = existingProduct.meta || {};
-    const meta = {
-      ...existingMeta,
-      stripe_price_id: stripe_price_id || null,
+    // Convert to plain object
+    const meta = record.meta || {};
+    return {
+      id: record.id,
+      name: record.name || "",
+      description: record.description || "",
+      price: record.price || 0,
+      inventory_count: record.inventory_count || 0,
+      meta: {
+        ...meta,
+        stripe_price_id: meta.stripe_price_id || "",
+      },
+      is_active: record.is_active || false,
+      sku: record.sku || "",
     };
-
-    const updatedProduct = await xata.db.products.update(id, {
-      ...productData,
-      meta,
-    });
-
-    if (!updatedProduct) {
-      throw new Error("Failed to update product");
-    }
-
-    // Convert Xata record to plain object
-    const plainProduct = {
-      id: updatedProduct.id,
-      name: updatedProduct.name,
-      description: updatedProduct.description,
-      price: updatedProduct.price,
-      inventory_count: updatedProduct.inventory_count,
-      is_active: updatedProduct.is_active,
-      category_id: updatedProduct.category_id,
-      deleted_at: updatedProduct.deleted_at,
-      images: updatedProduct.images,
-      sku: updatedProduct.sku,
-      meta: updatedProduct.meta || {},
-    };
-
-    revalidatePath("/account/ecommerce/products");
-    return plainProduct;
   } catch (error) {
     console.error("Error updating product:", error);
     throw error;
   }
 }
 
-export async function deleteProduct(formData: FormData) {
+export async function deleteProduct(id: string) {
   const session = await auth();
 
   if (!session) {
@@ -214,30 +200,9 @@ export async function deleteProduct(formData: FormData) {
   }
 
   try {
-    const productId = formData.get("id") as string;
-
-    const product = await xata.db.products.update(productId, {
+    await xata.db.products.update(id, {
       deleted_at: new Date().toISOString(),
     });
-
-    // Convert Xata record to plain object
-    const plainProduct = {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      inventory_count: product.inventory_count,
-      is_active: product.is_active,
-      category_id: product.category_id,
-      deleted_at: product.deleted_at,
-      images: product.images,
-      sku: product.sku,
-      meta: product.meta || {},
-      stripe_price_id: product.meta?.stripe_price_id,
-    };
-
-    revalidatePath("/account/ecommerce/products");
-    return plainProduct;
   } catch (error) {
     console.error("Error deleting product:", error);
     throw error;

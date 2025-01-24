@@ -3,12 +3,19 @@
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "./columns";
 import type { Creator } from "./columns";
+import { useEffect } from "react";
+import { usePageTitle } from "@/lib/page-title-context";
+import { Users } from "lucide-react";
 
 export const runtime = "edge";
 
 export default function CreatorsPage() {
-  // TODO: Fetch creators from database
+  const { setPageTitle } = usePageTitle();
   const creators: Creator[] = [];
+
+  useEffect(() => {
+    setPageTitle("Social Media Creators", Users);
+  }, [setPageTitle]);
 
   return (
     <div className="container mx-auto px-4 py-8">

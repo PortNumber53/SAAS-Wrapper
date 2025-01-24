@@ -1,29 +1,68 @@
-import { auth } from "@/app/auth";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import ProductManagementClient from "./ProductManagementClient";
+import { usePageTitle } from "@/lib/page-title-context";
+import { Package } from "lucide-react";
 import { getProducts } from "./actions";
-import type { Product } from "./types"; // We'll create this file next
+import type { ProductsRecord } from "@/vendor/xata";
+import ProductManagementClient from "./ProductManagementClient";
+import type { Product } from "./types";
 
 export const runtime = "edge";
 
-export default async function ProductManagementPage() {
-  const session = await auth();
+export default function ProductsPage() {
+  const { data: session } = useSession();
+  const { setPageTitle } = usePageTitle();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!session?.user?.id) {
+  useEffect(() => {
+    setPageTitle("Products", Package);
+  }, [setPageTitle]);
+
+  useEffect(() => {
+    if (session) {
+      loadProducts();
+    }
+  }, [session]);
+
+  if (!session) {
     redirect("/login");
   }
 
-  try {
-    const products = await getProducts();
-
-    if (!Array.isArray(products)) {
-      console.error("Products is not an array:", products);
-      return <ProductManagementClient products={[]} />;
+  const loadProducts = async () => {
+    try {
+      const data = await getProducts();
+      // Convert ProductsRecord to Product
+      const convertedProducts = data.map(
+        (record: ProductsRecord): Product => ({
+          id: record.id,
+          name: record.name || "",
+          description: record.description || "",
+          price: record.price || 0,
+          inventory_count: record.inventory_count || 0,
+          meta: {
+            stripe_price_id: record.meta?.stripe_price_id,
+          },
+        })
+      );
+      setProducts(convertedProducts);
+    } catch (error) {
+      console.error("Failed to load products:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    return <ProductManagementClient products={products} />;
-  } catch (error) {
-    console.error("Failed to fetch products:", error);
-    return <ProductManagementClient products={[]} />;
+  if (isLoading) {
+    return <div className="p-8">Loading...</div>;
   }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <ProductManagementClient products={products} />
+    </div>
+  );
 }

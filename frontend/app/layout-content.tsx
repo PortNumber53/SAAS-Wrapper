@@ -11,6 +11,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/use-toast";
 import { AccountDropdown } from "@/components/account-dropdown";
+import { PageTitleProvider, usePageTitle } from "@/lib/page-title-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -19,22 +20,9 @@ const inter = Inter({
 
 function TopNavbar() {
   const pathname = usePathname();
+  const { title, icon: Icon } = usePageTitle();
 
   if (pathname?.startsWith("/account")) {
-    let managementTitle = "Profile Management";
-    let managementIcon = <User className="h-5 w-5" />;
-
-    if (pathname.includes("/ecommerce")) {
-      managementTitle = "E-commerce Management";
-      managementIcon = <ShoppingCart className="h-5 w-5" />;
-    } else if (pathname.includes("/settings")) {
-      managementTitle = "Settings Management";
-      managementIcon = <Settings className="h-5 w-5" />;
-    } else if (pathname.includes("/billing")) {
-      managementTitle = "Billing Management";
-      managementIcon = <CreditCard className="h-5 w-5" />;
-    }
-
     return (
       <div className="w-full bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -47,8 +35,8 @@ function TopNavbar() {
             </span>
           </Link>
           <div className="ml-6 flex items-center space-x-2">
-            {managementIcon}
-            <span>{managementTitle}</span>
+            {Icon && <Icon className="h-5 w-5" />}
+            <span>{title || "Dashboard"}</span>
           </div>
         </div>
         <AccountDropdown />
@@ -111,18 +99,20 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         <ToastProvider>
-          {pathname?.startsWith("/account") ? <TopNavbar /> : <Navbar />}
-          <div className="flex flex-1">
-            <main className="flex-1">
-              {status === "loading" ? (
-                <div className="flex items-center justify-center h-screen">
-                  Loading...
-                </div>
-              ) : (
-                children
-              )}
-            </main>
-          </div>
+          <PageTitleProvider>
+            {pathname?.startsWith("/account") ? <TopNavbar /> : <Navbar />}
+            <div className="flex flex-1">
+              <main className="flex-1">
+                {status === "loading" ? (
+                  <div className="flex items-center justify-center h-screen">
+                    Loading...
+                  </div>
+                ) : (
+                  children
+                )}
+              </main>
+            </div>
+          </PageTitleProvider>
         </ToastProvider>
       </ThemeProvider>
     </div>

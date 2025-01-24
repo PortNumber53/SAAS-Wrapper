@@ -4,16 +4,20 @@ import { useEffect, useState } from "react";
 import { redirect } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getStoredIntegrationStatus } from "@/lib/integration-utils";
+import { usePageTitle } from "@/lib/page-title-context";
+import { ShoppingCart } from "lucide-react";
 
 export const runtime = "edge";
 
 export default function EcommercePage() {
   const { data: session } = useSession();
   const [isStripeEnabled, setIsStripeEnabled] = useState(false);
+  const { setPageTitle } = usePageTitle();
 
   useEffect(() => {
     setIsStripeEnabled(getStoredIntegrationStatus().stripe || false);
-  }, []);
+    setPageTitle("E-commerce Overview", ShoppingCart);
+  }, [setPageTitle]);
 
   if (!session) {
     redirect("/login");
@@ -21,7 +25,7 @@ export default function EcommercePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="gnome-header">E-commerce</h1>
+      <h1 className="gnome-header">E-commerce Overview</h1>
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="gnome-card">
           <h2 className="text-lg font-medium text-gnome-dark dark:text-white mb-2">

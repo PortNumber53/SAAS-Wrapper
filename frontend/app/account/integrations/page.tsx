@@ -1,12 +1,27 @@
 "use client";
 
-export const runtime = "edge";
-
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+import { usePageTitle } from "@/lib/page-title-context";
+import { Plug } from "lucide-react";
 import { StripeIntegration } from "@/components/integrations/stripe-integration";
 import { InstagramIntegration } from "@/components/integrations/instagram-integration";
 
+export const runtime = "edge";
+
 export default function IntegrationsPage() {
+  const { data: session } = useSession();
+  const { setPageTitle } = usePageTitle();
+
+  useEffect(() => {
+    setPageTitle("Integrations", Plug);
+  }, [setPageTitle]);
+
+  if (!session) {
+    redirect("/login");
+  }
+
   const [activeIntegration, setActiveIntegration] = useState<string | null>(
     null
   );

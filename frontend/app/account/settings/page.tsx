@@ -1,18 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { redirect } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { usePageTitle } from "@/lib/page-title-context";
+import { Settings } from "lucide-react";
 
 export const runtime = "edge";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+  const { setPageTitle } = usePageTitle();
   const [darkMode, setDarkMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
+
+  useEffect(() => {
+    setPageTitle("Account Settings", Settings);
+  }, [setPageTitle]);
 
   if (!session) {
     redirect("/login");

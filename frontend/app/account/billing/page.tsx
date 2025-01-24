@@ -1,87 +1,113 @@
-import { auth } from "@/app/auth"
-import { redirect } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { xata } from "@/lib/xata"
-import { Kysely } from 'kysely'
-import { XataDialect } from '@xata.io/kysely'
-import { format } from "date-fns"
-import type { DatabaseSchema } from "@/vendor/xata"
-import type { SubscriptionsRecord } from "@/vendor/xata"
+"use client";
 
-const db = new Kysely<DatabaseSchema>({
-  dialect: new XataDialect({ xata })
-});
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+import { usePageTitle } from "@/lib/page-title-context";
+import { CreditCard } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import type { SubscriptionsRecord } from "@/vendor/xata";
+import { getCurrentSubscription, getBillingHistory } from "./actions";
+import { formatAmount } from "@/lib/currency";
 
-export const runtime = 'edge'
+export const runtime = "edge";
 
-// Helper function to format amount from cents to dollars
-function formatAmount(amountInCents?: number | null): string {
-  if (!amountInCents) return '29.99'
-  return (amountInCents / 100).toFixed(2)
-}
+export default function BillingPage() {
+  const { data: session } = useSession();
+  const { setPageTitle } = usePageTitle();
+  const [subscription, setSubscription] = useState<SubscriptionsRecord | null>(
+    null
+  );
+  const [billingHistory, setBillingHistory] = useState<SubscriptionsRecord[]>(
+    []
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-export default async function BillingPage() {
-  const session = await auth()
+  useEffect(() => {
+    setPageTitle("Billing & Payments", CreditCard);
+  }, [setPageTitle]);
 
-  if (!session?.user) {
-    redirect('/login')
+  useEffect(() => {
+    async function fetchBillingData() {
+      if (!session?.user?.id) return;
+
+      try {
+        const [currentSubscription, history] = await Promise.all([
+          getCurrentSubscription(session.user.id),
+          getBillingHistory(session.user.id),
+        ]);
+
+        setSubscription(currentSubscription);
+        setBillingHistory(history || []);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchBillingData();
+  }, [session?.user?.id]);
+
+  if (!session) {
+    redirect("/login");
   }
 
-  // Fetch the user's active subscription
-  if (!session?.user?.id) {
-    redirect('/login')
-  }
-
-  console.log('Debugging Billing Page - User ID:', session.user.id)
-
-  try {
-    const userSubscription = await db
-      .selectFrom('subscriptions')
-      .innerJoin('nextauth_users', 'subscriptions.user', 'nextauth_users.xata_id')
-      .where('nextauth_users.xata_id', '=', session.user.id)
-      .where('subscriptions.status', '=', 'active')
-      .orderBy('subscriptions.currentPeriodEnd', 'desc')
-      .selectAll()
-      .executeTakeFirst() as SubscriptionsRecord | null
-
-    console.log('User Subscription:', userSubscription ? JSON.stringify(userSubscription, null, 2) : 'No active subscription')
-
-    const billingHistory = await db
-      .selectFrom('subscriptions')
-      .innerJoin('nextauth_users', 'subscriptions.user', 'nextauth_users.xata_id')
-      .where('nextauth_users.xata_id', '=', session.user.id)
-      .orderBy('subscriptions.currentPeriodEnd', 'desc')
-      .selectAll()
-      .execute() as SubscriptionsRecord[]
-
-    console.log('Billing History:', billingHistory.length > 0 ? JSON.stringify(billingHistory, null, 2) : 'No billing history')
-
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Billing</h1>
+        <h1 className="gnome-header">Billing & Payments</h1>
+        <div className="gnome-card">
+          <p className="text-gnome-dark/70 dark:text-white/70">
+            Loading billing information...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="gnome-header">Billing & Payments</h1>
+        <Card>
+          <CardContent>
+            <p>Error loading billing information</p>
+            <details>
+              <summary>Error Details</summary>
+              <pre>{error.message}</pre>
+            </details>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="gnome-header">Billing & Payments</h1>
+      <div className="gnome-card">
+        <p className="text-gnome-dark/70 dark:text-white/70">
+          Manage your billing information and view payment history.
+        </p>
         <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Current Subscription</CardTitle>
             </CardHeader>
             <CardContent>
-              {userSubscription ? (
+              {subscription ? (
                 <div className="space-y-2">
-                  <p>Status: {userSubscription.status}</p>
-                  <p>Amount: ${formatAmount(userSubscription.planAmount)}</p>
+                  <p>Status: {subscription.status}</p>
+                  <p>Amount: ${formatAmount(subscription.planAmount)}</p>
                   <p>
-                    Current Period End:{' '}
-                    {userSubscription.currentPeriodEnd
-                      ? format(new Date(userSubscription.currentPeriodEnd), 'PPP')
-                      : 'N/A'}
+                    Current Period End:{" "}
+                    {subscription.currentPeriodEnd
+                      ? format(new Date(subscription.currentPeriodEnd), "PPP")
+                      : "N/A"}
                   </p>
-                  {/* Debug Information */}
-                  <details>
-                    <summary>Debug Subscription Details</summary>
-                    <pre>{JSON.stringify(userSubscription, null, 2)}</pre>
-                  </details>
                 </div>
               ) : (
                 <div>
@@ -91,7 +117,9 @@ export default async function BillingPage() {
                     <ul>
                       <li>Ensure you completed the Stripe checkout</li>
                       <li>Check if Stripe webhook events were processed</li>
-                      <li>Verify your Stripe customer and subscription status</li>
+                      <li>
+                        Verify your Stripe customer and subscription status
+                      </li>
                     </ul>
                   </details>
                 </div>
@@ -115,11 +143,14 @@ export default async function BillingPage() {
                   </thead>
                   <tbody>
                     {billingHistory.map((subscription) => (
-                      <tr key={subscription.xata_id} className="border-b">
+                      <tr key={subscription.id} className="border-b">
                         <td className="py-2 px-4">
                           {subscription.currentPeriodEnd
-                            ? format(new Date(subscription.currentPeriodEnd), 'PPP')
-                            : 'N/A'}
+                            ? format(
+                                new Date(subscription.currentPeriodEnd),
+                                "PPP"
+                              )
+                            : "N/A"}
                         </td>
                         <td className="text-right py-2 px-4">
                           ${formatAmount(subscription.planAmount)}
@@ -132,36 +163,12 @@ export default async function BillingPage() {
               ) : (
                 <div>
                   <p>No billing history found</p>
-                  <details>
-                    <summary>Possible Reasons</summary>
-                    <ul>
-                      <li>Subscription not yet processed</li>
-                      <li>Webhook events might not have been received</li>
-                      <li>Database synchronization issue</li>
-                    </ul>
-                  </details>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-    )
-  } catch (error) {
-    console.error('Billing Page Error:', error)
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Billing</h1>
-        <Card>
-          <CardContent>
-            <p>Error loading billing information</p>
-            <details>
-              <summary>Error Details</summary>
-              <pre>{JSON.stringify(error, null, 2)}</pre>
-            </details>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+    </div>
+  );
 }
