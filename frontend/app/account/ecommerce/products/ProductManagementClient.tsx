@@ -249,176 +249,36 @@ export default function ProductManagementClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="gnome-header">Manage Products</h1>
-      </div>
-
-      {/* Product Form */}
-      <div className="gnome-card">
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Fixed header and form section */}
+      <div className="flex-none">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gnome-dark dark:text-white">
-            {isEditing ? "Edit Product" : "Add New Product"}
-          </h2>
-          {isEditing && (
-            <Button
-              onClick={resetForm}
-              variant="outline"
-              size="sm"
-              className="border-2 border-gnome-dark/20 dark:border-white/20 hover:bg-gnome-dark/5 dark:hover:bg-white/5"
-            >
-              Cancel Edit
-            </Button>
-          )}
+          <h1 className="gnome-header">Manage Products</h1>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {errors.length > 0 && (
-            <Alert
-              variant="destructive"
-              className="mb-6 border-gnome-red/20 bg-gnome-red/10"
-            >
-              <AlertCircle className="h-4 w-4 text-gnome-red" />
-              <AlertDescription>
-                <ul className="list-disc list-inside">
-                  {errors.map((error) => (
-                    <li
-                      key={`${error.field}-${error.message}`}
-                      className="text-sm text-gnome-red"
-                    >
-                      {getErrorMessage(error)}
-                    </li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="name"
-                  className="text-gnome-dark dark:text-white"
+        {/* Product Form */}
+        <div className="gnome-card mb-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gnome-dark dark:text-white">
+              {isEditing ? "Edit Product" : "Add New Product"}
+            </h2>
+            <div className="flex space-x-3">
+              {isEditing && (
+                <Button
+                  onClick={resetForm}
+                  variant="outline"
+                  size="sm"
+                  className="border-2 border-gnome-dark/20 dark:border-white/20 hover:bg-gnome-dark/5 dark:hover:bg-white/5"
                 >
-                  Name
-                </Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Product name"
-                  className="gnome-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="price"
-                  className="text-gnome-dark dark:text-white"
-                >
-                  Price
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                  className="gnome-input"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="description"
-                className="text-gnome-dark dark:text-white"
-              >
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Product description"
-                className="gnome-input min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="inventory_count"
-                className="text-gnome-dark dark:text-white"
-              >
-                Inventory Count
-              </Label>
-              <Input
-                id="inventory_count"
-                type="number"
-                value={inventoryCount}
-                onChange={(e) => setInventoryCount(e.target.value)}
-                placeholder="0"
-                min="0"
-                className="gnome-input"
-              />
-            </div>
-
-            {isStripeEnabled ? (
-              <div className="space-y-2">
-                <Label
-                  htmlFor="stripe_price_id"
-                  className="text-gnome-dark dark:text-white"
-                >
-                  Stripe Price ID
-                  <span className="ml-1 text-sm text-gnome-dark/60 dark:text-white/60">
-                    (e.g., price_H5ggYwtDq4fbrJ)
-                  </span>
-                </Label>
-                <Input
-                  id="stripe_price_id"
-                  value={stripePriceId}
-                  onChange={(e) => setStripePriceId(e.target.value)}
-                  placeholder="price_..."
-                  className="gnome-input"
-                />
-              </div>
-            ) : (
-              <div className="rounded-md bg-gnome-yellow/10 border border-gnome-yellow/20 p-4">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <AlertTriangleIcon
-                      className="h-5 w-5 text-gnome-yellow"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-gnome-dark dark:text-white">
-                      Stripe Integration Disabled
-                    </h3>
-                    <div className="mt-2 text-sm text-gnome-dark/70 dark:text-white/70">
-                      <p>
-                        Enable Stripe integration in your{" "}
-                        <Link
-                          href="/account/integrations"
-                          className="font-medium text-gnome-blue hover:text-gnome-blue/90 underline"
-                        >
-                          integration settings
-                        </Link>{" "}
-                        to accept payments for this product.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-3">
+                  Cancel Edit
+                </Button>
+              )}
               <Button
                 type="submit"
+                form="productForm"
                 disabled={isLoading || !name || !price || !inventoryCount}
                 className="bg-gnome-blue hover:bg-gnome-blue/90 text-white"
+                size="sm"
               >
                 {isLoading ? (
                   <>
@@ -431,83 +291,232 @@ export default function ProductManagementClient({
               </Button>
             </div>
           </div>
-        </form>
+
+          <form id="productForm" onSubmit={handleSubmit}>
+            {errors.length > 0 && (
+              <Alert
+                variant="destructive"
+                className="mb-6 border-gnome-red/20 bg-gnome-red/10"
+              >
+                <AlertCircle className="h-4 w-4 text-gnome-red" />
+                <AlertDescription>
+                  <ul className="list-disc list-inside">
+                    {errors.map((error) => (
+                      <li
+                        key={`${error.field}-${error.message}`}
+                        className="text-sm text-gnome-red"
+                      >
+                        {getErrorMessage(error)}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label
+                    htmlFor="name"
+                    className="text-gnome-dark dark:text-white"
+                  >
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Product name"
+                    className="gnome-input"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="price"
+                      className="text-gnome-dark dark:text-white"
+                    >
+                      Price
+                    </Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      className="gnome-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="inventory_count"
+                      className="text-gnome-dark dark:text-white"
+                    >
+                      Inventory
+                    </Label>
+                    <Input
+                      id="inventory_count"
+                      type="number"
+                      value={inventoryCount}
+                      onChange={(e) => setInventoryCount(e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      className="gnome-input"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="description"
+                  className="text-gnome-dark dark:text-white"
+                >
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Product description"
+                  className="gnome-input min-h-[100px]"
+                />
+              </div>
+
+              {isStripeEnabled ? (
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="stripe_price_id"
+                    className="text-gnome-dark dark:text-white"
+                  >
+                    Stripe Price ID
+                    <span className="ml-1 text-sm text-gnome-dark/60 dark:text-white/60">
+                      (e.g., price_H5ggYwtDq4fbrJ)
+                    </span>
+                  </Label>
+                  <Input
+                    id="stripe_price_id"
+                    value={stripePriceId}
+                    onChange={(e) => setStripePriceId(e.target.value)}
+                    placeholder="price_..."
+                    className="gnome-input"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-md bg-gnome-yellow/10 border border-gnome-yellow/20 p-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <AlertTriangleIcon
+                        className="h-5 w-5 text-gnome-yellow"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-gnome-dark dark:text-white">
+                        Stripe Integration Disabled
+                      </h3>
+                      <div className="mt-2 text-sm text-gnome-dark/70 dark:text-white/70">
+                        <p>
+                          Enable Stripe integration in your{" "}
+                          <Link
+                            href="/account/integrations"
+                            className="font-medium text-gnome-blue hover:text-gnome-blue/90 underline"
+                          >
+                            integration settings
+                          </Link>{" "}
+                          to accept payments for this product.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
+        </div>
       </div>
 
-      {/* Product List */}
-      <div className="gnome-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5">
-              <TableHead className="text-gnome-dark dark:text-white">
-                Name
-              </TableHead>
-              <TableHead className="text-gnome-dark dark:text-white">
-                Description
-              </TableHead>
-              <TableHead className="text-gnome-dark dark:text-white">
-                Price
-              </TableHead>
-              <TableHead className="text-gnome-dark dark:text-white">
-                Inventory Count
-              </TableHead>
-              {isStripeEnabled && (
-                <TableHead className="text-gnome-dark dark:text-white">
-                  Stripe Price ID
-                </TableHead>
-              )}
-              <TableHead className="text-gnome-dark dark:text-white">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProducts.map((product) => (
-              <TableRow
-                key={product.id}
-                className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5"
-              >
-                <TableCell className="text-gnome-dark dark:text-white">
-                  {product.name}
-                </TableCell>
-                <TableCell className="text-gnome-dark/70 dark:text-white/70">
-                  {product.description}
-                </TableCell>
-                <TableCell className="text-gnome-dark dark:text-white">
-                  ${product.price.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-gnome-dark dark:text-white">
-                  {product.inventory_count}
-                </TableCell>
-                {isStripeEnabled && (
-                  <TableCell className="text-gnome-dark/70 dark:text-white/70">
-                    {product.meta?.stripe_price_id || "-"}
-                  </TableCell>
-                )}
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditClick(product)}
-                      className="border-2 border-gnome-blue text-gnome-blue hover:bg-gnome-blue/10"
-                    >
-                      <EditIcon className="mr-2 h-4 w-4" /> Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteClick(product.id)}
-                      className="bg-gnome-red hover:bg-gnome-red/90 text-white"
-                    >
-                      <TrashIcon className="mr-2 h-4 w-4" /> Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {/* Scrollable table section */}
+      <div className="flex-1 min-h-0">
+        <div className="h-full overflow-auto">
+          <div className="gnome-card">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5">
+                  <TableHead className="text-gnome-dark dark:text-white">
+                    Name
+                  </TableHead>
+                  <TableHead className="text-gnome-dark dark:text-white">
+                    Description
+                  </TableHead>
+                  <TableHead className="text-gnome-dark dark:text-white">
+                    Price
+                  </TableHead>
+                  <TableHead className="text-gnome-dark dark:text-white">
+                    Inventory Count
+                  </TableHead>
+                  {isStripeEnabled && (
+                    <TableHead className="text-gnome-dark dark:text-white">
+                      Stripe Price ID
+                    </TableHead>
+                  )}
+                  <TableHead className="text-gnome-dark dark:text-white">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => (
+                  <TableRow
+                    key={product.id}
+                    className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5"
+                  >
+                    <TableCell className="text-gnome-dark dark:text-white">
+                      {product.name}
+                    </TableCell>
+                    <TableCell className="text-gnome-dark/70 dark:text-white/70">
+                      {product.description}
+                    </TableCell>
+                    <TableCell className="text-gnome-dark dark:text-white">
+                      ${product.price.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-gnome-dark dark:text-white">
+                      {product.inventory_count}
+                    </TableCell>
+                    {isStripeEnabled && (
+                      <TableCell className="text-gnome-dark/70 dark:text-white/70">
+                        {product.meta?.stripe_price_id || "-"}
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditClick(product)}
+                          className="border-2 border-gnome-blue text-gnome-blue hover:bg-gnome-blue/10"
+                        >
+                          <EditIcon className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteClick(product.id)}
+                          className="bg-gnome-red hover:bg-gnome-red/90 text-white"
+                        >
+                          <TrashIcon className="mr-2 h-4 w-4" /> Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
     </div>
   );
