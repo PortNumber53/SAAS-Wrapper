@@ -46,65 +46,83 @@ export default function OrdersPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">Loading orders...</div>
-          ) : (
-            <Table>
-              <TableHeader>
+      <h1 className="gnome-header mb-6">Orders</h1>
+      <div className="gnome-card">
+        {isLoading ? (
+          <div className="flex justify-center py-8 text-gnome-dark/70 dark:text-white/70">
+            Loading orders...
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5">
+                <TableHead className="text-gnome-dark dark:text-white">
+                  Order ID
+                </TableHead>
+                <TableHead className="text-gnome-dark dark:text-white">
+                  Date
+                </TableHead>
+                <TableHead className="text-gnome-dark dark:text-white">
+                  Customer
+                </TableHead>
+                <TableHead className="text-gnome-dark dark:text-white">
+                  Status
+                </TableHead>
+                <TableHead className="text-right text-gnome-dark dark:text-white">
+                  Total
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.length === 0 ? (
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center text-gnome-dark/70 dark:text-white/70"
+                  >
+                    No orders found
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      No orders found
+              ) : (
+                orders.map((order) => (
+                  <TableRow
+                    key={order.id}
+                    className="border-b border-gnome-dark/10 dark:border-white/10 hover:bg-gnome-dark/5 dark:hover:bg-white/5"
+                  >
+                    <TableCell className="font-medium text-gnome-dark dark:text-white">
+                      {order.id}
+                    </TableCell>
+                    <TableCell className="text-gnome-dark/70 dark:text-white/70">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-gnome-dark dark:text-white">
+                      {order.customerEmail}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
+                          order.status === "completed"
+                            ? "bg-gnome-green/10 text-gnome-green"
+                            : order.status === "processing"
+                            ? "bg-gnome-blue/10 text-gnome-blue"
+                            : order.status === "cancelled"
+                            ? "bg-gnome-red/10 text-gnome-red"
+                            : "bg-gnome-yellow/10 text-gnome-yellow"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-gnome-dark dark:text-white">
+                      ${order.total.toFixed(2)}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{order.customerEmail}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                            order.status === "completed"
-                              ? "bg-green-100 text-green-700"
-                              : order.status === "processing"
-                              ? "bg-blue-100 text-blue-700"
-                              : order.status === "cancelled"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          }`}
-                        >
-                          {order.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${order.total.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

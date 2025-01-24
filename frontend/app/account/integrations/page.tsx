@@ -34,14 +34,18 @@ export default function IntegrationsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Integrations</h1>
+      <h1 className="gnome-header">Integrations</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {integrations.map((integration) => (
           <button
             key={integration.id}
             type="button"
-            className="border rounded-lg p-4 hover:shadow-md cursor-pointer text-left"
+            className={`gnome-card hover:shadow-gnome transition-all duration-200 cursor-pointer text-left ${
+              activeIntegration === integration.id
+                ? "ring-2 ring-gnome-blue ring-offset-2"
+                : ""
+            }`}
             onClick={() => handleIntegrationSelect(integration.id)}
           >
             <img
@@ -49,14 +53,18 @@ export default function IntegrationsPage() {
               alt={integration.name}
               className="w-12 h-12 mb-4"
             />
-            <h2 className="text-lg font-semibold">{integration.name}</h2>
-            <p className="text-muted-foreground">{integration.description}</p>
+            <h2 className="text-lg font-semibold text-gnome-dark dark:text-white">
+              {integration.name}
+            </h2>
+            <p className="text-gnome-dark/70 dark:text-white/70">
+              {integration.description}
+            </p>
           </button>
         ))}
       </div>
 
       {activeIntegration && (
-        <div className="mt-8">
+        <div className="mt-8 gnome-card">
           {(() => {
             const Integration = integrations.find(
               (i) => i.id === activeIntegration

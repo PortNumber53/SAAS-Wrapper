@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { auth } from "@/app/auth";
 import { Providers } from "@/app/providers";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -9,11 +7,7 @@ import { IntegrationStatusLoader } from "@/components/integration-status-loader"
 import { Toaster } from "@/components/ui/use-toast";
 import "./globals.css";
 import { LayoutContent } from "./layout-content";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
+import { auth } from "@/app/auth";
 
 export default async function RootLayout({
   children,
@@ -24,7 +18,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className="font-gnome" suppressHydrationWarning>
         <SessionProvider session={session}>
           <Providers>
             {session && <IntegrationStatusLoader />}

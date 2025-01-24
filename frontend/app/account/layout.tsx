@@ -73,9 +73,9 @@ export default function AccountLayout({
   }, [pathname]);
 
   const VerticalSidebar = () => (
-    <div className="w-64 bg-gray-100 h-screen p-4 space-y-4">
+    <div className="w-64 bg-gnome-light dark:bg-gnome-dark h-screen p-4 space-y-4">
       <div className="space-y-2">
-        <h3 className="font-bold text-gray-600 uppercase text-xs tracking-wider pl-2">
+        <h3 className="font-bold text-gnome-dark dark:text-white uppercase text-xs tracking-wider pl-2">
           My Account
         </h3>
         <div className="space-y-1">
@@ -83,10 +83,10 @@ export default function AccountLayout({
             <Link
               key={section}
               href={`/account/${section.toLowerCase()}`}
-              className={`flex items-center space-x-2 p-2 rounded cursor-pointer ${
+              className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer transition-all duration-200 ${
                 selectedSection === section
-                  ? "bg-blue-100 text-blue-700"
-                  : "hover:bg-gray-200 text-gray-600"
+                  ? "bg-gnome-blue text-white shadow-gnome-sm"
+                  : "hover:bg-black/5 dark:hover:bg-white/10 text-gnome-dark dark:text-white"
               }`}
             >
               {section === "Profile" && <User className="h-5 w-5" />}
@@ -96,7 +96,7 @@ export default function AccountLayout({
             </Link>
           ))}
         </div>
-        <h3 className="font-bold text-gray-600 uppercase text-xs tracking-wider pl-2 mt-4">
+        <h3 className="font-bold text-gnome-dark dark:text-white uppercase text-xs tracking-wider pl-2 mt-4">
           Workspaces
         </h3>
         <div className="space-y-1">
@@ -112,10 +112,10 @@ export default function AccountLayout({
                   ? "/account/integrations"
                   : `/account/ecommerce/${section.toLowerCase()}`
               }
-              className={`flex items-center space-x-2 p-2 rounded cursor-pointer ${
+              className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer transition-all duration-200 ${
                 selectedSection === section
-                  ? "bg-blue-100 text-blue-700"
-                  : "hover:bg-gray-200 text-gray-600"
+                  ? "bg-gnome-blue text-white shadow-gnome-sm"
+                  : "hover:bg-black/5 dark:hover:bg-white/10 text-gnome-dark dark:text-white"
               }`}
             >
               {section === "Integrations" && <PlugIcon className="h-5 w-5" />}
@@ -126,7 +126,7 @@ export default function AccountLayout({
             </Link>
           ))}
         </div>
-        <h3 className="font-bold text-gray-600 uppercase text-xs tracking-wider pl-2 mt-4">
+        <h3 className="font-bold text-gnome-dark dark:text-white uppercase text-xs tracking-wider pl-2 mt-4">
           Social Media
         </h3>
         <div className="space-y-1">
@@ -134,10 +134,10 @@ export default function AccountLayout({
             <Link
               key={section}
               href={`/account/social-media/${section.toLowerCase()}`}
-              className={`flex items-center space-x-2 p-2 rounded cursor-pointer ${
+              className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer transition-all duration-200 ${
                 selectedSection === section
-                  ? "bg-blue-100 text-blue-700"
-                  : "hover:bg-gray-200 text-gray-600"
+                  ? "bg-gnome-blue text-white shadow-gnome-sm"
+                  : "hover:bg-black/5 dark:hover:bg-white/10 text-gnome-dark dark:text-white"
               }`}
             >
               {section === "Creators" && <User className="h-5 w-5" />}
@@ -155,11 +155,13 @@ export default function AccountLayout({
     switch (selectedSection) {
       case "Profile":
         return (
-          <div className="w-full bg-gray-100 p-2 flex items-center justify-between">
+          <div className="w-full bg-gnome-light dark:bg-gnome-dark p-3 flex items-center justify-between shadow-gnome-sm">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-5 w-5" />
-                <span className="text-sm font-medium">Profile Management</span>
+                <span className="text-sm font-medium text-gnome-dark dark:text-white">
+                  Profile Management
+                </span>
               </div>
             </div>
             <AccountDropdown />
@@ -167,11 +169,11 @@ export default function AccountLayout({
         );
       case "E-commerce":
         return (
-          <div className="w-full bg-gray-100 p-2 flex items-center justify-between">
+          <div className="w-full bg-gnome-light dark:bg-gnome-dark p-3 flex items-center justify-between shadow-gnome-sm">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium text-gnome-dark dark:text-white">
                   E-commerce Management
                 </span>
               </div>

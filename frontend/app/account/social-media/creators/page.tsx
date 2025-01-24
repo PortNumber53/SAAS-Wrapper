@@ -11,14 +11,14 @@ export default function CreatorsPage() {
   const creators: Creator[] = [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Creators</h3>
-        <p className="text-sm text-muted-foreground">
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="gnome-header">Creators</h1>
+        <p className="text-gnome-dark/70 dark:text-white/70">
           Manage your social media creators and influencers.
         </p>
       </div>
-      <div className="container mx-auto py-10">
+      <div className="gnome-card">
         <DataTable columns={columns} data={creators} />
       </div>
     </div>

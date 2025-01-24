@@ -1,13 +1,13 @@
-const { fontFamily } = require("tailwindcss/defaultTheme")
+const { fontFamily } = require("tailwindcss/defaultTheme");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
   ],
   theme: {
     container: {
@@ -52,14 +52,29 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        gnome: {
+          blue: "#3584e4",
+          green: "#33d17a",
+          yellow: "#f6d32d",
+          red: "#e01b24",
+          purple: "#9141ac",
+          brown: "#986a44",
+          light: "#deddda",
+          dark: "#241f31",
+        },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "12px",
+        md: "8px",
+        sm: "4px",
       },
       fontFamily: {
         sans: [...fontFamily.sans],
+        gnome: ["Cantarell", "Ubuntu", "DejaVu Sans", "Arial", "sans-serif"],
+      },
+      boxShadow: {
+        gnome: "0 2px 4px rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.1)",
+        "gnome-sm": "0 1px 2px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)",
       },
       keyframes: {
         "accordion-down": {
@@ -78,4 +93,4 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};

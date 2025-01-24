@@ -11,14 +11,14 @@ export default function PostsPage() {
   const posts: Post[] = [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Posts</h3>
-        <p className="text-sm text-muted-foreground">
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="gnome-header">Posts</h1>
+        <p className="text-gnome-dark/70 dark:text-white/70">
           Manage and track your social media posts.
         </p>
       </div>
-      <div className="container mx-auto py-10">
+      <div className="gnome-card">
         <DataTable columns={columns} data={posts} />
       </div>
     </div>
