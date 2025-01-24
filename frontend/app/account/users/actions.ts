@@ -46,6 +46,25 @@ export async function updateUser(id: string, data: UserData) {
   // Ensure user has permission to manage users
   await requirePermission("canManageUsers");
 
+  // Get the current user being updated
+  const currentUser = await xata.db.nextauth_users.read(id);
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  // If we're changing from god to another profile, check if this is the last god user
+  if (currentUser.profile === "god" && data.profile !== "god") {
+    // Count how many god users we have
+    const godUsers = await xata.db.nextauth_users
+      .filter("profile", "god")
+      .getAll();
+
+    // If this is the last god user, prevent the change
+    if (godUsers.length <= 1) {
+      throw new Error("Cannot remove the last god user from the system");
+    }
+  }
+
   // Update user
   const user = await xata.db.nextauth_users.update(id, {
     name: data.name,
@@ -63,6 +82,24 @@ export async function updateUser(id: string, data: UserData) {
 export async function deleteUser(id: string) {
   // Ensure user has permission to manage users
   await requirePermission("canManageUsers");
+
+  // Get the user being deleted
+  const user = await xata.db.nextauth_users.read(id);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // If this is a god user, check if it's the last one
+  if (user.profile === "god") {
+    const godUsers = await xata.db.nextauth_users
+      .filter("profile", "god")
+      .getAll();
+
+    // If this is the last god user, prevent deletion
+    if (godUsers.length <= 1) {
+      throw new Error("Cannot delete the last god user from the system");
+    }
+  }
 
   // Delete user
   await xata.db.nextauth_users.delete(id);

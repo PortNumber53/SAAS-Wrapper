@@ -50,7 +50,10 @@ export default function UsersPage() {
       console.error("Error loading users:", error);
       toast({
         title: "Error",
-        description: "Failed to load users. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to load users. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -82,7 +85,10 @@ export default function UsersPage() {
       console.error("Error saving user:", error);
       toast({
         title: "Error",
-        description: "Failed to save user. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to save user. Please try again.",
         variant: "destructive",
       });
     }
@@ -111,7 +117,10 @@ export default function UsersPage() {
       console.error("Error deleting user:", error);
       toast({
         title: "Error",
-        description: "Failed to delete user. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete user. Please try again.",
         variant: "destructive",
       });
     }
