@@ -6,7 +6,29 @@ import { xata } from "@/lib/xata";
 import { handleServerLogout } from "@/lib/auth-utils";
 import { isRouteAccessible } from "@/lib/profile-utils";
 
-const publicPaths = ["/login", "/api/auth"];
+const publicPaths = [
+  "/login",
+  "/api/auth",
+  "/",
+  "/features",
+  "/docs",
+  "/pricing",
+  "/about",
+  "/contact",
+  "/ecommerce/browse",
+  "/ecommerce/products",
+  "/ecommerce/categories",
+];
+
+// Protected routes that require authentication
+const protectedPaths = [
+  "/account",
+  "/dashboard",
+  "/settings",
+  "/billing",
+  "/ecommerce/admin",
+  "/ecommerce/manage",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,8 +39,18 @@ export async function middleware(request: NextRequest) {
   });
 
   // Allow public paths
-  if (publicPaths.some((path) => pathname.startsWith(path))) {
+  if (
+    publicPaths.some(
+      (path) => pathname === path || pathname.startsWith("/api/auth")
+    )
+  ) {
     console.log("[Middleware] Public path, allowing access", { pathname });
+    return NextResponse.next();
+  }
+
+  // Check if the path requires authentication
+  const requiresAuth = protectedPaths.some((path) => pathname.startsWith(path));
+  if (!requiresAuth) {
     return NextResponse.next();
   }
 

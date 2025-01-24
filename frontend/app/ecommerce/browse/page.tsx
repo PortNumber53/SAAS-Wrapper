@@ -1,17 +1,20 @@
-import { Suspense } from 'react'
-import { ProductCatalog } from './ProductCatalog'
-import { getProducts } from '@/app/account/ecommerce/products/actions'
+import { Suspense } from "react";
+import { ProductCatalog } from "./ProductCatalog";
+import { getPublicProducts } from "./actions";
 
-export const runtime = 'edge'
+export const runtime = "edge";
 
 export default async function BrowsePage() {
-  const products = await getProducts()
+  const products = await getPublicProducts();
+  console.log("Products fetched:", products);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Products</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Products
+          </h1>
           <div className="flex items-center gap-x-4">
             {/* Add sorting/filtering controls here later */}
           </div>
@@ -22,14 +25,14 @@ export default async function BrowsePage() {
         </Suspense>
       </div>
     </div>
-  )
+  );
 }
 
 function ProductCatalogSkeleton() {
   return (
     <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
       {[...Array(8)].map((_, index) => (
-        <div key={index} className="group relative animate-pulse">
+        <div key={`skeleton-${index}`} className="group relative animate-pulse">
           <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-md bg-gray-200 lg:aspect-none lg:h-80" />
           <div className="mt-4 flex justify-between">
             <div>
@@ -41,5 +44,5 @@ function ProductCatalogSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
