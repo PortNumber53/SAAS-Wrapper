@@ -52,6 +52,7 @@ export const authOptions: NextAuthConfig = {
             email: user.email,
           })
           .getFirst();
+        console.log("existingUser", existingUser);
 
         if (!existingUser) {
           console.log("Creating new user");
@@ -94,7 +95,7 @@ export const authOptions: NextAuthConfig = {
 
       if (user?.id) {
         token.id = user.id;
-        token.profile = "user" as UserProfile;
+        token.profile = user.profile as UserProfile;
       }
       return token;
     },

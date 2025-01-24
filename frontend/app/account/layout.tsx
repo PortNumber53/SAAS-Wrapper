@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ShoppingCart,
   Package,
@@ -12,6 +12,7 @@ import {
   CreditCard,
   PlugIcon,
   RocketIcon,
+  Users,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
@@ -19,6 +20,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Inter } from "next/font/google";
 import { AccountDropdown } from "@/components/account-dropdown";
+import { useProfile } from "@/hooks/use-profile";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,7 +39,8 @@ type Section =
   | "Social Media"
   | "Creators"
   | "Campaigns"
-  | "Posts";
+  | "Posts"
+  | "Users";
 
 export default function AccountLayout({
   children,
@@ -47,8 +50,9 @@ export default function AccountLayout({
   const pathname = usePathname();
   const { data: session } = useSession();
   const router = useRouter();
+  const { checkPermission } = useProfile();
 
-  const getSectionFromPath = (path: string | null): Section => {
+  const getSectionFromPath = useCallback((path: string | null): Section => {
     if (!path) return "E-commerce";
 
     if (path.includes("/account/profile")) return "Profile";
@@ -63,8 +67,9 @@ export default function AccountLayout({
     if (path.includes("/account/social-media/creators")) return "Creators";
     if (path.includes("/account/social-media/campaigns")) return "Campaigns";
     if (path.includes("/account/social-media/posts")) return "Posts";
+    if (path.includes("/account/users")) return "Users";
     return "E-commerce";
-  };
+  }, []);
 
   const [selectedSection, setSelectedSection] = useState<Section>(
     getSectionFromPath(pathname)
@@ -73,7 +78,7 @@ export default function AccountLayout({
 
   useEffect(() => {
     setSelectedSection(getSectionFromPath(pathname));
-  }, [pathname]);
+  }, [pathname, getSectionFromPath]);
 
   const VerticalSidebar = () => (
     <div className="w-64 bg-gnome-light dark:bg-gnome-dark h-screen p-4 space-y-4">
@@ -110,6 +115,7 @@ export default function AccountLayout({
               "Products",
               "Orders",
               "Subscriptions",
+              ...(checkPermission("canManageUsers") ? ["Users"] : []),
             ] as Section[]
           ).map((section) => (
             <Link
@@ -119,6 +125,8 @@ export default function AccountLayout({
                   ? "/account/ecommerce"
                   : section === "Integrations"
                   ? "/account/integrations"
+                  : section === "Users"
+                  ? "/account/users"
                   : `/account/ecommerce/${section.toLowerCase()}`
               }
               className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer transition-all duration-200 ${
@@ -132,6 +140,7 @@ export default function AccountLayout({
               {section === "Products" && <List className="h-5 w-5" />}
               {section === "Orders" && <List className="h-5 w-5" />}
               {section === "Subscriptions" && <List className="h-5 w-5" />}
+              {section === "Users" && <Users className="h-5 w-5" />}
               <span>{section}</span>
             </Link>
           ))}

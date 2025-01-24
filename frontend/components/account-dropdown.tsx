@@ -15,13 +15,16 @@ import {
   LogOut,
   List,
   Rocket,
+  Users,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { UserInfo } from "@/app/_components/user-info";
+import { useProfile } from "@/hooks/use-profile";
 
 export const AccountDropdown = () => {
   const router = useRouter();
+  const { checkPermission } = useProfile();
 
   return (
     <DropdownMenu>
@@ -79,6 +82,16 @@ export const AccountDropdown = () => {
             <Rocket className="h-4 w-4" />
             <span>Integrations</span>
           </DropdownMenuItem>
+
+          {checkPermission("canManageUsers") && (
+            <DropdownMenuItem
+              onSelect={() => router.push("/account/users")}
+              className="px-4 py-2 hover:bg-gnome-dark/5 dark:hover:bg-white/5 flex items-center space-x-2 cursor-pointer text-gnome-dark/70 dark:text-white/70"
+            >
+              <Users className="h-4 w-4" />
+              <span>User Management</span>
+            </DropdownMenuItem>
+          )}
 
           <div className="border-t border-gnome-dark/10 dark:border-white/10">
             <DropdownMenuItem
