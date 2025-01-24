@@ -19,7 +19,12 @@ export default function CreatorsPage() {
         </p>
       </div>
       <div className="gnome-card">
-        <DataTable columns={columns} data={creators} />
+        <DataTable
+          columns={columns}
+          data={creators}
+          filterColumn="name"
+          filterPlaceholder="Filter creators..."
+        />
       </div>
     </div>
   );

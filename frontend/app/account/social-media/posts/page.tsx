@@ -19,7 +19,12 @@ export default function PostsPage() {
         </p>
       </div>
       <div className="gnome-card">
-        <DataTable columns={columns} data={posts} />
+        <DataTable
+          columns={columns}
+          data={posts}
+          filterColumn="content"
+          filterPlaceholder="Filter posts..."
+        />
       </div>
     </div>
   );

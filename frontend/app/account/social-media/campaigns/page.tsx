@@ -19,7 +19,12 @@ export default function CampaignsPage() {
         </p>
       </div>
       <div className="gnome-card">
-        <DataTable columns={columns} data={campaigns} />
+        <DataTable
+          columns={columns}
+          data={campaigns}
+          filterColumn="name"
+          filterPlaceholder="Filter campaigns..."
+        />
       </div>
     </div>
   );
