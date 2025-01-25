@@ -29,7 +29,6 @@ export default function UsersPage() {
   const { setPageTitle } = usePageTitle();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -77,7 +76,6 @@ export default function UsersPage() {
           description: "User created successfully.",
         });
       }
-      setShowForm(false);
       setEditingUser(null);
       setFormData({ name: "", email: "", profile: "user" });
       loadUsers();
@@ -101,7 +99,6 @@ export default function UsersPage() {
       email: user.email,
       profile: user.profile,
     });
-    setShowForm(true);
   };
 
   const handleDelete = async (user: User) => {
@@ -131,15 +128,12 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Users</h1>
-        <Button onClick={() => setShowForm(true)} disabled={showForm}>
-          Add User
-        </Button>
-      </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-none p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Users</h1>
+        </div>
 
-      {showForm && (
         <div className="gnome-card mb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -188,7 +182,6 @@ export default function UsersPage() {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setShowForm(false);
                   setEditingUser(null);
                   setFormData({ name: "", email: "", profile: "user" });
                 }}
@@ -201,47 +194,49 @@ export default function UsersPage() {
             </div>
           </form>
         </div>
-      )}
+      </div>
 
-      <div className="gnome-card">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Email</th>
-                <th className="text-left p-4">Profile</th>
-                <th className="text-left p-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-t">
-                  <td className="p-4">{user.name}</td>
-                  <td className="p-4">{user.email}</td>
-                  <td className="p-4">{user.profile}</td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(user)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(user)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
+      <div className="flex-1 p-6 pt-0 overflow-hidden">
+        <div className="gnome-card h-full overflow-auto">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="text-left p-4">Name</th>
+                  <th className="text-left p-4">Email</th>
+                  <th className="text-left p-4">Profile</th>
+                  <th className="text-left p-4">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id} className="border-t hover:bg-muted/50">
+                    <td className="p-4">{user.name}</td>
+                    <td className="p-4">{user.email}</td>
+                    <td className="p-4">{user.profile}</td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(user)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(user)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

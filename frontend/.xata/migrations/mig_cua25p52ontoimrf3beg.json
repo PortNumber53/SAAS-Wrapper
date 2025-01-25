@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cua25p52ontoimrf3beg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "companies",
+          "column": {
+            "name": "plan",
+            "type": "text",
+            "comment": "",
+            "default": "'free_tier'"
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cua25p52ontoimrf3beg",
+  "parent": "mig_cua25igvn7mv62qnk3kg",
+  "schema": "public",
+  "startedAt": "2025-01-24T23:31:49.441207Z"
+}

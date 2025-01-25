@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cua24kd2ontoimrf3bcg",
+    "operations": [
+      {
+        "add_column": {
+          "up": "''",
+          "table": "companies",
+          "column": {
+            "name": "name",
+            "type": "text",
+            "comment": ""
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cua24kd2ontoimrf3bcg",
+  "parent": "mig_cua24f52ontoimrf3bbg",
+  "schema": "public",
+  "startedAt": "2025-01-24T23:29:22.092773Z"
+}

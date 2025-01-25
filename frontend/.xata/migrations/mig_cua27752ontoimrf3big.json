@@ -1,0 +1,19 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cua27752ontoimrf3big",
+    "operations": [
+      {
+        "drop_column": {
+          "table": "companies",
+          "column": "god_user"
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cua27752ontoimrf3big",
+  "parent": "mig_cua267t2ontoimrf3bhg",
+  "schema": "public",
+  "startedAt": "2025-01-24T23:34:53.134507Z"
+}

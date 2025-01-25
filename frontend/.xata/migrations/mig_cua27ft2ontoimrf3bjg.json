@@ -1,0 +1,30 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cua27ft2ontoimrf3bjg",
+    "operations": [
+      {
+        "add_column": {
+          "table": "companies_users",
+          "column": {
+            "name": "user",
+            "type": "text",
+            "comment": "{\"xata.link\":\"nextauth_users\"}",
+            "nullable": true,
+            "references": {
+              "name": "user_link",
+              "table": "nextauth_users",
+              "column": "xata_id",
+              "on_delete": "SET NULL"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cua27ft2ontoimrf3bjg",
+  "parent": "mig_cua27752ontoimrf3big",
+  "schema": "public",
+  "startedAt": "2025-01-24T23:35:28.432701Z"
+}

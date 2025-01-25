@@ -1,0 +1,24 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cua25t8vn7mv62qnk3n0",
+    "operations": [
+      {
+        "add_column": {
+          "table": "companies",
+          "column": {
+            "name": "is_active",
+            "type": "bool",
+            "comment": "",
+            "default": "'true'"
+          }
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cua25t8vn7mv62qnk3n0",
+  "parent": "mig_cua25p52ontoimrf3beg",
+  "schema": "public",
+  "startedAt": "2025-01-24T23:32:05.599169Z"
+}
