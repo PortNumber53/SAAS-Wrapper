@@ -20,7 +20,7 @@ interface CompanyData {
 
 export async function getCompanies() {
   // Ensure user has permission to manage companies
-  await requirePermission("canManageUsers");
+  await requirePermission("canManageCompanyUsers");
 
   // Get all companies
   const companies = await xata.db.companies.getAll();
@@ -38,7 +38,7 @@ export async function getCompanies() {
 
 export async function createCompany(data: CompanyData) {
   // Ensure user has permission to manage companies
-  await requirePermission("canManageUsers");
+  await requirePermission("canManageCompanyUsers");
 
   // Create new company
   const company = await xata.db.companies.create({
@@ -54,7 +54,7 @@ export async function createCompany(data: CompanyData) {
 
 export async function updateCompany(id: string, data: CompanyData) {
   // Ensure user has permission to manage companies
-  await requirePermission("canManageUsers");
+  await requirePermission("canManageCompanyUsers");
 
   // Update company
   const company = await xata.db.companies.update(id, {
@@ -74,7 +74,7 @@ export async function updateCompany(id: string, data: CompanyData) {
 
 export async function deleteCompany(id: string) {
   // Ensure user has permission to manage companies
-  await requirePermission("canManageUsers");
+  await requirePermission("canManageCompanyUsers");
 
   // Delete company
   await xata.db.companies.delete(id);

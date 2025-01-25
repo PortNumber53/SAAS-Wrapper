@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { getUsers, createUser, updateUser, deleteUser } from "./actions";
 import { getCompanies } from "../companies/actions";
+import { useProfile } from "@/hooks/use-profile";
 
 interface Company {
   id: string;
@@ -33,9 +34,11 @@ interface User {
 export default function UsersPage() {
   const { toast } = useToast();
   const { setPageTitle } = usePageTitle();
+  const { checkPermission } = useProfile();
   const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -44,16 +47,23 @@ export default function UsersPage() {
     company: "null",
   });
 
+  const canManageAllCompanies = checkPermission("canManageUsers");
+
   useEffect(() => {
     setPageTitle("User Management", Users);
     loadUsers();
-    loadCompanies();
-  }, [setPageTitle]);
+    if (canManageAllCompanies) {
+      loadCompanies();
+    } else {
+      setLoadingCompanies(false);
+    }
+  }, [setPageTitle, canManageAllCompanies]);
 
   const loadCompanies = async () => {
+    setLoadingCompanies(true);
     try {
       const data = await getCompanies();
-      setCompanies(data);
+      setCompanies(data || []);
     } catch (error) {
       console.error("Error loading companies:", error);
       toast({
@@ -64,13 +74,17 @@ export default function UsersPage() {
             : "Failed to load companies. Please try again.",
         variant: "destructive",
       });
+      setCompanies([]);
+    } finally {
+      setLoadingCompanies(false);
     }
   };
 
   const loadUsers = async () => {
+    setLoadingUsers(true);
     try {
       const data = await getUsers();
-      setUsers(data);
+      setUsers(data || []);
     } catch (error) {
       console.error("Error loading users:", error);
       toast({
@@ -81,8 +95,9 @@ export default function UsersPage() {
             : "Failed to load users. Please try again.",
         variant: "destructive",
       });
+      setUsers([]);
     } finally {
-      setLoading(false);
+      setLoadingUsers(false);
     }
   };
 
@@ -165,8 +180,15 @@ export default function UsersPage() {
     });
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if ((canManageAllCompanies && loadingCompanies) || loadingUsers) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4" />
+          <div>Loading...</div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -219,30 +241,42 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="company">Company</Label>
-              <Select
-                value={formData.company}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    company: value === "null" ? "null" : value,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a company" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="null">No Company</SelectItem>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {canManageAllCompanies && (
+              <div>
+                <Label htmlFor="company">Company</Label>
+                <Select
+                  value={formData.company}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      company: value === "null" ? "null" : value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">No Company</SelectItem>
+                    {!loadingCompanies && companies && companies.length > 0 ? (
+                      companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))
+                    ) : loadingCompanies ? (
+                      <SelectItem value="loading" disabled>
+                        Loading companies...
+                      </SelectItem>
+                    ) : (
+                      <SelectItem value="no-companies" disabled>
+                        No companies available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={handleCancel}>
                 Cancel
@@ -264,40 +298,55 @@ export default function UsersPage() {
                   <th className="text-left p-4">Name</th>
                   <th className="text-left p-4">Email</th>
                   <th className="text-left p-4">Profile</th>
-                  <th className="text-left p-4">Company</th>
+                  {canManageAllCompanies && (
+                    <th className="text-left p-4">Company</th>
+                  )}
                   <th className="text-left p-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-t hover:bg-muted/50">
-                    <td className="p-4">{user.name}</td>
-                    <td className="p-4">{user.email}</td>
-                    <td className="p-4">{user.profile}</td>
-                    <td className="p-4">
-                      {companies.find((c) => c.id === user.company)?.name ||
-                        "-"}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(user)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(user)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                {users && users.length > 0 ? (
+                  users.map((user) => (
+                    <tr key={user.id} className="border-t hover:bg-muted/50">
+                      <td className="p-4">{user.name}</td>
+                      <td className="p-4">{user.email}</td>
+                      <td className="p-4">{user.profile}</td>
+                      {canManageAllCompanies && (
+                        <td className="p-4">
+                          {companies.find((c) => c.id === user.company)?.name ||
+                            "-"}
+                        </td>
+                      )}
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(user)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(user)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={canManageAllCompanies ? 5 : 4}
+                      className="text-center p-4 text-muted-foreground"
+                    >
+                      No users found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

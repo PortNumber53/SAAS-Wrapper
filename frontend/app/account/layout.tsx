@@ -119,7 +119,7 @@ export default function AccountLayout({
               "Orders",
               "Subscriptions",
               "Integrations",
-              ...(checkPermission("canManageUsers")
+              ...(checkPermission("canManageCompanyUsers")
                 ? ["Users", "Companies"]
                 : []),
             ] as Section[]

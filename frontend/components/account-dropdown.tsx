@@ -83,7 +83,7 @@ export const AccountDropdown = () => {
             <span>Integrations</span>
           </DropdownMenuItem>
 
-          {checkPermission("canManageUsers") && (
+          {checkPermission("canManageCompanyUsers") && (
             <DropdownMenuItem
               onSelect={() => router.push("/account/users")}
               className="px-4 py-2 hover:bg-gnome-dark/5 dark:hover:bg-white/5 flex items-center space-x-2 cursor-pointer text-gnome-dark/70 dark:text-white/70"

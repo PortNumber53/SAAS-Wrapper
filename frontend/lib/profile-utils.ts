@@ -1,10 +1,11 @@
-import { Session } from "next-auth";
+import type { Session } from "next-auth";
 
 export type UserProfile = "god" | "admin" | "user";
 
 export interface ProfilePermissions {
   canAccessAdmin: boolean;
   canManageUsers: boolean;
+  canManageCompanyUsers: boolean;
   canEditContent: boolean;
   canManageProducts: boolean;
 }
@@ -17,6 +18,7 @@ export function getProfilePermissions(
       return {
         canAccessAdmin: true,
         canManageUsers: true,
+        canManageCompanyUsers: true,
         canEditContent: true,
         canManageProducts: true,
       };
@@ -24,6 +26,7 @@ export function getProfilePermissions(
       return {
         canAccessAdmin: true,
         canManageUsers: false,
+        canManageCompanyUsers: true,
         canEditContent: true,
         canManageProducts: true,
       };
@@ -32,6 +35,7 @@ export function getProfilePermissions(
       return {
         canAccessAdmin: false,
         canManageUsers: false,
+        canManageCompanyUsers: false,
         canEditContent: false,
         canManageProducts: false,
       };
@@ -66,6 +70,14 @@ export function isRouteAccessible(
 
   // Content management routes
   if (pathname.startsWith("/e/") && !permissions.canEditContent) {
+    return false;
+  }
+
+  // User management routes
+  if (
+    pathname.startsWith("/account/users") &&
+    !permissions.canManageCompanyUsers
+  ) {
     return false;
   }
 
