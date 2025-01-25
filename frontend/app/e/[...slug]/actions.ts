@@ -1,9 +1,9 @@
-'use server';
+"use server";
 
-import { xata } from '@/lib/xata';
-import { fetchContentByPath } from '@/lib/content';
-import { marked } from 'marked';
-import { auth } from '@/app/auth';
+import { xata } from "@/lib/xata";
+import { fetchContentByPath } from "@/lib/content";
+import { marked } from "marked";
+import { auth } from "@/app/auth";
 
 // Configure marked to be more secure
 marked.setOptions({
@@ -13,11 +13,11 @@ marked.setOptions({
 
 export async function getPageContent(path: string) {
   try {
-    console.log('Fetching content for path:', path);
+    console.log("Fetching content for path:", path);
 
     const session = await auth();
-    if (!session) {
-      throw new Error('Unauthorized');
+    if (session?.user?.profile !== "god") {
+      throw new Error("Unauthorized - Only god users can access the editor");
     }
 
     const recordContent = await fetchContentByPath(path);
@@ -27,48 +27,55 @@ export async function getPageContent(path: string) {
       return {
         notFound: true,
         path: path,
-        content: '',
-        title: ''
+        content: "",
+        title: "",
       };
     }
 
     return {
-      content: recordContent.current || '',
-      title: recordContent.title || '',
+      content: recordContent.current || "",
+      title: recordContent.title || "",
       notFound: false,
-      exists: true
+      exists: true,
     };
   } catch (error) {
-    console.error('Error fetching page content:', error);
+    console.error("Error fetching page content:", error);
     throw error;
   }
 }
 
-export async function saveContent(path: string, content: string, title?: string) {
+export async function saveContent(
+  path: string,
+  content: string,
+  title?: string
+) {
   try {
     const session = await auth();
-    if (!session) {
+    if (session?.user?.profile !== "god") {
       return {
-        error: 'Unauthorized'
+        error: "Unauthorized - Only god users can save content",
       };
     }
 
-    console.log('Saving content for path:', path);
-    console.log('Content:', content);
-    console.log('Title:', title);
+    console.log("Saving content for path:", path);
+    console.log("Content:", content);
+    console.log("Title:", title);
 
     // Fetch existing content record
     const existingContent = await fetchContentByPath(path);
-    console.log('>>>> Existing content:', existingContent);
+    console.log(">>>> Existing content:", existingContent);
 
     // Update the content record
-    const updatedContent = await xata.db.pages.update(existingContent?.id || '', {
-      markdown_content: JSON.stringify({
-        current: content
-      }),
-      title: title || existingContent?.title || '',
-      path
-    });
+    const updatedContent = await xata.db.pages.update(
+      existingContent?.id || "",
+      {
+        markdown_content: JSON.stringify({
+          current: content,
+        }),
+        title: title || existingContent?.title || "",
+        path,
+      }
+    );
 
     return {
       success: true,
@@ -76,11 +83,11 @@ export async function saveContent(path: string, content: string, title?: string)
         id: updatedContent.id,
         current: content,
         path,
-        title: title || existingContent?.title || ''
-      }
+        title: title || existingContent?.title || "",
+      },
     };
   } catch (error) {
-    console.error('Error saving content', error);
+    console.error("Error saving content", error);
 
     // If content doesn't exist, create it
     try {
@@ -88,32 +95,39 @@ export async function saveContent(path: string, content: string, title?: string)
       return newContent;
     } catch (createError) {
       return {
-        error: error instanceof Error ? error.message : 'Failed to save or create content'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to save or create content",
       };
     }
   }
 }
 
-export async function createContent(path: string, content: string, title?: string) {
+export async function createContent(
+  path: string,
+  content: string,
+  title?: string
+) {
   try {
     const session = await auth();
-    if (!session) {
+    if (session?.user?.profile !== "god") {
       return {
-        error: 'Unauthorized'
+        error: "Unauthorized - Only god users can create content",
       };
     }
 
-    console.log('Creating content for path:', path);
-    console.log('Content:', content);
-    console.log('Title:', title);
+    console.log("Creating content for path:", path);
+    console.log("Content:", content);
+    console.log("Title:", title);
 
     // Create the content record
     const newContent = await xata.db.pages.create({
       markdown_content: JSON.stringify({
-        current: content
+        current: content,
       }),
-      title: title || '',
-      path
+      title: title || "",
+      path,
     });
 
     return {
@@ -122,13 +136,14 @@ export async function createContent(path: string, content: string, title?: strin
         id: newContent.id,
         current: content,
         path,
-        title: title || ''
-      }
+        title: title || "",
+      },
     };
   } catch (error) {
-    console.error('Error creating content', error);
+    console.error("Error creating content", error);
     return {
-      error: error instanceof Error ? error.message : 'Failed to create content'
+      error:
+        error instanceof Error ? error.message : "Failed to create content",
     };
   }
 }

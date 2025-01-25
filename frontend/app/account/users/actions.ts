@@ -1,35 +1,45 @@
 "use server";
 
-import { xata } from "@/lib/xata";
+import { getXataClient } from "@/lib/xata";
+import { auth } from "@/app/auth";
+import { hasPermission } from "@/lib/profile-utils";
 import { requirePermission } from "@/lib/server-auth";
 import type { UserProfile } from "@/lib/profile-utils";
 import type { NextauthUsersRecord } from "@/vendor/xata";
+
+const xata = getXataClient();
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  profile: string;
+  company?: string | null;
+}
+
+interface CurrentUser extends User {
+  canManageUsers: boolean;
+  canManageCompanyUsers: boolean;
+}
 
 interface UserData {
   name: string;
   email: string;
   profile: string;
-  company?: string;
-}
-
-async function getCurrentUser() {
-  const user = await requirePermission("canManageCompanyUsers");
-  if (!user) throw new Error("Not authenticated");
-  return user;
+  company?: string | null;
 }
 
 async function validateCompanyAccess(
-  currentUser: NextauthUsersRecord,
-  targetCompanyId: string | null
+  user: CurrentUser,
+  companyId: string | null
 ) {
   // God users can manage any company
-  if (currentUser.profile === "god") return;
+  if (user.profile === "god") return;
 
   // Admin users can only manage their own company
-  if (currentUser.profile === "admin") {
-    if (!currentUser.company)
-      throw new Error("Admin user must belong to a company");
-    if (targetCompanyId !== currentUser.company.id) {
+  if (user.profile === "admin") {
+    if (!user.company) throw new Error("Admin user must belong to a company");
+    if (companyId !== user.company) {
       throw new Error("You can only manage users in your own company");
     }
   }
@@ -59,54 +69,86 @@ async function validateLastAdminInCompany(
   }
 }
 
-export async function getUsers() {
-  const currentUser = await getCurrentUser();
-
-  // Build query based on user's profile
-  let query = xata.db.nextauth_users;
-
-  if (currentUser.profile === "admin" && currentUser.company) {
-    // Admin users can only see users in their company
-    query = query.filter("company", currentUser.company.id);
+async function getCurrentUser() {
+  const session = await auth();
+  if (!session?.user?.email) {
+    throw new Error("Not authenticated");
   }
 
-  const users = await query.getAll();
+  const user = await xata.db.nextauth_users
+    .filter({ email: session.user.email })
+    .getFirst();
 
-  return users.map((user: NextauthUsersRecord) => ({
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return {
     id: user.id,
     name: user.name,
     email: user.email,
     profile: user.profile,
-    company: user.company?.id || "null",
-  }));
+    company: user.company?.id || null,
+    canManageUsers: hasPermission(user.profile, "canManageUsers"),
+    canManageCompanyUsers: hasPermission(user.profile, "canManageCompanyUsers"),
+  };
+}
+
+export async function getUsers() {
+  const currentUser = await getCurrentUser();
+  const query = xata.db.nextauth_users.filter({});
+
+  if (currentUser.canManageCompanyUsers && !currentUser.canManageUsers) {
+    if (!currentUser.company) {
+      throw new Error("Admin user must belong to a company");
+    }
+    query.filter({ "company.id": currentUser.company });
+  }
+
+  const users = await query.getMany();
+  return users.map(
+    (u: NextauthUsersRecord): User => ({
+      id: u.id,
+      name: u.name || "",
+      email: u.email || "",
+      profile: u.profile || "user",
+      company: u.company?.id ?? null,
+    })
+  );
 }
 
 export async function createUser(data: UserData) {
   const currentUser = await getCurrentUser();
-  const targetCompanyId = data.company === "null" ? null : data.company;
 
-  // Admin users can only create users in their company
-  if (currentUser.profile === "admin") {
-    if (!currentUser.company)
+  // For admin users, ensure they can only create users in their company
+  if (currentUser.canManageCompanyUsers && !currentUser.canManageUsers) {
+    if (!currentUser.company) {
       throw new Error("Admin user must belong to a company");
-    // Force company to be the admin's company
-    data.company = currentUser.company.id;
-  } else {
-    // For god users, validate company access
-    await validateCompanyAccess(currentUser, targetCompanyId);
+    }
+    data.company = currentUser.company;
   }
 
   // Admin users cannot create god users
-  if (currentUser.profile === "admin" && data.profile === "god") {
-    throw new Error("Admin users cannot create god users");
+  if (!currentUser.canManageUsers && data.profile === "god") {
+    throw new Error("Only god users can create other god users");
   }
 
-  // Create new user
+  // For god users, validate company access
+  if (data.company !== undefined && data.company !== null) {
+    await validateCompanyAccess(currentUser, data.company);
+  }
+
+  // Ensure company is either a valid ID or null
+  let companyId: string | null = null;
+  if (data.company && data.company !== "null") {
+    companyId = data.company;
+  }
+
   const user = await xata.db.nextauth_users.create({
     name: data.name,
     email: data.email,
     profile: data.profile,
-    company: data.company === "null" ? null : data.company,
+    company: companyId,
   });
 
   return user;
@@ -114,7 +156,8 @@ export async function createUser(data: UserData) {
 
 export async function updateUser(id: string, data: UserData) {
   const currentUser = await getCurrentUser();
-  const targetCompanyId = data.company === "null" ? null : data.company;
+  const targetCompanyId: string | null =
+    data.company === "null" ? null : data.company || null;
 
   // Get the user being updated
   const userToUpdate = await xata.db.nextauth_users.read(id);
@@ -122,11 +165,8 @@ export async function updateUser(id: string, data: UserData) {
 
   // For god users, validate company access
   if (currentUser.profile === "god") {
-    const currentCompanyId = userToUpdate.company?.id;
-    await validateCompanyAccess(
-      currentUser,
-      currentCompanyId === undefined ? null : currentCompanyId
-    );
+    const currentCompanyId = userToUpdate.company?.id ?? null;
+    await validateCompanyAccess(currentUser, currentCompanyId);
     await validateCompanyAccess(currentUser, targetCompanyId);
   } else {
     // Admin users can only update users in their company

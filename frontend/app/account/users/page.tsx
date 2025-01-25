@@ -31,6 +31,8 @@ interface User {
   company?: string;
 }
 
+export const runtime = "edge";
+
 export default function UsersPage() {
   const { toast } = useToast();
   const { setPageTitle } = usePageTitle();

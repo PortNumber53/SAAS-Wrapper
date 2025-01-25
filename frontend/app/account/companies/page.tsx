@@ -22,20 +22,32 @@ import {
 } from "./actions";
 import { Switch } from "@/components/ui/switch";
 
+interface Address {
+  street: string;
+  city: string;
+  state: string;
+  country: string;
+  zip: string;
+}
+
 interface Company {
   id: string;
   name: string;
-  logo?: string | null;
+  logo?: string;
   plan: string;
   is_active: boolean;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zip?: string;
-  };
+  address?: Partial<Address>;
 }
+
+interface FormData {
+  name: string;
+  logo: string;
+  plan: string;
+  is_active: boolean;
+  address: Address;
+}
+
+export const runtime = "edge";
 
 export default function CompaniesPage() {
   const { toast } = useToast();
@@ -132,12 +144,12 @@ export default function CompaniesPage() {
       logo: company.logo || "",
       plan: company.plan,
       is_active: company.is_active,
-      address: company.address || {
-        street: "",
-        city: "",
-        state: "",
-        country: "",
-        zip: "",
+      address: {
+        street: company.address?.street || "",
+        city: company.address?.city || "",
+        state: company.address?.state || "",
+        country: company.address?.country || "",
+        zip: company.address?.zip || "",
       },
     });
   };

@@ -12,14 +12,26 @@ export async function GET() {
     }
 
     const xata = getXataClient();
-    const [stripeIntegration, instagramIntegration] = await Promise.all([
+    const [
+      stripeIntegration,
+      instagramIntegration,
+      pinterestIntegration,
+      tiktokIntegration,
+      facebookIntegration,
+    ] = await Promise.all([
       xata.db.integrations.filter({ slug: "stripe" }).getFirst(),
       xata.db.integrations.filter({ slug: "instagram-business" }).getFirst(),
+      xata.db.integrations.filter({ slug: "pinterest" }).getFirst(),
+      xata.db.integrations.filter({ slug: "tiktok" }).getFirst(),
+      xata.db.integrations.filter({ slug: "facebook" }).getFirst(),
     ]);
 
     const status = {
       stripe: stripeIntegration?.is_active || false,
       instagram: instagramIntegration?.is_active || false,
+      pinterest: pinterestIntegration?.is_active || false,
+      tiktok: tiktokIntegration?.is_active || false,
+      facebook: facebookIntegration?.is_active || false,
     };
 
     return NextResponse.json(status);

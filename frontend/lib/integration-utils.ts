@@ -5,6 +5,9 @@ const INTEGRATION_STATUS_KEY = "integrationStatus";
 interface IntegrationStatus {
   stripe?: boolean;
   instagram?: boolean;
+  pinterest?: boolean;
+  tiktok?: boolean;
+  facebook?: boolean;
 }
 
 export async function fetchIntegrationStatus(): Promise<IntegrationStatus> {

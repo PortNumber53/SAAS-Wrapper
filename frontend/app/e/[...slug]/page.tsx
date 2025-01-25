@@ -1,43 +1,51 @@
-import { Metadata } from 'next';
-import { getPageContent } from './actions';
-import ClientEditContentPage from './ClientEditContentPage';
+import { Metadata } from "next";
+import { getPageContent } from "./actions";
+import ClientEditContentPage from "./ClientEditContentPage";
+import { auth } from "@/app/auth";
+import { redirect } from "next/navigation";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
 export async function generateMetadata({
-  params
+  params,
 }: {
-  params: { slug: string[] }
+  params: { slug: string[] };
 }): Promise<Metadata> {
   // Preserve the leading '/' for path consistency
-  const path = `/${params.slug.join('/').replace(/^(c|e)\//, '')}`;
+  const path = `/${params.slug.join("/").replace(/^(c|e)\//, "")}`;
 
   try {
     const result = await getPageContent(path);
-    
+
     // Use the title if available, otherwise use a default
-    const title = result.title 
+    const title = result.title
       ? `Edit: ${result.title} | Your Site Name`
       : `Edit Page | Your Site Name`;
 
     return {
       title: title,
-      description: result.title 
-        ? `Editing page: ${result.title}` 
-        : 'Create or Edit Content Page'
+      description: result.title
+        ? `Editing page: ${result.title}`
+        : "Create or Edit Content Page",
     };
   } catch (error) {
     return {
-      title: 'Page Not Found',
-      description: 'The requested page could not be loaded'
+      title: "Page Not Found",
+      description: "The requested page could not be loaded",
     };
   }
 }
 
-export default function EditContentPage({
-  params
+export default async function EditContentPage({
+  params,
 }: {
-  params: { slug: string[] }
+  params: { slug: string[] };
 }) {
+  // Check for god user permission
+  const session = await auth();
+  if (session?.user?.profile !== "god") {
+    redirect("/");
+  }
+
   return <ClientEditContentPage params={params} />;
 }

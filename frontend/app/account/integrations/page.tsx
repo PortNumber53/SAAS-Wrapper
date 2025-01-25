@@ -7,6 +7,9 @@ import { usePageTitle } from "@/lib/page-title-context";
 import { Plug } from "lucide-react";
 import { StripeIntegration } from "@/components/integrations/stripe-integration";
 import { InstagramIntegration } from "@/components/integrations/instagram-integration";
+import { PinterestIntegration } from "@/components/integrations/pinterest-integration";
+import { TikTokIntegration } from "@/components/integrations/tiktok-integration";
+import { FacebookIntegration } from "@/components/integrations/facebook-integration";
 
 export const runtime = "edge";
 
@@ -44,6 +47,30 @@ export default function IntegrationsPage() {
       description: "Connect your Instagram feed and showcase your content",
       icon: "/icons/instagram.svg",
       component: InstagramIntegration,
+    },
+    {
+      id: "pinterest",
+      name: "Pinterest",
+      description:
+        "Connect your Pinterest account to automatically publish content",
+      icon: "/icons/pinterest.svg",
+      component: PinterestIntegration,
+    },
+    {
+      id: "tiktok",
+      name: "TikTok",
+      description:
+        "Connect your TikTok account to automatically publish content",
+      icon: "/icons/tiktok.svg",
+      component: TikTokIntegration,
+    },
+    {
+      id: "facebook",
+      name: "Facebook",
+      description:
+        "Connect your Facebook account to automatically publish content",
+      icon: "/icons/facebook.svg",
+      component: FacebookIntegration,
     },
   ];
 
