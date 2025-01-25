@@ -1,0 +1,18 @@
+{
+  "done": true,
+  "migration": {
+    "name": "mig_cua5ia52ontoimrf3cmg",
+    "operations": [
+      {
+        "drop_table": {
+          "name": "companies_users"
+        }
+      }
+    ]
+  },
+  "migrationType": "pgroll",
+  "name": "mig_cua5ia52ontoimrf3cmg",
+  "parent": "mig_cua5i3d2ontoimrf3clg",
+  "schema": "public",
+  "startedAt": "2025-01-25T03:23:21.126939Z"
+}

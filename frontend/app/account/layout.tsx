@@ -13,6 +13,7 @@ import {
   PlugIcon,
   RocketIcon,
   Users,
+  Building2,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
@@ -21,6 +22,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Inter } from "next/font/google";
 import { AccountDropdown } from "@/components/account-dropdown";
 import { useProfile } from "@/hooks/use-profile";
+import { cn } from "@/lib/utils";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -40,7 +42,8 @@ type Section =
   | "Creators"
   | "Campaigns"
   | "Posts"
-  | "Users";
+  | "Users"
+  | "Companies";
 
 export default function AccountLayout({
   children,
@@ -68,6 +71,7 @@ export default function AccountLayout({
     if (path.includes("/account/social-media/campaigns")) return "Campaigns";
     if (path.includes("/account/social-media/posts")) return "Posts";
     if (path.includes("/account/users")) return "Users";
+    if (path.includes("/account/companies")) return "Companies";
     return "E-commerce";
   }, []);
 
@@ -110,12 +114,14 @@ export default function AccountLayout({
         <div className="space-y-1">
           {(
             [
-              "Integrations",
               "E-commerce",
               "Products",
               "Orders",
               "Subscriptions",
-              ...(checkPermission("canManageUsers") ? ["Users"] : []),
+              "Integrations",
+              ...(checkPermission("canManageUsers")
+                ? ["Users", "Companies"]
+                : []),
             ] as Section[]
           ).map((section) => (
             <Link
@@ -127,6 +133,8 @@ export default function AccountLayout({
                   ? "/account/integrations"
                   : section === "Users"
                   ? "/account/users"
+                  : section === "Companies"
+                  ? "/account/companies"
                   : `/account/ecommerce/${section.toLowerCase()}`
               }
               className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer transition-all duration-200 ${
@@ -141,6 +149,7 @@ export default function AccountLayout({
               {section === "Orders" && <List className="h-5 w-5" />}
               {section === "Subscriptions" && <List className="h-5 w-5" />}
               {section === "Users" && <Users className="h-5 w-5" />}
+              {section === "Companies" && <Building2 className="h-5 w-5" />}
               <span>{section}</span>
             </Link>
           ))}

@@ -15,31 +15,57 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { getUsers, createUser, updateUser, deleteUser } from "./actions";
-import type { UserProfile } from "@/lib/profile-utils";
+import { getCompanies } from "../companies/actions";
+
+interface Company {
+  id: string;
+  name: string;
+}
 
 interface User {
   id: string;
-  name: string | null;
+  name: string;
   email: string;
-  profile: UserProfile;
+  profile: string;
+  company?: string;
 }
 
 export default function UsersPage() {
   const { toast } = useToast();
   const { setPageTitle } = usePageTitle();
   const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    profile: "user" as UserProfile,
+    profile: "user",
+    company: "null",
   });
 
   useEffect(() => {
     setPageTitle("User Management", Users);
     loadUsers();
+    loadCompanies();
   }, [setPageTitle]);
+
+  const loadCompanies = async () => {
+    try {
+      const data = await getCompanies();
+      setCompanies(data);
+    } catch (error) {
+      console.error("Error loading companies:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to load companies. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -77,7 +103,12 @@ export default function UsersPage() {
         });
       }
       setEditingUser(null);
-      setFormData({ name: "", email: "", profile: "user" });
+      setFormData({
+        name: "",
+        email: "",
+        profile: "user",
+        company: "null",
+      });
       loadUsers();
     } catch (error) {
       console.error("Error saving user:", error);
@@ -95,9 +126,10 @@ export default function UsersPage() {
   const handleEdit = (user: User) => {
     setEditingUser(user);
     setFormData({
-      name: user.name || "",
+      name: user.name,
       email: user.email,
       profile: user.profile,
+      company: user.company || "null",
     });
   };
 
@@ -121,6 +153,16 @@ export default function UsersPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleCancel = () => {
+    setEditingUser(null);
+    setFormData({
+      name: "",
+      email: "",
+      profile: "user",
+      company: "null",
+    });
   };
 
   if (loading) {
@@ -163,7 +205,7 @@ export default function UsersPage() {
               <Label htmlFor="profile">Profile</Label>
               <Select
                 value={formData.profile}
-                onValueChange={(value: UserProfile) =>
+                onValueChange={(value) =>
                   setFormData({ ...formData, profile: value })
                 }
               >
@@ -171,21 +213,38 @@ export default function UsersPage() {
                   <SelectValue placeholder="Select a profile" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="god">God</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="company">Company</Label>
+              <Select
+                value={formData.company}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    company: value === "null" ? "null" : value,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a company" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="null">No Company</SelectItem>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setEditingUser(null);
-                  setFormData({ name: "", email: "", profile: "user" });
-                }}
-              >
+              <Button type="button" variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
               <Button type="submit">
@@ -205,6 +264,7 @@ export default function UsersPage() {
                   <th className="text-left p-4">Name</th>
                   <th className="text-left p-4">Email</th>
                   <th className="text-left p-4">Profile</th>
+                  <th className="text-left p-4">Company</th>
                   <th className="text-left p-4">Actions</th>
                 </tr>
               </thead>
@@ -214,6 +274,10 @@ export default function UsersPage() {
                     <td className="p-4">{user.name}</td>
                     <td className="p-4">{user.email}</td>
                     <td className="p-4">{user.profile}</td>
+                    <td className="p-4">
+                      {companies.find((c) => c.id === user.company)?.name ||
+                        "-"}
+                    </td>
                     <td className="p-4">
                       <div className="flex gap-2">
                         <Button

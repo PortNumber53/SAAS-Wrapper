@@ -205,91 +205,6 @@ const tables = [
     ],
   },
   {
-    name: "companies_users",
-    checkConstraints: {
-      companies_users_xata_id_length_xata_id: {
-        name: "companies_users_xata_id_length_xata_id",
-        columns: ["xata_id"],
-        definition: "CHECK ((length(xata_id) < 256))",
-      },
-    },
-    foreignKeys: {
-      company_link: {
-        name: "company_link",
-        columns: ["company"],
-        referencedTable: "companies",
-        referencedColumns: ["xata_id"],
-        onDelete: "SET NULL",
-      },
-      user_link: {
-        name: "user_link",
-        columns: ["user"],
-        referencedTable: "nextauth_users",
-        referencedColumns: ["xata_id"],
-        onDelete: "SET NULL",
-      },
-    },
-    primaryKey: [],
-    uniqueConstraints: {
-      _pgroll_new_companies_users_xata_id_key: {
-        name: "_pgroll_new_companies_users_xata_id_key",
-        columns: ["xata_id"],
-      },
-    },
-    columns: [
-      {
-        name: "company",
-        type: "link",
-        link: { table: "companies" },
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: '{"xata.link":"companies"}',
-      },
-      {
-        name: "user",
-        type: "link",
-        link: { table: "nextauth_users" },
-        notNull: false,
-        unique: false,
-        defaultValue: null,
-        comment: '{"xata.link":"nextauth_users"}',
-      },
-      {
-        name: "xata_createdat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_id",
-        type: "text",
-        notNull: true,
-        unique: true,
-        defaultValue: "('rec_'::text || (xata_private.xid())::text)",
-        comment: "",
-      },
-      {
-        name: "xata_updatedat",
-        type: "datetime",
-        notNull: true,
-        unique: false,
-        defaultValue: "now()",
-        comment: "",
-      },
-      {
-        name: "xata_version",
-        type: "int",
-        notNull: true,
-        unique: false,
-        defaultValue: "0",
-        comment: "",
-      },
-    ],
-  },
-  {
     name: "deletion_requests",
     checkConstraints: {
       deletion_requests_xata_id_length_xata_id: {
@@ -870,7 +785,15 @@ const tables = [
         definition: "CHECK ((length(xata_id) < 256))",
       },
     },
-    foreignKeys: {},
+    foreignKeys: {
+      company_link: {
+        name: "company_link",
+        columns: ["company"],
+        referencedTable: "companies",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
     primaryKey: [],
     uniqueConstraints: {
       _pgroll_new_nextauth_users_xata_id_key: {
@@ -883,6 +806,15 @@ const tables = [
       },
     },
     columns: [
+      {
+        name: "company",
+        type: "link",
+        link: { table: "companies" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"companies"}',
+      },
       {
         name: "email",
         type: "text",
@@ -2535,9 +2467,6 @@ export type CategoriesRecord = Categories & XataRecord;
 export type Companies = InferredTypes["companies"];
 export type CompaniesRecord = Companies & XataRecord;
 
-export type CompaniesUsers = InferredTypes["companies_users"];
-export type CompaniesUsersRecord = CompaniesUsers & XataRecord;
-
 export type DeletionRequests = InferredTypes["deletion_requests"];
 export type DeletionRequestsRecord = DeletionRequests & XataRecord;
 
@@ -2603,7 +2532,6 @@ export type WebhookEventsRecord = WebhookEvents & XataRecord;
 export type DatabaseSchema = {
   categories: CategoriesRecord;
   companies: CompaniesRecord;
-  companies_users: CompaniesUsersRecord;
   deletion_requests: DeletionRequestsRecord;
   integrations: IntegrationsRecord;
   invoices: InvoicesRecord;
