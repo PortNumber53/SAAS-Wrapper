@@ -314,7 +314,15 @@ const tables = [
         definition: "CHECK ((length(xata_id) < 256))",
       },
     },
-    foreignKeys: {},
+    foreignKeys: {
+      user_link: {
+        name: "user_link",
+        columns: ["user"],
+        referencedTable: "nextauth_users",
+        referencedColumns: ["xata_id"],
+        onDelete: "SET NULL",
+      },
+    },
     primaryKey: [],
     uniqueConstraints: {
       _pgroll_new_integrations_xata_id_key: {
@@ -358,6 +366,15 @@ const tables = [
         unique: true,
         defaultValue: null,
         comment: "",
+      },
+      {
+        name: "user",
+        type: "link",
+        link: { table: "nextauth_users" },
+        notNull: false,
+        unique: false,
+        defaultValue: null,
+        comment: '{"xata.link":"nextauth_users"}',
       },
       {
         name: "xata_createdat",
