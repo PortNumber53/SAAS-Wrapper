@@ -116,6 +116,11 @@ export default {
       const rows = await sql`select user_access_token from public.ig_accounts where ig_user_id=${ig_user_id} and email=${sess.email} limit 1` as Array<any>;
       if (!rows.length || !rows[0].user_access_token) return new Response(JSON.stringify({ ok: false, error: 'reauthorization_required' }), { status: 400, headers: { 'content-type': 'application/json' } });
       const userToken = rows[0].user_access_token as string;
+      // Validate the stored user token first; if invalid, require reauthorization
+      const userTokStatus: any = await debugFBToken(env, userToken).catch(() => ({ is_valid: false }));
+      if (!userTokStatus?.is_valid) {
+        return new Response(JSON.stringify({ ok: false, error: 'reauthorization_required' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      }
       // Re-derive page token from user token
       // Request pages including the instagram_business_account linkage
       const pages = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,instagram_business_account`, { headers: { Authorization: `Bearer ${userToken}` } });
@@ -131,7 +136,9 @@ export default {
           if (qj?.instagram_business_account?.id === ig_user_id) { entry = p; break; }
         }
       }
-      if (!entry) return new Response(JSON.stringify({ ok: false, error: 'page_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      if (!entry) {
+        return new Response(JSON.stringify({ ok: false, error: 'ig_account_not_linked' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      }
       await sql`update public.ig_accounts set access_token=${entry.access_token}, updated_at=now() where ig_user_id=${ig_user_id} and email=${sess.email}`;
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
     }
