@@ -338,7 +338,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   }
 
   // Persist to Xata (optional in dev). Skip if config is missing.
-  const hasXata = !!(env.XATA_DATABASE_URL && env.XATA_BRANCH && env.XATA_API_KEY);
+  const hasXata = !!(env.XATA_DATABASE_URL && env.XATA_API_KEY);
   if (hasXata) {
     try {
       await upsertUserToXata(env, {
@@ -390,7 +390,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
   const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
   const branch = env.XATA_BRANCH;
   const apiKey = env.XATA_API_KEY;
-  if (!base || !branch || !apiKey) throw new Error('Missing Xata configuration');
+  if (!base || !apiKey) throw new Error('Missing Xata configuration');
 
   // Validate branch and fall back to 'main' if the provided branch does not exist
   let effectiveBranch = branch;
