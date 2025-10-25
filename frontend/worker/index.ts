@@ -39,8 +39,8 @@ export default {
         const user = await findUserByEmail(env, sess.email).catch(() => null);
         if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
         const body: Record<string, unknown> = {};
-        if (typeof (allowed as any).name === 'string') body.name = (allowed as any).name || null;
-        if (typeof (allowed as any).picture === 'string') body.picture = (allowed as any).picture || null;
+        if (typeof (allowed as any).name === 'string') body.name = (allowed as any).name || '';
+        if (typeof (allowed as any).picture === 'string') body.profile = (allowed as any).picture || '';
         const ok = await updateUserById(env, user.id, body).then(() => true).catch(() => false);
         return new Response(JSON.stringify({ ok }), { status: ok ? 200 : 500, headers: { 'content-type': 'application/json' } });
       }
@@ -416,11 +416,9 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       // proceed with existing and updated effectiveBranch
       const recordBody = {
         email: user.email,
-        name: user.name ?? null,
-        picture: user.picture ?? null,
-        provider: user.provider,
-        provider_id: user.provider_id,
-        last_login_at: new Date().toISOString(),
+        password: 'oauth',
+        name: user.name ?? '',
+        profile: user.picture ?? '',
       } as Record<string, unknown>;
       if (fallbackExisting?.id) {
         const upUrl = `${base}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
@@ -446,11 +444,9 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
 
   const recordBody = {
     email: user.email,
-    name: user.name ?? null,
-    picture: user.picture ?? null,
-    provider: user.provider,
-    provider_id: user.provider_id,
-    last_login_at: new Date().toISOString(),
+    password: 'oauth',
+    name: user.name ?? '',
+    profile: user.picture ?? '',
   } as Record<string, unknown>;
 
   if (existing?.id) {
