@@ -65,7 +65,6 @@ export default function DashboardPage() {
               <input placeholder='Image URL (https://...)' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
               <input placeholder='Caption' value={caption} onChange={e => setCaption(e.target.value)} />
               <button className='btn primary' onClick={publish}>Publish Image</button>
-              <div className='read-the-docs'>Need to link another account? <Link to='/account/integrations'>Manage integrations</Link>.</div>
             </div>
           </section>
         )}
