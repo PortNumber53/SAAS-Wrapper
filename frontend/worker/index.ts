@@ -432,7 +432,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     'authorization': `Bearer ${apiKey}`,
     'content-type': 'application/json',
     'accept': 'application/json',
-    ...(effectiveBranch ? { 'x-xata-branch': effectiveBranch } : {}),
+    ...(effectiveBranch ? { 'X-Branch': effectiveBranch } : {}),
   } as Record<string, string>;
 
   // Ensure users table exists in your DB; this will upsert by email
@@ -445,9 +445,9 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     if (/invalid base branch/i.test(t)) {
       const tryHeaders = new Headers(headers as any);
       if (effectiveBranch && effectiveBranch !== 'main') {
-        tryHeaders.set('x-xata-branch', effectiveBranch);
+        tryHeaders.set('X-Branch', effectiveBranch);
       } else {
-        tryHeaders.delete('x-xata-branch');
+        tryHeaders.delete('X-Branch');
       }
       // try path suffix
       const baseCand = [
@@ -480,7 +480,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
         const upBase = XATA_BASE_CACHE || base;
         const upUrl = `${upBase}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
         const upHeaders = new Headers(headers as any);
-        if (effectiveBranch) upHeaders.set('x-xata-branch', effectiveBranch); else upHeaders.delete('x-xata-branch');
+        if (effectiveBranch) upHeaders.set('X-Branch', effectiveBranch); else upHeaders.delete('X-Branch');
         const upRes = await fetch(upUrl, { method: 'PATCH', headers: upHeaders, body: JSON.stringify(recordBody) });
         if (!upRes.ok) {
           const t = await upRes.text();
@@ -490,7 +490,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
         const crBase = XATA_BASE_CACHE || base;
         const crUrl = `${crBase}/tables/users/data`;
         const crHeaders = new Headers(headers as any);
-        if (effectiveBranch) crHeaders.set('x-xata-branch', effectiveBranch); else crHeaders.delete('x-xata-branch');
+        if (effectiveBranch) crHeaders.set('X-Branch', effectiveBranch); else crHeaders.delete('X-Branch');
         const crRes = await fetch(crUrl, { method: 'POST', headers: crHeaders, body: JSON.stringify(recordBody) });
         if (!crRes.ok) {
           const t = await crRes.text();
@@ -537,7 +537,7 @@ function xataHeaders(env: Env): HeadersInit {
     accept: 'application/json',
     'content-type': 'application/json',
   };
-  if (env.XATA_BRANCH) h['x-xata-branch'] = env.XATA_BRANCH;
+  if (env.XATA_BRANCH) h['X-Branch'] = env.XATA_BRANCH;
   return h;
 }
 
@@ -607,11 +607,11 @@ async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<v
     const t = await qRes.text();
     if (/invalid base branch/i.test(t)) {
       const tryHeaders = new Headers(headersObj as any);
-      tryHeaders.delete('x-xata-branch');
+      tryHeaders.delete('X-Branch');
       qRes = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { provider: acct.provider, provider_user_id: acct.provider_user_id }, page: { size: 1 } }) });
       if (!qRes.ok) throw new Error(await qRes.text());
       // overwrite headersObj to the working version for subsequent calls
-      (headersObj as any)['x-xata-branch'] && delete (headersObj as any)['x-xata-branch'];
+      (headersObj as any)['X-Branch'] && delete (headersObj as any)['X-Branch'];
     } else {
       throw new Error(`Query failed: ${t}`);
     }
@@ -627,7 +627,7 @@ async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<v
       const t = await upRes.text();
       if (/invalid base branch/i.test(t)) {
         const tryHeaders = new Headers(headersObj as any);
-        tryHeaders.delete('x-xata-branch');
+        tryHeaders.delete('X-Branch');
         upRes = await fetch(upUrl, { method: 'PATCH', headers: tryHeaders, body: JSON.stringify(recordBody) });
         if (!upRes.ok) throw new Error(await upRes.text());
       } else {
@@ -641,7 +641,7 @@ async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<v
       const t = await crRes.text();
       if (/invalid base branch/i.test(t)) {
         const tryHeaders = new Headers(headersObj as any);
-        tryHeaders.delete('x-xata-branch');
+        tryHeaders.delete('X-Branch');
         crRes = await fetch(crUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify(recordBody) });
         if (!crRes.ok) throw new Error(await crRes.text());
       } else {
