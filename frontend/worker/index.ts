@@ -230,11 +230,26 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
   const apiKey = env.XATA_API_KEY;
   if (!base || !branch || !apiKey) throw new Error('Missing Xata configuration');
 
+  // Validate branch and fall back to 'main' if the provided branch does not exist
+  let effectiveBranch = branch;
+  try {
+    const bRes = await fetch(`${base}/branches`, {
+      headers: { authorization: `Bearer ${apiKey}`, accept: 'application/json' },
+    });
+    if (bRes.ok) {
+      const bJson = await bRes.json() as any;
+      const list: string[] = Array.isArray(bJson) ? bJson : (bJson?.branches ?? []);
+      if (effectiveBranch && !list.includes(effectiveBranch) && list.includes('main')) {
+        effectiveBranch = 'main';
+      }
+    }
+  } catch { /* ignore and use provided branch */ }
+
   const headers = {
     'authorization': `Bearer ${apiKey}`,
     'content-type': 'application/json',
-    'xata-branch': branch,
     'accept': 'application/json',
+    ...(effectiveBranch ? { 'xata-branch': effectiveBranch } : {}),
   } as Record<string, string>;
 
   // Ensure users table exists in your DB; this will upsert by email
@@ -243,6 +258,43 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
   const qRes = await fetch(queryUrl, { method: 'POST', headers, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
   if (!qRes.ok) {
     const t = await qRes.text();
+    // Retry once with 'main' if branch invalid
+    if (/invalid base branch/i.test(t) && effectiveBranch !== 'main') {
+      const h2 = { ...headers, 'xata-branch': 'main' };
+      const r2 = await fetch(queryUrl, { method: 'POST', headers: h2, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
+      if (!r2.ok) {
+        const t2 = await r2.text();
+        throw new Error(`Query failed: ${t2}`);
+      }
+      const q2Json = await r2.json() as any;
+      const fallbackExisting = q2Json?.records?.[0];
+      effectiveBranch = 'main';
+      // proceed with existing and updated effectiveBranch
+      const recordBody = {
+        email: user.email,
+        name: user.name ?? null,
+        picture: user.picture ?? null,
+        provider: user.provider,
+        provider_id: user.provider_id,
+        last_login_at: new Date().toISOString(),
+      } as Record<string, any>;
+      if (fallbackExisting?.id) {
+        const upUrl = `${base}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
+        const upRes = await fetch(upUrl, { method: 'PATCH', headers: { ...headers, 'xata-branch': effectiveBranch }, body: JSON.stringify(recordBody) });
+        if (!upRes.ok) {
+          const t = await upRes.text();
+          throw new Error(`Update failed: ${t}`);
+        }
+      } else {
+        const crUrl = `${base}/tables/users/data`;
+        const crRes = await fetch(crUrl, { method: 'POST', headers: { ...headers, 'xata-branch': effectiveBranch }, body: JSON.stringify(recordBody) });
+        if (!crRes.ok) {
+          const t = await crRes.text();
+          throw new Error(`Create failed: ${t}`);
+        }
+      }
+      return;
+    }
     throw new Error(`Query failed: ${t}`);
   }
   const qJson = await qRes.json() as any;
