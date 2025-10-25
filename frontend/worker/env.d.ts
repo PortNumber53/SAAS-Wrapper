@@ -15,4 +15,7 @@ interface Env {
   XATA_DATABASE_URL: string; // e.g. https://<workspace>.<region>.xata.sh/db/<db>
   XATA_BRANCH: string; // e.g. main
   XATA_API_KEY: string;
+  // Direct Postgres DSN for Xata (preferred for new apps)
+  // e.g. postgresql://<workspace>:<api_key>@<region>.sql.xata.sh/<db>:<branch>?sslmode=require
+  XATA_PG_URL?: string;
 }

@@ -1,4 +1,15 @@
+import postgres from 'postgres'
+
 let XATA_BASE_CACHE: string | null = null;
+let PG_CACHE: ReturnType<typeof postgres> | null = null;
+
+function getPg(env: Env) {
+  if (PG_CACHE) return PG_CACHE;
+  const dsn = env.XATA_PG_URL || '';
+  if (!dsn) throw new Error('Missing XATA_PG_URL');
+  PG_CACHE = postgres(dsn, { ssl: 'require' });
+  return PG_CACHE;
+}
 
 export default {
   async fetch(request, env) {
@@ -27,35 +38,7 @@ export default {
       headers.append('Set-Cookie', setCookie('session', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
       return new Response(null, { status: 204, headers });
     }
-    if (url.pathname === "/api/debug/xata-branches") {
-      const rawBase = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-      const out: Record<string, unknown> = { base: rawBase, branch: env.XATA_BRANCH ?? '' };
-      try {
-        // Try raw base
-        const r1 = await fetch(`${rawBase}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
-        out.status_no_header = r1.status;
-        out.ok_no_header = r1.ok;
-        out.branches_no_header = r1.ok ? await r1.json() : await r1.text();
-      } catch (e: any) {
-        out.error_no_header = e?.message ?? String(e);
-      }
-      try {
-        // Try base with ":<branch>" suffix variations
-        const cand: string[] = [];
-        if (env.XATA_BRANCH) cand.push(`${rawBase}:${env.XATA_BRANCH}`);
-        cand.push(`${rawBase}:main`);
-        for (const b of cand) {
-          const r = await fetch(`${b}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
-          out[`status_path_${b}`] = r.status;
-          out[`ok_path_${b}`] = r.ok;
-          out[`branches_path_${b}`] = r.ok ? await r.json() : await r.text();
-          if (r.ok) { XATA_BASE_CACHE = b; break; }
-        }
-      } catch (e: any) {
-        out.error_with_header = e?.message ?? String(e);
-      }
-      return new Response(JSON.stringify(out, null, 2), { headers: { 'content-type': 'application/json' } });
-    }
+    // Remove legacy HTTP debug route; we now use direct Postgres
 
     // Authenticated Xata-backed endpoints
     if (url.pathname === "/api/me") {
@@ -531,124 +514,43 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
 }
 
 // --- Xata helpers ---
-function xataHeaders(env: Env): HeadersInit {
-  const h: Record<string, string> = {
-    authorization: `Bearer ${env.XATA_API_KEY}`,
-    accept: 'application/json',
-    'content-type': 'application/json',
-  };
-  if (env.XATA_BRANCH) h['X-Branch'] = env.XATA_BRANCH;
-  return h;
-}
+// legacy HTTP headers (unused now) removed
 
 async function findUserByEmail(env: Env, email: string): Promise<{ id: string } & Record<string, unknown> | null> {
-  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
-  if (!base || !env.XATA_API_KEY) return null;
-  const url = `${base}/tables/users/query`;
-  const res = await fetch(url, { method: 'POST', headers: xataHeaders(env), body: JSON.stringify({ filter: { email }, page: { size: 1 } }) });
-  if (!res.ok) return null;
-  const j = await res.json() as { records?: Array<{ id: string } & Record<string, unknown>> };
-  return j.records?.[0] ?? null;
+  const sql = getPg(env);
+  const rows = await sql`select id, email, name, profile from public.users where email=${email} limit 1` as Array<any>;
+  return rows[0] ?? null;
 }
 
 async function updateUserById(env: Env, id: string, body: Record<string, unknown>): Promise<void> {
-  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
-  const url = `${base}/tables/users/data/${encodeURIComponent(id)}`;
-  const res = await fetch(url, { method: 'PATCH', headers: xataHeaders(env), body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(await res.text());
+  const sql = getPg(env);
+  const name = (body as any).name ?? null;
+  const profile = (body as any).profile ?? null;
+  await sql`update public.users set name=${name}, profile=${profile} where id=${id}`;
 }
 
 async function getUserSettings(env: Env, email: string): Promise<Record<string, unknown>> {
-  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
-  if (!base || !env.XATA_API_KEY) return {};
-  const url = `${base}/tables/user_settings/query`;
-  const res = await fetch(url, { method: 'POST', headers: xataHeaders(env), body: JSON.stringify({ filter: { email }, page: { size: 1 } }) });
-  if (!res.ok) return {};
-  const j = await res.json() as { records?: Array<Record<string, unknown> & { id: string }> };
-  const r = j.records?.[0];
-  if (!r) return {};
-  const { id, ...rest } = r as any;
-  return { id, ...rest };
+  const sql = getPg(env);
+  const rows = await sql`select id, email, theme from public.user_settings where email=${email} limit 1` as Array<any>;
+  return rows[0] ?? {};
 }
 
 async function setUserSettings(env: Env, email: string, updates: Record<string, unknown>): Promise<void> {
-  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-  if (!base || !env.XATA_API_KEY) throw new Error('Missing Xata configuration');
-  // fetch existing
-  const existing = await getUserSettings(env, email).catch(() => ({} as any));
-  const headers = xataHeaders(env);
-  const body = { email, ...updates } as Record<string, unknown>;
+  const sql = getPg(env);
+  const existing = await getUserSettings(env, email);
+  const theme = (updates as any).theme ?? null;
   if ((existing as any)?.id) {
-    const url = `${base}/tables/user_settings/data/${encodeURIComponent((existing as any).id)}`;
-    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error(await res.text());
+    await sql`update public.user_settings set theme=${theme} where id=${(existing as any).id}`;
   } else {
-    const url = `${base}/tables/user_settings/data`;
-    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error(await res.text());
+    await sql`insert into public.user_settings (email, theme) values (${email}, ${theme})`;
   }
 }
 
 type OAuthAccount = { provider: string; provider_user_id: string; email: string };
 
 async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<void> {
-  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-  const apiKey = env.XATA_API_KEY;
-  if (!base || !apiKey) throw new Error('Missing Xata configuration');
-  const headersObj = xataHeaders(env);
-
-  // 1) Query existing by (provider, provider_user_id)
-  const queryUrl = `${base}/tables/oauth_accounts/query`;
-  let qRes = await fetch(queryUrl, { method: 'POST', headers: headersObj, body: JSON.stringify({ filter: { provider: acct.provider, provider_user_id: acct.provider_user_id }, page: { size: 1 } }) });
-  if (!qRes.ok) {
-    const t = await qRes.text();
-    if (/invalid base branch/i.test(t)) {
-      const tryHeaders = new Headers(headersObj as any);
-      tryHeaders.delete('X-Branch');
-      qRes = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { provider: acct.provider, provider_user_id: acct.provider_user_id }, page: { size: 1 } }) });
-      if (!qRes.ok) throw new Error(await qRes.text());
-      // overwrite headersObj to the working version for subsequent calls
-      (headersObj as any)['X-Branch'] && delete (headersObj as any)['X-Branch'];
-    } else {
-      throw new Error(`Query failed: ${t}`);
-    }
-  }
-  const qJson = await qRes.json() as { records?: Array<{ id: string }> };
-  const existing = qJson?.records?.[0];
-
-  const recordBody = { provider: acct.provider, provider_user_id: acct.provider_user_id, email: acct.email } as Record<string, unknown>;
-  if (existing?.id) {
-    const upUrl = `${base}/tables/oauth_accounts/data/${encodeURIComponent(existing.id)}`;
-    let upRes = await fetch(upUrl, { method: 'PATCH', headers: headersObj, body: JSON.stringify(recordBody) });
-    if (!upRes.ok) {
-      const t = await upRes.text();
-      if (/invalid base branch/i.test(t)) {
-        const tryHeaders = new Headers(headersObj as any);
-        tryHeaders.delete('X-Branch');
-        upRes = await fetch(upUrl, { method: 'PATCH', headers: tryHeaders, body: JSON.stringify(recordBody) });
-        if (!upRes.ok) throw new Error(await upRes.text());
-      } else {
-        throw new Error(`Update failed: ${t}`);
-      }
-    }
-  } else {
-    const crUrl = `${base}/tables/oauth_accounts/data`;
-    let crRes = await fetch(crUrl, { method: 'POST', headers: headersObj, body: JSON.stringify(recordBody) });
-    if (!crRes.ok) {
-      const t = await crRes.text();
-      if (/invalid base branch/i.test(t)) {
-        const tryHeaders = new Headers(headersObj as any);
-        tryHeaders.delete('X-Branch');
-        crRes = await fetch(crUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify(recordBody) });
-        if (!crRes.ok) throw new Error(await crRes.text());
-      } else {
-        throw new Error(`Create failed: ${t}`);
-      }
-    }
-  }
+  const sql = getPg(env);
+  await sql`insert into public.oauth_accounts (provider, provider_user_id, email) values (${acct.provider}, ${acct.provider_user_id}, ${acct.email}) on conflict (provider, provider_user_id) do update set email=excluded.email`;
 }
 
 async function handleSession(request: Request, env: Env): Promise<Response> {
