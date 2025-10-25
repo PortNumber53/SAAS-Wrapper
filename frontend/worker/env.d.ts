@@ -12,6 +12,9 @@ interface Env {
   // Instagram OAuth (Basic Display / Graph)
   INSTAGRAM_CLIENT_ID?: string;
   INSTAGRAM_CLIENT_SECRET?: string;
+  // Facebook (for Instagram Graph API)
+  FACEBOOK_APP_ID?: string;
+  FACEBOOK_APP_SECRET?: string;
   // Optional session secret used to sign cookies
   SESSION_SECRET?: string;
   // Xata Postgres DSN (preferred)

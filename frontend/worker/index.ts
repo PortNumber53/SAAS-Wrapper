@@ -61,6 +61,48 @@ export default {
     if (url.pathname === '/api/auth/instagram/callback') {
       return handleInstagramCallback(request, env, url);
     }
+    if (url.pathname === '/api/auth/iggraph/start') {
+      return startIGGraphOAuth(request, env, url);
+    }
+    if (url.pathname === '/api/auth/iggraph/callback') {
+      return handleIGGraphCallback(request, env, url);
+    }
+    if (url.pathname === '/api/ig/accounts') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const rows = await sql`select ig_user_id, page_id, page_name, username from public.ig_accounts where email=${sess.email}` as Array<any>;
+      return new Response(JSON.stringify({ ok: true, accounts: rows }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname === '/api/ig/publish' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const body = await request.json().catch(() => ({} as unknown));
+      const ig_user_id = (body as any).ig_user_id as string | undefined;
+      const image_url = (body as any).image_url as string | undefined;
+      const caption = (body as any).caption as string | undefined;
+      if (!ig_user_id || !image_url) return new Response(JSON.stringify({ ok: false, error: 'missing_params' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const row = (await sql`select access_token from public.ig_accounts where ig_user_id=${ig_user_id} and email=${sess.email} limit 1`) as Array<any>;
+      if (!row.length) return new Response(JSON.stringify({ ok: false, error: 'not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const access = row[0].access_token as string;
+      // Create media
+      const cr = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(ig_user_id)}/media`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ image_url, caption: caption ?? '', access_token: access }),
+      });
+      if (!cr.ok) return new Response(await cr.text(), { status: 502 });
+      const crJ = await cr.json() as any;
+      const creationId = crJ.id as string;
+      const pub = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(ig_user_id)}/media_publish`, {
+        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ creation_id: creationId, access_token: access }),
+      });
+      if (!pub.ok) return new Response(await pub.text(), { status: 502 });
+      const pubJ = await pub.json();
+      return new Response(JSON.stringify({ ok: true, result: pubJ }), { headers: { 'content-type': 'application/json' } });
+    }
     // Remove legacy HTTP debug route; we now use direct Postgres
 
     // Authenticated Xata-backed endpoints
@@ -557,6 +599,112 @@ async function handleInstagramCallback(request: Request, env: Env, url: URL): Pr
         var data = ${JSON.stringify(msg)};
         if (window.opener && typeof window.opener.postMessage === 'function') {
           window.opener.postMessage({ type: 'oauth:instagram', data: data }, ${JSON.stringify(targetOrigin)});
+        }
+      } catch (e) {}
+      window.close();
+    })();
+  </script></body></html>`;
+  return new Response(html, { status: 200, headers });
+}
+
+// --- Instagram Graph via Facebook Login ---
+async function startIGGraphOAuth(request: Request, env: Env, url: URL): Promise<Response> {
+  const appId = env.FACEBOOK_APP_ID || '';
+  const appSecret = env.FACEBOOK_APP_SECRET || '';
+  if (!appId || !appSecret) return new Response('Missing FACEBOOK_APP_ID/FACEBOOK_APP_SECRET', { status: 500 });
+  const sess = await getSessionFromCookie(request, env);
+  if (!sess) return new Response('Not authenticated', { status: 401 });
+  const state = newState();
+  const redirectUri = `${url.origin}/api/auth/iggraph/callback`;
+  const scopes = [
+    'instagram_basic',
+    'pages_show_list',
+    'pages_read_engagement',
+    'instagram_content_publish',
+    'business_management',
+  ].join(',');
+  const auth = new URL('https://www.facebook.com/v19.0/dialog/oauth');
+  auth.searchParams.set('client_id', appId);
+  auth.searchParams.set('redirect_uri', redirectUri);
+  auth.searchParams.set('response_type', 'code');
+  auth.searchParams.set('scope', scopes);
+  auth.searchParams.set('state', state);
+  const headers = new Headers({ Location: auth.toString() });
+  headers.append('Set-Cookie', setCookie('oauth_state_fb', state, { maxAgeSec: 600, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/iggraph' }));
+  return new Response(null, { status: 302, headers });
+}
+
+async function handleIGGraphCallback(request: Request, env: Env, url: URL): Promise<Response> {
+  const appId = env.FACEBOOK_APP_ID || '';
+  const appSecret = env.FACEBOOK_APP_SECRET || '';
+  if (!appId || !appSecret) return new Response('Missing FACEBOOK_APP_ID/FACEBOOK_APP_SECRET', { status: 500 });
+  const sess = await getSessionFromCookie(request, env);
+  if (!sess?.email) return new Response('Not authenticated', { status: 401 });
+  const qs = url.searchParams;
+  const code = qs.get('code');
+  const state = qs.get('state');
+  if (!code) return new Response('Missing code', { status: 400 });
+  const cookies = getCookies(request);
+  if (!state || cookies.oauth_state_fb !== state) return new Response('Invalid state', { status: 400 });
+  const redirectUri = `${url.origin}/api/auth/iggraph/callback`;
+
+  // Exchange code → short-lived user token
+  const tRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?` + new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    redirect_uri: redirectUri,
+    code,
+  }));
+  if (!tRes.ok) return new Response(`FB token exchange failed: ${await tRes.text()}`, { status: 502 });
+  const tJson = await tRes.json() as { access_token?: string; token_type?: string; expires_in?: number };
+  let userToken = tJson.access_token as string;
+  if (!userToken) return new Response('No access token', { status: 502 });
+  // Exchange to long-lived token
+  const ll = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?` + new URLSearchParams({
+    grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: userToken,
+  }));
+  if (ll.ok) {
+    const llJ = await ll.json() as any;
+    userToken = llJ.access_token || userToken;
+  }
+  // Get pages
+  const pages = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token`, {
+    headers: { Authorization: `Bearer ${userToken}` },
+  });
+  if (!pages.ok) return new Response(`Pages fetch failed: ${await pages.text()}`, { status: 502 });
+  const pJson = await pages.json() as { data?: Array<{ id: string; name: string; access_token: string }> };
+  const list = pJson.data || [];
+  let savedAny = false;
+  for (const p of list) {
+    // Get IG user attached to the Page
+    const igRes = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(p.id)}?fields=instagram_business_account`, {
+      headers: { Authorization: `Bearer ${p.access_token}` },
+    });
+    if (!igRes.ok) continue;
+    const igJson = await igRes.json() as any;
+    const ig = igJson?.instagram_business_account?.id as string | undefined;
+    if (!ig) continue;
+    // Fetch IG username
+    const igU = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(ig)}?fields=username`, {
+      headers: { Authorization: `Bearer ${p.access_token}` },
+    });
+    const igUJson = igU.ok ? await igU.json() as any : {};
+    const username = igUJson?.username || '';
+    // Save
+    const sql = getPg(env);
+    await sql`insert into public.ig_accounts (ig_user_id, page_id, page_name, username, access_token, email) values (${ig}, ${p.id}, ${p.name}, ${username}, ${p.access_token}, ${sess.email}) on conflict (ig_user_id) do update set page_id=excluded.page_id, page_name=excluded.page_name, username=excluded.username, access_token=excluded.access_token, email=excluded.email, updated_at=now()`;
+    savedAny = true;
+  }
+  const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
+  headers.append('Set-Cookie', setCookie('oauth_state_fb', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/iggraph' }));
+  const targetOrigin = url.origin;
+  const msg = { ok: savedAny, provider: 'iggraph' };
+  const html = `<!doctype html><html><body><script>
+    (function(){
+      try {
+        var data = ${JSON.stringify(msg)};
+        if (window.opener && typeof window.opener.postMessage === 'function') {
+          window.opener.postMessage({ type: 'oauth:iggraph', data: data }, ${JSON.stringify(targetOrigin)});
         }
       } catch (e) {}
       window.close();

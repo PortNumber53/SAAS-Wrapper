@@ -6,11 +6,13 @@ type Integration = { provider: string }
 const SUPPORTED = [
   { key: 'google', name: 'Google' },
   { key: 'instagram', name: 'Instagram' },
+  { key: 'iggraph', name: 'Instagram (Business)' },
 ]
 
 export default function IntegrationsPage() {
   const [providers, setProviders] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
+  const [post, setPost] = useState({ ig_user_id: '', image_url: '', caption: '' })
   const connected = useMemo(() => new Set(providers.map(p => p.provider)), [providers])
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
       if (typeof ev.data !== 'object' || !ev.data) return
-      if (ev.data.type === 'oauth:instagram' && ev.data.data?.ok) {
+      if ((ev.data.type === 'oauth:instagram' || ev.data.type === 'oauth:iggraph') && ev.data.data?.ok) {
         // refresh list
         fetch('/api/integrations').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
           if (j?.ok && j.providers) setProviders(j.providers)
@@ -51,6 +53,10 @@ export default function IntegrationsPage() {
     }
     if (provider === 'instagram') {
       window.open('/api/auth/instagram/start', '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
+      return
+    }
+    if (provider === 'iggraph') {
+      window.open('/api/auth/iggraph/start', '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
       return
     }
   }
@@ -75,6 +81,21 @@ export default function IntegrationsPage() {
               )}
             </div>
           ))}
+          {connected.has('iggraph') && (
+            <div style={{border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
+              <strong>Publish to Instagram (Business)</strong>
+              <div className='read-the-docs'>Provide an image URL and caption. Requires an IG Business account connected.</div>
+              <div style={{display:'grid', gap:8, marginTop:8}}>
+                <input placeholder='IG User ID' value={post.ig_user_id} onChange={e => setPost({...post, ig_user_id:e.target.value})} />
+                <input placeholder='Image URL (https://...)' value={post.image_url} onChange={e => setPost({...post, image_url:e.target.value})} />
+                <input placeholder='Caption' value={post.caption} onChange={e => setPost({...post, caption:e.target.value})} />
+                <button className='btn primary' onClick={async () => {
+                  const res = await fetch('/api/ig/publish', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(post) })
+                  if (!res.ok) alert(await res.text()); else alert('Publish enqueued')
+                }}>Publish Image</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       <p style={{marginTop:16}}>
