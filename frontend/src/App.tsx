@@ -150,7 +150,7 @@ function App() {
         </div>
       </header>
 
-      <main className='content'>
+      <main className={`content${userEmail ? ' wide' : ''}`}>
       <Routes>
         <Route path='/' element={
           <>
