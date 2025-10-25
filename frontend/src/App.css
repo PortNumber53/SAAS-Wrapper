@@ -1,28 +1,38 @@
-#root {
-	max-width: 1280px;
-	margin: 0 auto;
-	padding: 2rem;
-	text-align: center;
+/* Light theme tokens */
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --border: #e5e7eb;
+  --shadow: 0 8px 24px rgba(17,24,39,0.08);
 }
+
+/* Reset layout from Vite template and apply light theme */
+html, body, #root { height: 100%; }
+body { display: block; background: var(--bg); color: var(--text); }
+* { box-sizing: border-box; }
+a { color: var(--primary); }
+
+#root { text-align: left; }
+
+.layout { min-height: 100vh; display: flex; flex-direction: column; }
+main.content { flex: 1 1 auto; padding: 24px 16px; max-width: 1100px; margin: 0 auto; }
 
 /* Top navigation bar */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 2px 0 rgba(17,24,39,0.02);
 }
 .brand a {
   font-weight: 600;
   text-decoration: none;
-  color: inherit;
+  color: var(--text);
 }
 .mainnav {
   display: flex;
@@ -32,10 +42,13 @@
 }
 .mainnav a {
   text-decoration: none;
-  color: inherit;
-  opacity: 0.9;
+  color: var(--text);
+  opacity: 0.8;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
 }
-.mainnav a:hover { opacity: 1; text-decoration: underline; }
+.mainnav a:hover { opacity: 1; background: rgba(37,99,235,0.06); }
+.mainnav a.active { opacity: 1; color: var(--primary); background: rgba(37,99,235,0.12); }
 
 .account {
   display: flex;
@@ -43,29 +56,31 @@
   gap: 0.5rem;
 }
 .account .btn {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid rgba(255,255,255,0.2);
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: transparent;
-  color: inherit;
+  background: #f9fafb;
+  color: var(--text);
   cursor: pointer;
 }
 .account .btn.primary {
-  border-color: #646cff;
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
 }
 
 .user-menu { position: relative; }
-.user-button { all: unset; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.2); }
+.user-button { all: unset; cursor: pointer; padding: 0.45rem 0.7rem; border-radius: 0.5rem; border: 1px solid var(--border); background:#f9fafb; }
 .user-dropdown {
   position: absolute;
   right: 0;
   top: calc(100% + 0.4rem);
   min-width: 180px;
-  background: #111;
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.25rem;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow);
 }
 .user-dropdown a, .user-dropdown button {
   display: block;
@@ -73,13 +88,13 @@
   text-align: left;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  color: inherit;
+  color: var(--text);
   border: none;
   text-decoration: none;
   border-radius: 0.4rem;
   cursor: pointer;
 }
-.user-dropdown a:hover, .user-dropdown button:hover { background: rgba(255,255,255,0.06); }
+.user-dropdown a:hover, .user-dropdown button:hover { background: rgba(17,24,39,0.04); }
 
 .logo {
 	height: 6em;
@@ -112,12 +127,17 @@
 	}
 }
 
-.card {
-	padding: 2em;
-}
+.card { padding: 1.25em; margin: 1rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
 
-.read-the-docs {
-	color: #888;
-}
+.read-the-docs { color: var(--muted); }
 
 section { scroll-margin-top: 64px; }
+
+/* Sticky footer */
+.footer {
+  position: sticky; bottom: 0; z-index: 5;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  color: var(--muted);
+}

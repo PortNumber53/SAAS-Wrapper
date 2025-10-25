@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, Routes, Route } from 'react-router-dom'
+import { NavLink, Routes, Route, Link } from 'react-router-dom'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
@@ -60,7 +60,7 @@ function App() {
   const displayName = userEmail ?? 'Account'
 
   return (
-    <>
+    <div className='layout'>
       <header className='topbar'>
         <div className='brand'><NavLink to='/'>SAAS Wrapper</NavLink></div>
         <nav className='mainnav' aria-label='Main'>
@@ -92,6 +92,7 @@ function App() {
         </div>
       </header>
 
+      <main className='content'>
       <Routes>
         <Route path='/' element={
           <>
@@ -152,14 +153,26 @@ function App() {
             <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
           </section>
         } />
+        <Route path='*' element={
+          <section className='card'>
+            <h2>404 — Page Not Found</h2>
+            <p>We couldn’t find what you’re looking for.</p>
+            <p><Link to='/'>Go back home</Link></p>
+          </section>
+        } />
       </Routes>
-      <p className='read-the-docs'>
-        Click on the Vite and React logos to learn more
-      </p>
-      <p className='read-the-docs'>
-        <a href='/pages/terms-of-service/'>Terms of Service</a> · <a href='/pages/privacy-policy/'>Privacy Policy</a>
-      </p>
-    </>
+      </main>
+      <footer className='footer'>
+        <div style={{display:'flex',justifyContent:'space-between',gap:'1rem',maxWidth:1100,margin:'0 auto'}}>
+          <span>© {new Date().getFullYear()} SAAS Wrapper</span>
+          <span>
+            <a href='/pages/terms-of-service/'>Terms</a>
+            {' · '}
+            <a href='/pages/privacy-policy/'>Privacy</a>
+          </span>
+        </div>
+      </footer>
+    </div>
   )
 }
 
