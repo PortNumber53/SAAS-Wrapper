@@ -56,7 +56,8 @@ function App() {
     // Helpful in dev to confirm the exact URL opened
     // eslint-disable-next-line no-console
     console.log('OAuth start URL:', url)
-    window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x},noopener`)
+    // Note: don't use `noopener` here since we rely on window.opener for postMessage
+    window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
   }
 
   const displayName = userEmail ?? 'Account'
