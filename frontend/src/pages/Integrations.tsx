@@ -38,9 +38,12 @@ export default function IntegrationsPage() {
     const onMsg = (ev: MessageEvent) => {
       if (typeof ev.data !== 'object' || !ev.data) return
       if ((ev.data.type === 'oauth:instagram' || ev.data.type === 'oauth:iggraph') && ev.data.data?.ok) {
-        // refresh list
+        // refresh providers and IG accounts
         fetch('/api/integrations').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
           if (j?.ok && j.providers) setProviders(j.providers)
+        })
+        fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
+          if (j?.ok && j.accounts) setAccounts(j.accounts)
         })
       }
     }

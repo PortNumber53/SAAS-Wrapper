@@ -717,6 +717,8 @@ async function handleIGGraphCallback(request: Request, env: Env, url: URL): Prom
     // Save
     const sql = getPg(env);
     await sql`insert into public.ig_accounts (ig_user_id, page_id, page_name, username, access_token, user_access_token, user_expires_at, email) values (${ig}, ${p.id}, ${p.name}, ${username}, ${p.access_token}, ${userToken}, ${userExpiresAt ? new Date(userExpiresAt*1000) : null}, ${sess.email}) on conflict (ig_user_id) do update set page_id=excluded.page_id, page_name=excluded.page_name, username=excluded.username, access_token=excluded.access_token, user_access_token=excluded.user_access_token, user_expires_at=excluded.user_expires_at, email=excluded.email, updated_at=now()`;
+    // Mark provider connected as 'iggraph' too for unified integrations list
+    try { await upsertOAuthAccountToXata(env, { provider: 'iggraph', provider_user_id: ig, email: sess.email }); } catch {}
     savedAny = true;
   }
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
