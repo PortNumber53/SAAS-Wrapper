@@ -31,7 +31,16 @@ export default function IntegrationsPage() {
 
   const disconnect = async (provider: string) => {
     await fetch(`/api/integrations/${provider}`, { method: 'DELETE' })
-    setProviders(prev => prev.filter(p => p.provider !== provider))
+    // Refresh providers and accounts after disconnect
+    fetch('/api/integrations').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
+      if (j?.ok && j.providers) setProviders(j.providers)
+    })
+    if (provider === 'iggraph') {
+      fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
+        if (j?.ok && j.accounts) setAccounts(j.accounts)
+        else setAccounts([])
+      })
+    }
   }
 
   useEffect(() => {

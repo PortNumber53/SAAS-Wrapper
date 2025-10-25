@@ -781,6 +781,10 @@ async function listUserIntegrations(env: Env, email: string): Promise<Array<{ pr
 async function deleteUserIntegration(env: Env, email: string, provider: string): Promise<void> {
   const sql = getPg(env);
   await sql`delete from public.oauth_accounts where email=${email} and provider=${provider}`;
+  if (provider === 'iggraph') {
+    // Also remove any stored IG Business accounts for this user
+    await sql`delete from public.ig_accounts where email=${email}`;
+  }
 }
 
 async function handleSession(request: Request, env: Env): Promise<Response> {
