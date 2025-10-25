@@ -29,12 +29,24 @@ export default {
       const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
       const out: Record<string, unknown> = { base, branch: env.XATA_BRANCH ?? '' };
       try {
-        const r = await fetch(`${base}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
-        out.status = r.status;
-        out.ok = r.ok;
-        out.branches = r.ok ? await r.json() : await r.text();
+        // Try without branch header
+        const r1 = await fetch(`${base}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
+        out.status_no_header = r1.status;
+        out.ok_no_header = r1.ok;
+        out.branches_no_header = r1.ok ? await r1.json() : await r1.text();
       } catch (e: any) {
-        out.error = e?.message ?? String(e);
+        out.error_no_header = e?.message ?? String(e);
+      }
+      try {
+        // Try with branch header if provided
+        if (env.XATA_BRANCH) {
+          const r2 = await fetch(`${base}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json', 'x-xata-branch': env.XATA_BRANCH } as any });
+          out.status_with_header = r2.status;
+          out.ok_with_header = r2.ok;
+          out.branches_with_header = r2.ok ? await r2.json() : await r2.text();
+        }
+      } catch (e: any) {
+        out.error_with_header = e?.message ?? String(e);
       }
       return new Response(JSON.stringify(out, null, 2), { headers: { 'content-type': 'application/json' } });
     }
@@ -413,7 +425,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     'authorization': `Bearer ${apiKey}`,
     'content-type': 'application/json',
     'accept': 'application/json',
-    ...(effectiveBranch ? { 'xata-branch': effectiveBranch } : {}),
+    ...(effectiveBranch ? { 'x-xata-branch': effectiveBranch } : {}),
   } as Record<string, string>;
 
   // Ensure users table exists in your DB; this will upsert by email
@@ -426,9 +438,9 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     if (/invalid base branch/i.test(t)) {
       const tryHeaders = new Headers(headers as any);
       if (effectiveBranch && effectiveBranch !== 'main') {
-        tryHeaders.set('xata-branch', effectiveBranch);
+        tryHeaders.set('x-xata-branch', effectiveBranch);
       } else {
-        tryHeaders.delete('xata-branch');
+        tryHeaders.delete('x-xata-branch');
       }
       const r2 = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
       if (!r2.ok) {
@@ -448,7 +460,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       if (fallbackExisting?.id) {
         const upUrl = `${base}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
         const upHeaders = new Headers(headers as any);
-        if (effectiveBranch) upHeaders.set('xata-branch', effectiveBranch); else upHeaders.delete('xata-branch');
+        if (effectiveBranch) upHeaders.set('x-xata-branch', effectiveBranch); else upHeaders.delete('x-xata-branch');
         const upRes = await fetch(upUrl, { method: 'PATCH', headers: upHeaders, body: JSON.stringify(recordBody) });
         if (!upRes.ok) {
           const t = await upRes.text();
@@ -457,7 +469,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       } else {
         const crUrl = `${base}/tables/users/data`;
         const crHeaders = new Headers(headers as any);
-        if (effectiveBranch) crHeaders.set('xata-branch', effectiveBranch); else crHeaders.delete('xata-branch');
+        if (effectiveBranch) crHeaders.set('x-xata-branch', effectiveBranch); else crHeaders.delete('x-xata-branch');
         const crRes = await fetch(crUrl, { method: 'POST', headers: crHeaders, body: JSON.stringify(recordBody) });
         if (!crRes.ok) {
           const t = await crRes.text();
@@ -502,7 +514,7 @@ function xataHeaders(env: Env): HeadersInit {
     accept: 'application/json',
     'content-type': 'application/json',
   };
-  if (env.XATA_BRANCH) h['xata-branch'] = env.XATA_BRANCH;
+  if (env.XATA_BRANCH) h['x-xata-branch'] = env.XATA_BRANCH;
   return h;
 }
 
@@ -569,11 +581,11 @@ async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<v
     const t = await qRes.text();
     if (/invalid base branch/i.test(t)) {
       const tryHeaders = new Headers(headersObj as any);
-      tryHeaders.delete('xata-branch');
+      tryHeaders.delete('x-xata-branch');
       qRes = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { provider: acct.provider, provider_user_id: acct.provider_user_id }, page: { size: 1 } }) });
       if (!qRes.ok) throw new Error(await qRes.text());
       // overwrite headersObj to the working version for subsequent calls
-      (headersObj as any)['xata-branch'] && delete (headersObj as any)['xata-branch'];
+      (headersObj as any)['x-xata-branch'] && delete (headersObj as any)['x-xata-branch'];
     } else {
       throw new Error(`Query failed: ${t}`);
     }
@@ -589,7 +601,7 @@ async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<v
       const t = await upRes.text();
       if (/invalid base branch/i.test(t)) {
         const tryHeaders = new Headers(headersObj as any);
-        tryHeaders.delete('xata-branch');
+        tryHeaders.delete('x-xata-branch');
         upRes = await fetch(upUrl, { method: 'PATCH', headers: tryHeaders, body: JSON.stringify(recordBody) });
         if (!upRes.ok) throw new Error(await upRes.text());
       } else {
@@ -603,7 +615,7 @@ async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<v
       const t = await crRes.text();
       if (/invalid base branch/i.test(t)) {
         const tryHeaders = new Headers(headersObj as any);
-        tryHeaders.delete('xata-branch');
+        tryHeaders.delete('x-xata-branch');
         crRes = await fetch(crUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify(recordBody) });
         if (!crRes.ok) throw new Error(await crRes.text());
       } else {
