@@ -90,6 +90,9 @@ function App() {
       <p className='read-the-docs'>
         Click on the Vite and React logos to learn more
       </p>
+      <p className='read-the-docs'>
+        <a href='/pages/terms-of-service/'>Terms of Service</a> · <a href='/pages/privacy-policy/'>Privacy Policy</a>
+      </p>
     </>
   )
 }
