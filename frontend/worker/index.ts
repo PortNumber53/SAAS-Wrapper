@@ -117,10 +117,20 @@ export default {
       if (!rows.length || !rows[0].user_access_token) return new Response(JSON.stringify({ ok: false, error: 'reauthorization_required' }), { status: 400, headers: { 'content-type': 'application/json' } });
       const userToken = rows[0].user_access_token as string;
       // Re-derive page token from user token
-      const pages = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token`, { headers: { Authorization: `Bearer ${userToken}` } });
+      // Request pages including the instagram_business_account linkage
+      const pages = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,instagram_business_account`, { headers: { Authorization: `Bearer ${userToken}` } });
       if (!pages.ok) return new Response(JSON.stringify({ ok: false, error: 'pages_fetch_failed', details: await pages.text() }), { status: 502, headers: { 'content-type': 'application/json' } });
       const pJson = await pages.json() as any;
-      const entry = (pJson.data || []).find((p: any) => p.instagram_business_account?.id === ig_user_id);
+      let entry = (pJson.data || []).find((p: any) => p.instagram_business_account?.id === ig_user_id);
+      // Fallback: query each page for IG link if field missing
+      if (!entry) {
+        for (const p of (pJson.data || [])) {
+          const q = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(p.id)}?fields=instagram_business_account`, { headers: { Authorization: `Bearer ${p.access_token}` } });
+          if (!q.ok) continue;
+          const qj = await q.json() as any;
+          if (qj?.instagram_business_account?.id === ig_user_id) { entry = p; break; }
+        }
+      }
       if (!entry) return new Response(JSON.stringify({ ok: false, error: 'page_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
       await sql`update public.ig_accounts set access_token=${entry.access_token}, updated_at=now() where ig_user_id=${ig_user_id} and email=${sess.email}`;
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
