@@ -1,3 +1,5 @@
+let XATA_BASE_CACHE: string | null = null;
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -26,11 +28,11 @@ export default {
       return new Response(null, { status: 204, headers });
     }
     if (url.pathname === "/api/debug/xata-branches") {
-      const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
-      const out: Record<string, unknown> = { base, branch: env.XATA_BRANCH ?? '' };
+      const rawBase = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+      const out: Record<string, unknown> = { base: rawBase, branch: env.XATA_BRANCH ?? '' };
       try {
-        // Try without branch header
-        const r1 = await fetch(`${base}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
+        // Try raw base
+        const r1 = await fetch(`${rawBase}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
         out.status_no_header = r1.status;
         out.ok_no_header = r1.ok;
         out.branches_no_header = r1.ok ? await r1.json() : await r1.text();
@@ -38,12 +40,16 @@ export default {
         out.error_no_header = e?.message ?? String(e);
       }
       try {
-        // Try with branch header if provided
-        if (env.XATA_BRANCH) {
-          const r2 = await fetch(`${base}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json', 'x-xata-branch': env.XATA_BRANCH } as any });
-          out.status_with_header = r2.status;
-          out.ok_with_header = r2.ok;
-          out.branches_with_header = r2.ok ? await r2.json() : await r2.text();
+        // Try base with ":<branch>" suffix variations
+        const cand: string[] = [];
+        if (env.XATA_BRANCH) cand.push(`${rawBase}:${env.XATA_BRANCH}`);
+        cand.push(`${rawBase}:main`);
+        for (const b of cand) {
+          const r = await fetch(`${b}/branches`, { headers: { authorization: `Bearer ${env.XATA_API_KEY}`, accept: 'application/json' } });
+          out[`status_path_${b}`] = r.status;
+          out[`ok_path_${b}`] = r.ok;
+          out[`branches_path_${b}`] = r.ok ? await r.json() : await r.text();
+          if (r.ok) { XATA_BASE_CACHE = b; break; }
         }
       } catch (e: any) {
         out.error_with_header = e?.message ?? String(e);
@@ -399,10 +405,11 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
 type NewUser = { email: string; name?: string; picture?: string; provider: string; provider_id: string };
 
 async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
-  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
   const branch = env.XATA_BRANCH;
   const apiKey = env.XATA_API_KEY;
   if (!base || !apiKey) throw new Error('Missing Xata configuration');
+  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
 
   // Validate branch and fall back to 'main' if the provided branch does not exist
   let effectiveBranch = branch;
@@ -430,7 +437,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
 
   // Ensure users table exists in your DB; this will upsert by email
   // 1) Find existing by email
-  const queryUrl = `${base}/tables/users/query`;
+  let queryUrl = `${base}/tables/users/query`;
   const qRes = await fetch(queryUrl, { method: 'POST', headers, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
   if (!qRes.ok) {
     const t = await qRes.text();
@@ -442,7 +449,19 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       } else {
         tryHeaders.delete('x-xata-branch');
       }
-      const r2 = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
+      // try path suffix
+      const baseCand = [
+        `${base}:${effectiveBranch || ''}`.replace(/:$/, ''),
+        `${base}:main`,
+      ];
+      let r2 = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
+      if (!r2.ok) {
+        for (const b of baseCand) {
+          const url2 = `${b}/tables/users/query`;
+          const r = await fetch(url2, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { email: user.email }, page: { size: 1 } }) });
+          if (r.ok) { XATA_BASE_CACHE = b; queryUrl = url2; r2 = r; break; }
+        }
+      }
       if (!r2.ok) {
         const t2 = await r2.text();
         throw new Error(`Query failed: ${t2}`);
@@ -458,7 +477,8 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
         profile: user.picture ?? '',
       } as Record<string, unknown>;
       if (fallbackExisting?.id) {
-        const upUrl = `${base}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
+        const upBase = XATA_BASE_CACHE || base;
+        const upUrl = `${upBase}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
         const upHeaders = new Headers(headers as any);
         if (effectiveBranch) upHeaders.set('x-xata-branch', effectiveBranch); else upHeaders.delete('x-xata-branch');
         const upRes = await fetch(upUrl, { method: 'PATCH', headers: upHeaders, body: JSON.stringify(recordBody) });
@@ -467,7 +487,8 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
           throw new Error(`Update failed: ${t}`);
         }
       } else {
-        const crUrl = `${base}/tables/users/data`;
+        const crBase = XATA_BASE_CACHE || base;
+        const crUrl = `${crBase}/tables/users/data`;
         const crHeaders = new Headers(headers as any);
         if (effectiveBranch) crHeaders.set('x-xata-branch', effectiveBranch); else crHeaders.delete('x-xata-branch');
         const crRes = await fetch(crUrl, { method: 'POST', headers: crHeaders, body: JSON.stringify(recordBody) });
@@ -491,14 +512,16 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
   } as Record<string, unknown>;
 
   if (existing?.id) {
-    const upUrl = `${base}/tables/users/data/${encodeURIComponent(existing.id)}`;
+    const upBase = XATA_BASE_CACHE || base;
+    const upUrl = `${upBase}/tables/users/data/${encodeURIComponent(existing.id)}`;
     const upRes = await fetch(upUrl, { method: 'PATCH', headers, body: JSON.stringify(recordBody) });
     if (!upRes.ok) {
       const t = await upRes.text();
       throw new Error(`Update failed: ${t}`);
     }
   } else {
-    const crUrl = `${base}/tables/users/data`;
+    const crBase = XATA_BASE_CACHE || base;
+    const crUrl = `${crBase}/tables/users/data`;
     const crRes = await fetch(crUrl, { method: 'POST', headers, body: JSON.stringify(recordBody) });
     if (!crRes.ok) {
       const t = await crRes.text();
@@ -519,7 +542,8 @@ function xataHeaders(env: Env): HeadersInit {
 }
 
 async function findUserByEmail(env: Env, email: string): Promise<{ id: string } & Record<string, unknown> | null> {
-  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
   if (!base || !env.XATA_API_KEY) return null;
   const url = `${base}/tables/users/query`;
   const res = await fetch(url, { method: 'POST', headers: xataHeaders(env), body: JSON.stringify({ filter: { email }, page: { size: 1 } }) });
@@ -529,14 +553,16 @@ async function findUserByEmail(env: Env, email: string): Promise<{ id: string } 
 }
 
 async function updateUserById(env: Env, id: string, body: Record<string, unknown>): Promise<void> {
-  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
   const url = `${base}/tables/users/data/${encodeURIComponent(id)}`;
   const res = await fetch(url, { method: 'PATCH', headers: xataHeaders(env), body: JSON.stringify(body) });
   if (!res.ok) throw new Error(await res.text());
 }
 
 async function getUserSettings(env: Env, email: string): Promise<Record<string, unknown>> {
-  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  let base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  if (XATA_BASE_CACHE) base = XATA_BASE_CACHE;
   if (!base || !env.XATA_API_KEY) return {};
   const url = `${base}/tables/user_settings/query`;
   const res = await fetch(url, { method: 'POST', headers: xataHeaders(env), body: JSON.stringify({ filter: { email }, page: { size: 1 } }) });
