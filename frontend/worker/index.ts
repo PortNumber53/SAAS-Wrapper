@@ -1,20 +1,6 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const method = request.method;
-    const pathname = url.pathname;
-
-    // Enforce a canonical public origin for auth and document navigations
-    const publicOrigin = getPublicOrigin(env, url);
-    const isAuthRoute = pathname.startsWith('/api/auth/');
-    const looksLikeFile = /\.[a-zA-Z0-9]+$/.test(pathname);
-    const isDocumentNav = (method === 'GET' || method === 'HEAD') && !looksLikeFile;
-    if (publicOrigin && url.origin !== publicOrigin && (isAuthRoute || (!pathname.startsWith('/api/') && isDocumentNav))) {
-      const dest = new URL(request.url);
-      dest.protocol = new URL(publicOrigin).protocol;
-      dest.host = new URL(publicOrigin).host;
-      return new Response(null, { status: 302, headers: { Location: dest.toString() } });
-    }
 
     // Handle auth routes inside the Worker first
     if (url.pathname === "/api/auth/google/start") {
@@ -25,7 +11,7 @@ export default {
     }
     if (url.pathname === "/api/auth/google/redirect-uri") {
       // Small diagnostic to confirm computed redirect URI for this host
-      const origin = getPublicOrigin(env, url) || url.origin;
+      const origin = url.origin;
       const redirectUri = `${origin}/api/auth/google/callback`;
       return new Response(JSON.stringify({ origin, redirect_uri: redirectUri }), {
         headers: { 'content-type': 'application/json' },
@@ -107,28 +93,6 @@ export default {
     return new Response(null, { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
-
-function normalizeOrigin(input: string | undefined, fallbackProtocol: string): string | null {
-  if (!input) return null;
-  let s = input.trim();
-  if (!s) return null;
-  s = s.replace(/\/$/, '');
-  // If no scheme, default to current request protocol
-  if (!/^https?:\/\//i.test(s)) {
-    s = `${fallbackProtocol}//${s}`;
-  }
-  try {
-    const u = new URL(s);
-    return `${u.protocol}//${u.host}`; // strip path if any
-  } catch {
-    return null;
-  }
-}
-
-function getPublicOrigin(env: Env, url: URL): string | null {
-  const normalized = normalizeOrigin(env.PUBLIC_ORIGIN, url.protocol);
-  return (normalized || url.origin).replace(/\/$/, '');
-}
 
 async function serveIndexHtml(env: Env, request: Request): Promise<Response> {
   const indexUrl = new URL(request.url);
@@ -237,7 +201,7 @@ async function startGoogleOAuth(env: Env, url: URL): Promise<Response> {
   }
 
   const state = newState();
-  const origin = getPublicOrigin(env, url) || url.origin;
+  const origin = url.origin;
   const redirectUri = `${origin}/api/auth/google/callback`;
   const authorize = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authorize.searchParams.set('client_id', clientId);
@@ -274,7 +238,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     return new Response('Invalid state', { status: 400 });
   }
 
-  const origin = getPublicOrigin(env, url) || url.origin;
+  const origin = url.origin;
   const redirectUri = `${origin}/api/auth/google/callback`;
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -342,7 +306,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
   headers.append('Set-Cookie', setCookie('oauth_state', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
   headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
-  const targetOrigin = getPublicOrigin(env, url) || url.origin;
+  const targetOrigin = url.origin;
   const message = { ok: true, provider: 'google', email: profile.email, name: profile.name ?? '', picture: profile.picture ?? '' };
   const html = `<!doctype html><html><body><script>
     (function(){
