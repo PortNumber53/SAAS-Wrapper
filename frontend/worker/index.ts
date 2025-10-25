@@ -1,12 +1,10 @@
 import postgres from 'postgres'
-let PG_CACHE: ReturnType<typeof postgres> | null = null;
 
 function getPg(env: Env) {
-  if (PG_CACHE) return PG_CACHE;
   const dsn = env.XATA_DATABASE_URL || '';
   if (!dsn) throw new Error('Missing XATA_DATABASE_URL');
-  PG_CACHE = postgres(dsn, { ssl: 'require' });
-  return PG_CACHE;
+  // Create a fresh client per request context to avoid cross-request I/O issues
+  return postgres(dsn, { ssl: 'require' });
 }
 
 export default {
@@ -687,9 +685,11 @@ async function handleIGGraphCallback(request: Request, env: Env, url: URL): Prom
   const ll = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?` + new URLSearchParams({
     grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: userToken,
   }));
+  let userExpiresAt: number | null = null;
   if (ll.ok) {
     const llJ = await ll.json() as any;
     userToken = llJ.access_token || userToken;
+    if (llJ.expires_in) userExpiresAt = Math.floor(Date.now()/1000) + Number(llJ.expires_in);
   }
   // Get pages
   const pages = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token`, {
@@ -716,7 +716,7 @@ async function handleIGGraphCallback(request: Request, env: Env, url: URL): Prom
     const username = igUJson?.username || '';
     // Save
     const sql = getPg(env);
-    await sql`insert into public.ig_accounts (ig_user_id, page_id, page_name, username, access_token, email) values (${ig}, ${p.id}, ${p.name}, ${username}, ${p.access_token}, ${sess.email}) on conflict (ig_user_id) do update set page_id=excluded.page_id, page_name=excluded.page_name, username=excluded.username, access_token=excluded.access_token, email=excluded.email, updated_at=now()`;
+    await sql`insert into public.ig_accounts (ig_user_id, page_id, page_name, username, access_token, user_access_token, user_expires_at, email) values (${ig}, ${p.id}, ${p.name}, ${username}, ${p.access_token}, ${userToken}, ${userExpiresAt ? new Date(userExpiresAt*1000) : null}, ${sess.email}) on conflict (ig_user_id) do update set page_id=excluded.page_id, page_name=excluded.page_name, username=excluded.username, access_token=excluded.access_token, user_access_token=excluded.user_access_token, user_expires_at=excluded.user_expires_at, email=excluded.email, updated_at=now()`;
     savedAny = true;
   }
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
