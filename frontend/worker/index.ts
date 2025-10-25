@@ -255,7 +255,20 @@ export default {
 async function serveIndexHtml(env: Env, request: Request): Promise<Response> {
   const indexUrl = new URL(request.url);
   indexUrl.pathname = '/index.html';
-  return env.ASSETS!.fetch(new Request(indexUrl.toString(), request));
+  // Create a fresh GET request for assets to avoid propagating original navigation headers
+  let res = await env.ASSETS!.fetch(new Request(indexUrl.toString(), { method: 'GET' }));
+  // If assets returns a redirect (e.g., to '/'), follow it but return 200 with the content to preserve the URL
+  if (res.status >= 300 && res.status < 400) {
+    const loc = res.headers.get('Location') || res.headers.get('location');
+    if (loc) {
+      const target = new URL(loc, indexUrl);
+      res = await env.ASSETS!.fetch(new Request(target.toString(), { method: 'GET' }));
+    }
+  }
+  const headers = new Headers(res.headers);
+  headers.set('content-type', 'text/html; charset=utf-8');
+  headers.delete('location');
+  return new Response(res.body, { status: 200, headers });
 }
 
 // --- Helpers: base64url & cookies ---
