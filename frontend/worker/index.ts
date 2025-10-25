@@ -36,6 +36,32 @@ export default {
       headers.append('Set-Cookie', setCookie('session', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
       return new Response(null, { status: 204, headers });
     }
+    if (url.pathname === "/api/integrations") {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      if (request.method === 'GET') {
+        const list = await listUserIntegrations(env, sess.email).catch(() => [] as Array<{ provider: string }>);
+        return new Response(JSON.stringify({ ok: true, providers: list }), { headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+    if (url.pathname.startsWith('/api/integrations/')) {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const provider = url.pathname.split('/').pop() || '';
+      if (request.method === 'DELETE') {
+        await deleteUserIntegration(env, sess.email, provider).catch(() => {});
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+    if (url.pathname === '/api/auth/instagram/start') {
+      // Placeholder: implement full OAuth flow later
+      return new Response(JSON.stringify({ ok: false, error: 'instagram_oauth_not_configured' }), { status: 501, headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname === '/api/auth/instagram/callback') {
+      return new Response('Instagram OAuth is not configured.', { status: 501 });
+    }
     // Remove legacy HTTP debug route; we now use direct Postgres
 
     // Authenticated Xata-backed endpoints
@@ -439,6 +465,17 @@ type OAuthAccount = { provider: string; provider_user_id: string; email: string 
 async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<void> {
   const sql = getPg(env);
   await sql`insert into public.oauth_accounts (provider, provider_user_id, email) values (${acct.provider}, ${acct.provider_user_id}, ${acct.email}) on conflict (provider, provider_user_id) do update set email=excluded.email`;
+}
+
+async function listUserIntegrations(env: Env, email: string): Promise<Array<{ provider: string }>> {
+  const sql = getPg(env);
+  const rows = await sql`select provider from public.oauth_accounts where email=${email}` as Array<{ provider: string }>;
+  return rows;
+}
+
+async function deleteUserIntegration(env: Env, email: string, provider: string): Promise<void> {
+  const sql = getPg(env);
+  await sql`delete from public.oauth_accounts where email=${email} and provider=${provider}`;
 }
 
 async function handleSession(request: Request, env: Env): Promise<Response> {

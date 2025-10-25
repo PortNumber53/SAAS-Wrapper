@@ -4,6 +4,7 @@ import TermsPage from './pages/Terms'
 import PrivacyPage from './pages/Privacy'
 import ProfilePage from './pages/Profile'
 import SettingsPage from './pages/Settings'
+import IntegrationsPage from './pages/Integrations'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
@@ -130,6 +131,7 @@ function App() {
                 <div className='user-dropdown' role='menu'>
                   <Link to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</Link>
                   <Link to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</Link>
+                  <Link to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</Link>
                   <button role='menuitem' onClick={() => {
                     fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
                       setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false)
@@ -207,6 +209,7 @@ function App() {
         <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
         <Route path='/profile' element={<ProfilePage />} />
         <Route path='/settings' element={<SettingsPage />} />
+        <Route path='/account/integrations' element={<IntegrationsPage />} />
         <Route path='*' element={
           <section className='card'>
             <h2>404 — Page Not Found</h2>
