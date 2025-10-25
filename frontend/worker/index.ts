@@ -186,17 +186,21 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     return new Response('Failed to retrieve profile email', { status: 502 });
   }
 
-  // Persist to Xata
-  try {
-    await upsertUserToXata(env, {
-      email: profile.email,
-      name: profile.name ?? '',
-      picture: profile.picture ?? '',
-      provider: 'google',
-      provider_id: profile.sub ?? '',
-    });
-  } catch (e: any) {
-    return new Response(`Xata error: ${e?.message ?? e}`, { status: 502 });
+  // Persist to Xata (optional in dev). Skip if config is missing.
+  const hasXata = !!(env.XATA_DATABASE_URL && env.XATA_BRANCH && env.XATA_API_KEY);
+  if (hasXata) {
+    try {
+      await upsertUserToXata(env, {
+        email: profile.email,
+        name: profile.name ?? '',
+        picture: profile.picture ?? '',
+        provider: 'google',
+        provider_id: profile.sub ?? '',
+      });
+    } catch (e: any) {
+      // Log but do not block login in dev
+      console.error('Xata upsert failed', e);
+    }
   }
 
   // Clear state cookie and return a tiny HTML that posts a message to the opener
