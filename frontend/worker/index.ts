@@ -82,7 +82,6 @@ export default {
 
 // --- Helpers: base64url & cookies ---
 function b64url(bytes: Uint8Array): string {
-  // @ts-ignore: Buffer not present in workers; convert using btoa
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   const b64 = btoa(bin);
@@ -228,15 +227,16 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     const errTxt = await tokenRes.text();
     return new Response(`Token exchange failed: ${errTxt}`, { status: 502 });
   }
-  const tokenJson = await tokenRes.json() as any;
-  const accessToken = tokenJson.access_token as string | undefined;
-  const idToken = tokenJson.id_token as string | undefined;
+  const tokenJson = await tokenRes.json() as { access_token?: string; id_token?: string };
+  const accessToken = tokenJson.access_token;
+  const idToken = tokenJson.id_token;
   if (!accessToken && !idToken) {
     return new Response('No tokens returned', { status: 502 });
   }
 
   // Fetch user profile
-  let profile: any = undefined;
+  type GoogleProfile = { email: string; name?: string; picture?: string; sub?: string };
+  let profile: GoogleProfile | undefined = undefined;
   if (accessToken) {
     const uRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -245,7 +245,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
       const t = await uRes.text();
       return new Response(`Userinfo failed: ${t}`, { status: 502 });
     }
-    profile = await uRes.json();
+    profile = await uRes.json() as GoogleProfile;
   }
 
   if (!profile?.email) {
@@ -263,7 +263,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
         provider: 'google',
         provider_id: profile.sub ?? '',
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Log but do not block login in dev
       console.error('Xata upsert failed', e);
     }
@@ -309,8 +309,8 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       headers: { authorization: `Bearer ${apiKey}`, accept: 'application/json' },
     });
     if (bRes.ok) {
-      const bJson = await bRes.json() as any;
-      const list: string[] = Array.isArray(bJson) ? bJson : (bJson?.branches ?? []);
+      const bJson = await bRes.json() as unknown;
+      const list: string[] = Array.isArray(bJson) ? (bJson as string[]) : ((bJson as { branches?: string[] })?.branches ?? []);
       if (effectiveBranch && !list.includes(effectiveBranch) && list.includes('main')) {
         effectiveBranch = 'main';
       }
@@ -338,7 +338,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
         const t2 = await r2.text();
         throw new Error(`Query failed: ${t2}`);
       }
-      const q2Json = await r2.json() as any;
+      const q2Json = await r2.json() as { records?: Array<{ id: string }> };
       const fallbackExisting = q2Json?.records?.[0];
       effectiveBranch = 'main';
       // proceed with existing and updated effectiveBranch
@@ -349,7 +349,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
         provider: user.provider,
         provider_id: user.provider_id,
         last_login_at: new Date().toISOString(),
-      } as Record<string, any>;
+      } as Record<string, unknown>;
       if (fallbackExisting?.id) {
         const upUrl = `${base}/tables/users/data/${encodeURIComponent(fallbackExisting.id)}`;
         const upRes = await fetch(upUrl, { method: 'PATCH', headers: { ...headers, 'xata-branch': effectiveBranch }, body: JSON.stringify(recordBody) });
@@ -369,7 +369,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     }
     throw new Error(`Query failed: ${t}`);
   }
-  const qJson = await qRes.json() as any;
+  const qJson = await qRes.json() as { records?: Array<{ id: string }> };
   const existing = qJson?.records?.[0];
 
   const recordBody = {
@@ -379,7 +379,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     provider: user.provider,
     provider_id: user.provider_id,
     last_login_at: new Date().toISOString(),
-  } as Record<string, any>;
+  } as Record<string, unknown>;
 
   if (existing?.id) {
     const upUrl = `${base}/tables/users/data/${encodeURIComponent(existing.id)}`;

@@ -1,6 +1,5 @@
-// Minimal declaration so TypeScript recognizes `process.env` in this file
-// Access env via globalThis to avoid Node typings
-const API_PROXY_TARGET = (globalThis as any).process?.env?.VITE_API_PROXY_TARGET ?? 'http://localhost:8080';
+// Read from Node env when running Vite config; default to local API
+const API_PROXY_TARGET = (globalThis as any).process?.env?.VITE_API_PROXY_TARGET || 'http://localhost:8080';
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'

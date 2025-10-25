@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Routes, Route, Link } from 'react-router-dom'
 import TermsPage from './pages/Terms'
 import PrivacyPage from './pages/Privacy'
+import ProfilePage from './pages/Profile'
+import SettingsPage from './pages/Settings'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
@@ -62,7 +64,6 @@ function App() {
     const x = window.top?.outerWidth ? Math.max(0, ((window.top!.outerWidth - w) / 2) + (window.top!.screenX || 0)) : 0
     const url = new URL('/api/auth/google/start', window.location.origin).toString()
     // Helpful in dev to confirm the exact URL opened
-    // eslint-disable-next-line no-console
     console.log('OAuth start URL:', url)
     // Note: don't use `noopener` here since we rely on window.opener for postMessage
     window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
@@ -93,8 +94,8 @@ function App() {
               </button>
               {menuOpen && (
                 <div className='user-dropdown' role='menu'>
-                  <a href='#profile' role='menuitem'>Profile</a>
-                  <a href='#settings' role='menuitem'>Settings</a>
+                  <Link to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</Link>
+                  <Link to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</Link>
                   <button role='menuitem' onClick={() => {
                     fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
                       setUserEmail(null); setMenuOpen(false)
@@ -170,6 +171,8 @@ function App() {
         } />
         <Route path='/pages/terms-of-service' element={<TermsPage />} />
         <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
+        <Route path='/profile' element={<ProfilePage />} />
+        <Route path='/settings' element={<SettingsPage />} />
         <Route path='*' element={
           <section className='card'>
             <h2>404 — Page Not Found</h2>
