@@ -62,27 +62,35 @@ export default {
       });
     }
 
-    // Delegate non-API requests to static assets. If a GET navigation
-    // results in 404 from assets, fall back to index.html (SPA routing).
+    // Delegate non-API requests to static assets. For GET/HEAD navigations to
+    // routes without a file extension, fall back to index.html when assets are
+    // not ready or return an error (robust during Wrangler hot-reloads).
     if (env.ASSETS) {
-      const assetRes = await env.ASSETS.fetch(request);
-      if (assetRes.status !== 404) return assetRes;
-      // Heuristic: for GET requests that are likely app routes (no file extension),
-      // serve index.html so BrowserRouter deep links work after reloads.
-      if (request.method === 'GET') {
-        const path = new URL(request.url).pathname;
-        const looksLikeFile = /\.[a-zA-Z0-9]+$/.test(path);
-        if (!looksLikeFile) {
-        const indexUrl = new URL(request.url);
-        indexUrl.pathname = '/index.html';
-        return env.ASSETS.fetch(new Request(indexUrl.toString(), request));
+      const method = request.method;
+      const path = new URL(request.url).pathname;
+      const looksLikeFile = /\.[a-zA-Z0-9]+$/.test(path);
+      try {
+        const assetRes = await env.ASSETS.fetch(request);
+        if ((method === 'GET' || method === 'HEAD') && !looksLikeFile && (!assetRes || assetRes.status >= 400)) {
+          return serveIndexHtml(env, request);
         }
+        return assetRes;
+      } catch {
+        if ((method === 'GET' || method === 'HEAD') && !looksLikeFile) {
+          return serveIndexHtml(env, request);
+        }
+        return new Response(null, { status: 404 });
       }
-      return assetRes;
     }
     return new Response(null, { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
+
+async function serveIndexHtml(env: Env, request: Request): Promise<Response> {
+  const indexUrl = new URL(request.url);
+  indexUrl.pathname = '/index.html';
+  return env.ASSETS!.fetch(new Request(indexUrl.toString(), request));
+}
 
 // --- Helpers: base64url & cookies ---
 function b64url(bytes: Uint8Array): string {
