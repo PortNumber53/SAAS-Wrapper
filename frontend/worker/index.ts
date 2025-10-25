@@ -232,6 +232,12 @@ async function startGoogleOAuth(env: Env, url: URL): Promise<Response> {
   authorize.searchParams.set('include_granted_scopes', 'true');
   authorize.searchParams.set('state', state);
 
+  // Debug mode: surface computed values instead of redirecting
+  if (url.searchParams.get('debug') === '1') {
+    const body = { origin, redirect_uri: redirectUri, authorize: authorize.toString(), client_id: clientId };
+    return new Response(JSON.stringify(body, null, 2), { headers: { 'content-type': 'application/json' } });
+  }
+
   const headers = new Headers({ Location: authorize.toString() });
   headers.append('Set-Cookie', setCookie('oauth_state', state, { maxAgeSec: 600, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
   return new Response(null, { status: 302, headers });
