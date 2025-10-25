@@ -15,6 +15,7 @@ function App() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -80,6 +81,16 @@ function App() {
   }
 
   const displayName = userName || userEmail || 'Account'
+  const initials = useMemo(() => {
+    const src = (userName && userName.trim()) || userEmail || ''
+    if (!src) return '🙂'
+    const parts = src.replace(/[^\p{L} \-]/gu, '').trim().split(/\s+/)
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+    if (parts.length === 1 && parts[0]) return parts[0].slice(0,2).toUpperCase()
+    // Fallback from email like name@example.com
+    const m = (userEmail || '').split('@')[0]
+    return m.slice(0,2).toUpperCase() || '🙂'
+  }, [userName, userEmail])
 
   return (
     <div className='layout'>
@@ -100,10 +111,18 @@ function App() {
           ) : (
             <div className='user-menu' ref={menuRef}>
               <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
-                {userAvatar ? (
-                  <img className='avatar' src={userAvatar} alt='' />
+                {userAvatar && !avatarFailed ? (
+                  <img
+                    className='avatar'
+                    src={userAvatar}
+                    alt=''
+                    loading='lazy'
+                    decoding='async'
+                    referrerPolicy='no-referrer'
+                    onError={() => { setAvatarFailed(true); setUserAvatar(null) }}
+                  />
                 ) : (
-                  <div className='avatar fallback' aria-hidden>🙂</div>
+                  <div className='avatar fallback' aria-hidden>{initials}</div>
                 )}
                 <span>{displayName}</span>
               </button>
