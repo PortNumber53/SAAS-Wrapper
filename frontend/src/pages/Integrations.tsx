@@ -85,19 +85,22 @@ export default function IntegrationsPage() {
       {loading && <p>Loading…</p>}
       {!loading && (
         <div style={{display:'grid',gap:'12px'}}>
-          {SUPPORTED.map(p => (
-            <div key={p.key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
-              <div>
-                <strong>{p.name}</strong>
-                <div className='read-the-docs'>Provider: {p.key}</div>
+          {SUPPORTED.map(p => {
+            const isConnected = p.key === 'iggraph' ? (connected.has('iggraph') || accounts.length > 0) : connected.has(p.key)
+            return (
+              <div key={p.key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
+                <div>
+                  <strong>{p.name}</strong>
+                  <div className='read-the-docs'>Provider: {p.key}</div>
+                </div>
+                {isConnected ? (
+                  <button className='btn' onClick={() => disconnect(p.key)}>Disconnect</button>
+                ) : (
+                  <button className='btn primary' onClick={() => connect(p.key)}>Connect</button>
+                )}
               </div>
-              {connected.has(p.key) ? (
-                <button className='btn' onClick={() => disconnect(p.key)}>Disconnect</button>
-              ) : (
-                <button className='btn primary' onClick={() => connect(p.key)}>Connect</button>
-              )}
-            </div>
-          ))}
+            )
+          })}
           {accounts.length > 0 && (
             <div style={{border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
               <strong>Instagram Business Accounts</strong>
