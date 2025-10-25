@@ -26,6 +26,43 @@ export default {
       return new Response(null, { status: 204, headers });
     }
 
+    // Authenticated Xata-backed endpoints
+    if (url.pathname === "/api/me") {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      if (request.method === 'GET') {
+        const user = await findUserByEmail(env, sess.email).catch(() => null);
+        return new Response(JSON.stringify({ ok: true, user }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'PATCH') {
+        const allowed = await request.json().catch(() => ({} as Record<string, unknown>));
+        const user = await findUserByEmail(env, sess.email).catch(() => null);
+        if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+        const body: Record<string, unknown> = {};
+        if (typeof (allowed as any).name === 'string') body.name = (allowed as any).name || null;
+        if (typeof (allowed as any).picture === 'string') body.picture = (allowed as any).picture || null;
+        const ok = await updateUserById(env, user.id, body).then(() => true).catch(() => false);
+        return new Response(JSON.stringify({ ok }), { status: ok ? 200 : 500, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+    if (url.pathname === "/api/settings") {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      if (request.method === 'GET') {
+        const s = await getUserSettings(env, sess.email).catch(() => ({} as any));
+        return new Response(JSON.stringify({ ok: true, settings: s }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'PATCH') {
+        const payload = await request.json().catch(() => ({} as Record<string, unknown>));
+        const updates: Record<string, unknown> = {};
+        if (typeof (payload as any).theme === 'string') updates.theme = (payload as any).theme;
+        const res = await setUserSettings(env, sess.email, updates).then(() => true).catch(() => false);
+        return new Response(JSON.stringify({ ok: res }), { status: res ? 200 : 500, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+
     // API proxy: forward remaining /api/* to the Go backend
     if (url.pathname.startsWith("/api/")) {
       if (!env.BACKEND_ORIGIN) {
@@ -190,6 +227,13 @@ async function verifySessionToken(token: string, secret?: string): Promise<Sessi
   } catch {
     return null;
   }
+}
+
+async function getSessionFromCookie(request: Request, env: Env): Promise<SessionPayload | null> {
+  const cookies = getCookies(request);
+  const tok = cookies.session;
+  if (!tok) return null;
+  return await verifySessionToken(tok, env.SESSION_SECRET);
 }
 
 // --- Google OAuth 2.0 helpers ---
@@ -423,6 +467,65 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       const t = await crRes.text();
       throw new Error(`Create failed: ${t}`);
     }
+  }
+}
+
+// --- Xata helpers ---
+function xataHeaders(env: Env): HeadersInit {
+  const h: Record<string, string> = {
+    authorization: `Bearer ${env.XATA_API_KEY}`,
+    accept: 'application/json',
+    'content-type': 'application/json',
+  };
+  if (env.XATA_BRANCH) h['xata-branch'] = env.XATA_BRANCH;
+  return h;
+}
+
+async function findUserByEmail(env: Env, email: string): Promise<{ id: string } & Record<string, unknown> | null> {
+  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  if (!base || !env.XATA_API_KEY) return null;
+  const url = `${base}/tables/users/query`;
+  const res = await fetch(url, { method: 'POST', headers: xataHeaders(env), body: JSON.stringify({ filter: { email }, page: { size: 1 } }) });
+  if (!res.ok) return null;
+  const j = await res.json() as { records?: Array<{ id: string } & Record<string, unknown>> };
+  return j.records?.[0] ?? null;
+}
+
+async function updateUserById(env: Env, id: string, body: Record<string, unknown>): Promise<void> {
+  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  const url = `${base}/tables/users/data/${encodeURIComponent(id)}`;
+  const res = await fetch(url, { method: 'PATCH', headers: xataHeaders(env), body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+async function getUserSettings(env: Env, email: string): Promise<Record<string, unknown>> {
+  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  if (!base || !env.XATA_API_KEY) return {};
+  const url = `${base}/tables/user_settings/query`;
+  const res = await fetch(url, { method: 'POST', headers: xataHeaders(env), body: JSON.stringify({ filter: { email }, page: { size: 1 } }) });
+  if (!res.ok) return {};
+  const j = await res.json() as { records?: Array<Record<string, unknown> & { id: string }> };
+  const r = j.records?.[0];
+  if (!r) return {};
+  const { id, ...rest } = r as any;
+  return { id, ...rest };
+}
+
+async function setUserSettings(env: Env, email: string, updates: Record<string, unknown>): Promise<void> {
+  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  if (!base || !env.XATA_API_KEY) throw new Error('Missing Xata configuration');
+  // fetch existing
+  const existing = await getUserSettings(env, email).catch(() => ({} as any));
+  const headers = xataHeaders(env);
+  const body = { email, ...updates } as Record<string, unknown>;
+  if ((existing as any)?.id) {
+    const url = `${base}/tables/user_settings/data/${encodeURIComponent((existing as any).id)}`;
+    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(await res.text());
+  } else {
+    const url = `${base}/tables/user_settings/data`;
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(await res.text());
   }
 }
 

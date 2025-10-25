@@ -5,13 +5,28 @@ type Session = { ok: boolean; email?: string; name?: string }
 export default function ProfilePage() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [name, setName] = useState('')
+  const [picture, setPicture] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/auth/session')
-      .then((r) => r.ok ? r.json() : Promise.resolve({ ok: false }))
-      .then((j: Session) => setSession(j))
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch('/api/auth/session').then(r => r.ok ? r.json() : { ok: false }),
+      fetch('/api/me').then(r => r.ok ? r.json() : { ok: false }),
+    ]).then(([sess, me]) => {
+      setSession(sess)
+      if (me?.ok && me.user) {
+        if (me.user.name) setName(String(me.user.name))
+        if (me.user.picture) setPicture(String(me.user.picture))
+      }
+    }).finally(() => setLoading(false))
   }, [])
+
+  const onSave = async () => {
+    setSaving(true)
+    await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, picture }) })
+    setSaving(false)
+  }
 
   return (
     <section className='card'>
@@ -20,7 +35,17 @@ export default function ProfilePage() {
       {!loading && session?.ok && (
         <div>
           <p><strong>Email:</strong> {session.email}</p>
-          {session.name && <p><strong>Name:</strong> {session.name}</p>}
+          <label>
+            <div style={{marginTop: '0.5rem'}}>Name</div>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder='Your name' />
+          </label>
+          <label>
+            <div style={{marginTop: '0.5rem'}}>Picture URL</div>
+            <input value={picture} onChange={e => setPicture(e.target.value)} placeholder='https://…' />
+          </label>
+          <div style={{marginTop: '0.75rem'}}>
+            <button disabled={saving} onClick={onSave}>{saving ? 'Saving…' : 'Save'}</button>
+          </div>
         </div>
       )}
       {!loading && !session?.ok && (
@@ -29,4 +54,3 @@ export default function ProfilePage() {
     </section>
   )
 }
-
