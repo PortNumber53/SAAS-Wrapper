@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, Routes, Route, Link } from 'react-router-dom'
+import { NavLink, Routes, Route, Link, useNavigate } from 'react-router-dom'
+import DashboardPage from './pages/Dashboard'
 import TermsPage from './pages/Terms'
 import PrivacyPage from './pages/Privacy'
 import ProfilePage from './pages/Profile'
@@ -18,6 +19,7 @@ function App() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -113,8 +115,8 @@ function App() {
               <button className='btn primary' onClick={startGoogleLogin}>Sign Up</button>
             </>
           ) : (
-            <div className='user-menu' ref={menuRef}>
-              <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
+            <div className='user-menu' ref={menuRef} onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)}>
+              <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => navigate('/dashboard')}>
                 {userAvatar && !avatarFailed ? (
                   <img
                     className='avatar'
@@ -132,6 +134,7 @@ function App() {
               </button>
               {menuOpen && (
                 <div className='user-dropdown' role='menu'>
+                  <Link to='/dashboard' role='menuitem' onClick={() => setMenuOpen(false)}>Dashboard</Link>
                   <Link to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</Link>
                   <Link to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</Link>
                   <Link to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</Link>
@@ -212,6 +215,7 @@ function App() {
         <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
         <Route path='/profile' element={<ProfilePage />} />
         <Route path='/settings' element={<SettingsPage />} />
+        <Route path='/dashboard' element={<DashboardPage />} />
         <Route path='/account/integrations' element={<IntegrationsPage />} />
         <Route path='*' element={
           <section className='card'>

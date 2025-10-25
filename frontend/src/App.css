@@ -143,3 +143,13 @@ section { scroll-margin-top: 64px; }
   padding: 0.75rem 1rem;
   color: var(--muted);
 }
+
+/* Dashboard layout */
+.dashboard { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 56px); }
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; }
+.sidebar-nav { display: grid; gap: 12px; }
+.sidebar-section { display: grid; gap: 8px; }
+.sidebar-title { font-weight: 600; }
+.sidebar-item { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: #f9fafb; }
+.sidebar-item.active { background: rgba(37,99,235,0.12); border-color: rgba(37,99,235,0.35); }
+.sidebar-empty { color: var(--muted); }
