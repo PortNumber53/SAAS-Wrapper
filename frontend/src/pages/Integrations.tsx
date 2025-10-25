@@ -14,6 +14,7 @@ export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true)
   const [post, setPost] = useState({ ig_user_id: '', image_url: '', caption: '' })
   const connected = useMemo(() => new Set(providers.map(p => p.provider)), [providers])
+  const [accounts, setAccounts] = useState<Array<{ ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }>>([])
 
   useEffect(() => {
     fetch('/api/integrations')
@@ -22,6 +23,10 @@ export default function IntegrationsPage() {
         if (j?.ok && j.providers) setProviders(j.providers)
       })
       .finally(() => setLoading(false))
+    // Load IG accounts list
+    fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
+      if (j?.ok && j.accounts) setAccounts(j.accounts)
+    })
   }, [])
 
   const disconnect = async (provider: string) => {
@@ -81,6 +86,30 @@ export default function IntegrationsPage() {
               )}
             </div>
           ))}
+          {accounts.length > 0 && (
+            <div style={{border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
+              <strong>Instagram Business Accounts</strong>
+              <div className='read-the-docs'>Linked IG users for this account.</div>
+              <div style={{display:'grid', gap:8, marginTop:8}}>
+                {accounts.map(acc => (
+                  <div key={acc.ig_user_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                      <div><strong>@{acc.username || acc.ig_user_id}</strong> — {acc.page_name} ({acc.page_id})</div>
+                      <div className='read-the-docs'>Token: {acc.token_valid ? 'valid' : 'invalid'} {acc.token_expires_at ? `(exp ${new Date(acc.token_expires_at*1000).toLocaleString()})` : ''}</div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className='btn' onClick={async () => {
+                        const res = await fetch('/api/ig/refresh', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ ig_user_id: acc.ig_user_id }) })
+                        if (!res.ok) alert(await res.text());
+                        const j = await fetch('/api/ig/accounts').then(r=>r.json());
+                        if (j?.ok && j.accounts) setAccounts(j.accounts)
+                      }}>Refresh Token</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {connected.has('iggraph') && (
             <div style={{border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
               <strong>Publish to Instagram (Business)</strong>

@@ -71,8 +71,13 @@ export default {
       const sess = await getSessionFromCookie(request, env);
       if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
       const sql = getPg(env);
-      const rows = await sql`select ig_user_id, page_id, page_name, username from public.ig_accounts where email=${sess.email}` as Array<any>;
-      return new Response(JSON.stringify({ ok: true, accounts: rows }), { headers: { 'content-type': 'application/json' } });
+      const rows = await sql`select ig_user_id, page_id, page_name, username, access_token, user_access_token from public.ig_accounts where email=${sess.email}` as Array<any>;
+      const withStatus = await Promise.all(rows.map(async (r) => {
+        const status: any = await debugFBToken(env, r.access_token).catch(() => ({ is_valid: false }));
+        const exp = (status && typeof status.expires_at !== 'undefined') ? status.expires_at : null;
+        return { ig_user_id: r.ig_user_id, page_id: r.page_id, page_name: r.page_name, username: r.username, token_valid: !!status?.is_valid, token_expires_at: exp };
+      }));
+      return new Response(JSON.stringify({ ok: true, accounts: withStatus }), { headers: { 'content-type': 'application/json' } });
     }
     if (url.pathname === '/api/ig/publish' && request.method === 'POST') {
       const sess = await getSessionFromCookie(request, env);
@@ -102,6 +107,25 @@ export default {
       if (!pub.ok) return new Response(await pub.text(), { status: 502 });
       const pubJ = await pub.json();
       return new Response(JSON.stringify({ ok: true, result: pubJ }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname === '/api/ig/refresh' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const body = await request.json().catch(() => ({} as unknown));
+      const ig_user_id = (body as any).ig_user_id as string | undefined;
+      if (!ig_user_id) return new Response(JSON.stringify({ ok: false, error: 'missing_ig_user_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const rows = await sql`select user_access_token from public.ig_accounts where ig_user_id=${ig_user_id} and email=${sess.email} limit 1` as Array<any>;
+      if (!rows.length || !rows[0].user_access_token) return new Response(JSON.stringify({ ok: false, error: 'reauthorization_required' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const userToken = rows[0].user_access_token as string;
+      // Re-derive page token from user token
+      const pages = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token`, { headers: { Authorization: `Bearer ${userToken}` } });
+      if (!pages.ok) return new Response(JSON.stringify({ ok: false, error: 'pages_fetch_failed', details: await pages.text() }), { status: 502, headers: { 'content-type': 'application/json' } });
+      const pJson = await pages.json() as any;
+      const entry = (pJson.data || []).find((p: any) => p.instagram_business_account?.id === ig_user_id);
+      if (!entry) return new Response(JSON.stringify({ ok: false, error: 'page_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      await sql`update public.ig_accounts set access_token=${entry.access_token}, updated_at=now() where ig_user_id=${ig_user_id} and email=${sess.email}`;
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
     }
     // Remove legacy HTTP debug route; we now use direct Postgres
 
@@ -732,4 +756,15 @@ async function handleSession(request: Request, env: Env): Promise<Response> {
   if (!payload) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
   const body = { ok: true, email: payload.email, name: payload.name ?? '', picture: payload.picture ?? '' };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+}
+
+async function debugFBToken(env: Env, inputToken: string): Promise<{ is_valid: boolean; expires_at?: number }> {
+  const appId = env.FACEBOOK_APP_ID || '';
+  const appSecret = env.FACEBOOK_APP_SECRET || '';
+  if (!appId || !appSecret) return { is_valid: false };
+  const r = await fetch('https://graph.facebook.com/debug_token?' + new URLSearchParams({ input_token: inputToken, access_token: `${appId}|${appSecret}` }));
+  if (!r.ok) return { is_valid: false };
+  const j = await r.json() as any;
+  const data = j?.data || {};
+  return { is_valid: !!data.is_valid, expires_at: data.expires_at };
 }
