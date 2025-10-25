@@ -108,10 +108,26 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
+function normalizeOrigin(input: string | undefined, fallbackProtocol: string): string | null {
+  if (!input) return null;
+  let s = input.trim();
+  if (!s) return null;
+  s = s.replace(/\/$/, '');
+  // If no scheme, default to current request protocol
+  if (!/^https?:\/\//i.test(s)) {
+    s = `${fallbackProtocol}//${s}`;
+  }
+  try {
+    const u = new URL(s);
+    return `${u.protocol}//${u.host}`; // strip path if any
+  } catch {
+    return null;
+  }
+}
+
 function getPublicOrigin(env: Env, url: URL): string | null {
-  const configured = (env.PUBLIC_ORIGIN || '').trim();
-  if (configured) return configured.replace(/\/$/, '');
-  return url.origin.replace(/\/$/, '');
+  const normalized = normalizeOrigin(env.PUBLIC_ORIGIN, url.protocol);
+  return (normalized || url.origin).replace(/\/$/, '');
 }
 
 async function serveIndexHtml(env: Env, request: Request): Promise<Response> {
