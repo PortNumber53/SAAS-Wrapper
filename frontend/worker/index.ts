@@ -9,6 +9,13 @@ export default {
     if (url.pathname === "/api/auth/google/callback") {
       return handleGoogleCallback(request, env, url);
     }
+    if (url.pathname === "/api/auth/google/redirect-uri") {
+      // Small diagnostic to confirm computed redirect URI for this host
+      const redirectUri = `${url.origin}/api/auth/google/callback`;
+      return new Response(JSON.stringify({ origin: url.origin, redirect_uri: redirectUri }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     if (url.pathname === "/api/auth/session") {
       return handleSession(request, env);
     }
