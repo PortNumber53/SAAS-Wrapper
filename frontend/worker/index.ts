@@ -387,7 +387,7 @@ type NewUser = { email: string; name?: string; picture?: string; provider: strin
 
 async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
   const sql = getPg(env);
-  const rows = await sql<{ id: string }[]>`select id from public.users where email=${user.email} limit 1`;
+  const rows = await sql<{ id: string }[]>`select xata_id as id from public.users where email=${user.email} limit 1`;
   const record = {
     email: user.email,
     password: 'oauth',
@@ -406,7 +406,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
 
 async function findUserByEmail(env: Env, email: string): Promise<{ id: string } & Record<string, unknown> | null> {
   const sql = getPg(env);
-  const rows = await sql`select id, email, name, profile from public.users where email=${email} limit 1` as Array<any>;
+  const rows = await sql`select xata_id as id, email, name, profile from public.users where email=${email} limit 1` as Array<any>;
   return rows[0] ?? null;
 }
 
@@ -414,12 +414,12 @@ async function updateUserById(env: Env, id: string, body: Record<string, unknown
   const sql = getPg(env);
   const name = (body as any).name ?? null;
   const profile = (body as any).profile ?? null;
-  await sql`update public.users set name=${name}, profile=${profile} where id=${id}`;
+  await sql`update public.users set name=${name}, profile=${profile} where xata_id=${id}`;
 }
 
 async function getUserSettings(env: Env, email: string): Promise<Record<string, unknown>> {
   const sql = getPg(env);
-  const rows = await sql`select id, email, theme from public.user_settings where email=${email} limit 1` as Array<any>;
+  const rows = await sql`select xata_id as id, email, theme from public.user_settings where email=${email} limit 1` as Array<any>;
   return rows[0] ?? {};
 }
 
@@ -428,7 +428,7 @@ async function setUserSettings(env: Env, email: string, updates: Record<string, 
   const existing = await getUserSettings(env, email);
   const theme = (updates as any).theme ?? null;
   if ((existing as any)?.id) {
-    await sql`update public.user_settings set theme=${theme} where id=${(existing as any).id}`;
+    await sql`update public.user_settings set theme=${theme} where xata_id=${(existing as any).id}`;
   } else {
     await sql`insert into public.user_settings (email, theme) values (${email}, ${theme})`;
   }
