@@ -137,6 +137,16 @@ export default {
     }
     // Remove legacy HTTP debug route; we now use direct Postgres
 
+    // SPA fallback early for extensionless document paths (prevents any asset-level redirects)
+    if (!url.pathname.startsWith('/api/') && (request.method === 'GET' || request.method === 'HEAD')) {
+      const looksLikeFile = /\.[a-zA-Z0-9]+$/.test(url.pathname);
+      if (!looksLikeFile) {
+        if (env.ASSETS) {
+          return serveIndexHtml(env, request);
+        }
+      }
+    }
+
     // Authenticated Xata-backed endpoints
     if (url.pathname === "/api/me") {
       const sess = await getSessionFromCookie(request, env);
