@@ -57,8 +57,6 @@ export default function DashboardPage() {
         </nav>
       </aside>
       <main className='content'>
-        <h1>Welcome</h1>
-        <p className='read-the-docs'>Use the sidebar to choose an Instagram account to publish content.</p>
         {selectedAccount && (
           <section className='card'>
             <h2>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
@@ -75,4 +73,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
