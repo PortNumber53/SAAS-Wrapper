@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { NavLink, Routes, Route } from 'react-router-dom'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
@@ -61,12 +62,12 @@ function App() {
   return (
     <>
       <header className='topbar'>
-        <div className='brand'><a href='#home'>SAAS Wrapper</a></div>
+        <div className='brand'><NavLink to='/'>SAAS Wrapper</NavLink></div>
         <nav className='mainnav' aria-label='Main'>
-          <a href='#home'>Home</a>
-          <a href='#features'>Features</a>
-          <a href='#pricing'>Pricing</a>
-          <a href='#about'>About</a>
+          <NavLink to='/' end>Home</NavLink>
+          <NavLink to='/features'>Features</NavLink>
+          <NavLink to='/pricing'>Pricing</NavLink>
+          <NavLink to='/about'>About</NavLink>
         </nav>
         <div className='account'>
           {!userEmail ? (
@@ -91,64 +92,67 @@ function App() {
         </div>
       </header>
 
-      <section id='home'>
-        <a href='https://vite.dev' target='_blank'>
-          <img src={viteLogo} className='logo' alt='Vite logo' />
-        </a>
-        <a href='https://react.dev' target='_blank'>
-          <img src={reactLogo} className='logo react' alt='React logo' />
-        </a>
-        <a href='https://workers.cloudflare.com/' target='_blank'>
-          <img src={cloudflareLogo} className='logo cloudflare' alt='Cloudflare logo' />
-        </a>
-      </section>
-      <h1>Vite + React + Cloudflare</h1>
-      <div className='card'>
-        <button
-          onClick={() => setCount((count) => count + 1)}
-          aria-label='increment'
-        >
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <section id='features' className='card'>
-        <h2>Features</h2>
-        <p>Modern React frontend hosted on Cloudflare Workers with OAuth and API proxying.</p>
-      </section>
-
-      <section id='pricing' className='card'>
-        <h2>Pricing</h2>
-        <p>Contact us to discuss plans and usage-based pricing.</p>
-      </section>
-
-      <section id='about' className='card'>
-        <h2>About</h2>
-        <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
-      </section>
-      <div className='card'>
-        <button onClick={startGoogleLogin} aria-label='google login'>
-          {userEmail ? `Logged in as ${userEmail}` : 'Sign in with Google'}
-        </button>
-        {authError && <p style={{ color: 'tomato' }}>Error: {authError}</p>}
-      </div>
-      <div className='card'>
-        <button
-          onClick={() => {
-            fetch('/api/')
-              .then((res) => res.json() as Promise<{ name: string }>)
-              .then((data) => setName(data.name))
-          }}
-          aria-label='get name'
-        >
-          Name from API is: {name}
-        </button>
-        <p>
-          Edit <code>worker/index.ts</code> to change the name
-        </p>
-      </div>
+      <Routes>
+        <Route path='/' element={
+          <>
+            <section>
+              <a href='https://vite.dev' target='_blank' rel='noreferrer'>
+                <img src={viteLogo} className='logo' alt='Vite logo' />
+              </a>
+              <a href='https://react.dev' target='_blank' rel='noreferrer'>
+                <img src={reactLogo} className='logo react' alt='React logo' />
+              </a>
+              <a href='https://workers.cloudflare.com/' target='_blank' rel='noreferrer'>
+                <img src={cloudflareLogo} className='logo cloudflare' alt='Cloudflare logo' />
+              </a>
+            </section>
+            <h1>Vite + React + Cloudflare</h1>
+            <div className='card'>
+              <button onClick={() => setCount((count) => count + 1)} aria-label='increment'>
+                count is {count}
+              </button>
+              <p> Edit <code>src/App.tsx</code> and save to test HMR </p>
+            </div>
+            <div className='card'>
+              <button onClick={startGoogleLogin} aria-label='google login'>
+                {userEmail ? `Logged in as ${userEmail}` : 'Sign in with Google'}
+              </button>
+              {authError && <p style={{ color: 'tomato' }}>Error: {authError}</p>}
+            </div>
+            <div className='card'>
+              <button
+                onClick={() => {
+                  fetch('/api/')
+                    .then((res) => res.json() as Promise<{ name: string }>)
+                    .then((data) => setName(data.name))
+                }}
+                aria-label='get name'
+              >
+                Name from API is: {name}
+              </button>
+              <p> Edit <code>worker/index.ts</code> to change the name </p>
+            </div>
+          </>
+        } />
+        <Route path='/features' element={
+          <section className='card'>
+            <h2>Features</h2>
+            <p>Modern React frontend hosted on Cloudflare Workers with OAuth and API proxying.</p>
+          </section>
+        } />
+        <Route path='/pricing' element={
+          <section className='card'>
+            <h2>Pricing</h2>
+            <p>Contact us to discuss plans and usage-based pricing.</p>
+          </section>
+        } />
+        <Route path='/about' element={
+          <section className='card'>
+            <h2>About</h2>
+            <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
+          </section>
+        } />
+      </Routes>
       <p className='read-the-docs'>
         Click on the Vite and React logos to learn more
       </p>

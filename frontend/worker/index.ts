@@ -54,10 +54,19 @@ export default {
       });
     }
 
-    // Delegate non-API requests to static assets (SPA fallback), if bound.
-    // This ensures our /api routes are handled before assets catch-all.
+    // Delegate non-API requests to static assets. If a document navigation
+    // results in 404 from assets, fall back to index.html (SPA routing).
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const assetRes = await env.ASSETS.fetch(request);
+      if (assetRes.status !== 404) return assetRes;
+      const accept = request.headers.get('accept') || '';
+      const isDocument = request.method === 'GET' && accept.includes('text/html');
+      if (isDocument) {
+        const indexUrl = new URL(request.url);
+        indexUrl.pathname = '/index.html';
+        return env.ASSETS.fetch(new Request(indexUrl.toString(), request));
+      }
+      return assetRes;
     }
     return new Response(null, { status: 404 });
   },
