@@ -14,7 +14,7 @@ export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true)
   const [post, setPost] = useState({ ig_user_id: '', image_url: '', caption: '' })
   const connected = useMemo(() => new Set(providers.map(p => p.provider)), [providers])
-  const [accounts, setAccounts] = useState<Array<{ ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }>>([])
+  const [accounts, setAccounts] = useState<Array<{ ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null; linked?: boolean }>>([])
 
   useEffect(() => {
     fetch('/api/integrations')
@@ -115,10 +115,22 @@ export default function IntegrationsPage() {
                     <div style={{display:'flex',gap:8}}>
                       <button className='btn' onClick={async () => {
                         const res = await fetch('/api/ig/refresh', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ ig_user_id: acc.ig_user_id }) })
-                        if (!res.ok) alert(await res.text());
+                        if (!res.ok) {
+                          const t = await res.text();
+                          try { const j = JSON.parse(t); if (j?.error === 'reauthorization_required' || j?.error === 'ig_account_not_linked') {
+                            window.open('/api/auth/iggraph/start', '_blank', 'popup=yes,width=480,height=640');
+                          } else { alert(t) } } catch { alert(t) }
+                        }
                         const j = await fetch('/api/ig/accounts').then(r=>r.json());
                         if (j?.ok && j.accounts) setAccounts(j.accounts)
                       }}>Refresh Token</button>
+                      <button className='btn' onClick={async () => {
+                        if (!confirm('Unlink this Instagram account?')) return;
+                        const res = await fetch(`/api/ig/account/${acc.ig_user_id}`, { method:'DELETE' })
+                        if (!res.ok) alert(await res.text());
+                        const j = await fetch('/api/ig/accounts').then(r=>r.json());
+                        if (j?.ok && j.accounts) setAccounts(j.accounts); else setAccounts([])
+                      }}>Unlink</button>
                     </div>
                   </div>
                 ))}

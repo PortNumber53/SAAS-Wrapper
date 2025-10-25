@@ -73,7 +73,13 @@ export default {
       const withStatus = await Promise.all(rows.map(async (r) => {
         const status: any = await debugFBToken(env, r.access_token).catch(() => ({ is_valid: false }));
         const exp = (status && typeof status.expires_at !== 'undefined') ? status.expires_at : null;
-        return { ig_user_id: r.ig_user_id, page_id: r.page_id, page_name: r.page_name, username: r.username, token_valid: !!status?.is_valid, token_expires_at: exp };
+        // Link check: try a lightweight call on the IG user id
+        let linked = false;
+        try {
+          const chk = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(r.ig_user_id)}?fields=id`, { headers: { Authorization: `Bearer ${r.access_token}` } });
+          linked = chk.ok;
+        } catch {}
+        return { ig_user_id: r.ig_user_id, page_id: r.page_id, page_name: r.page_name, username: r.username, token_valid: !!status?.is_valid, token_expires_at: exp, linked };
       }));
       return new Response(JSON.stringify({ ok: true, accounts: withStatus }), { headers: { 'content-type': 'application/json' } });
     }
@@ -140,6 +146,17 @@ export default {
         return new Response(JSON.stringify({ ok: false, error: 'ig_account_not_linked' }), { status: 404, headers: { 'content-type': 'application/json' } });
       }
       await sql`update public.ig_accounts set access_token=${entry.access_token}, updated_at=now() where ig_user_id=${ig_user_id} and email=${sess.email}`;
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname.startsWith('/api/ig/account/') && request.method === 'DELETE') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const igUserId = url.pathname.split('/').pop() || '';
+      if (!igUserId) return new Response(JSON.stringify({ ok: false, error: 'missing_ig_user_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      await sql`delete from public.ig_accounts where ig_user_id=${igUserId} and email=${sess.email}`;
+      // Also drop oauth mapping for that iggraph user id if present
+      await sql`delete from public.oauth_accounts where provider='iggraph' and provider_user_id=${igUserId} and email=${sess.email}`;
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
     }
     // Remove legacy HTTP debug route; we now use direct Postgres
