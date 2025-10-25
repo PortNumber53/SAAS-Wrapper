@@ -5,6 +5,82 @@
 	text-align: center;
 }
 
+/* Top navigation bar */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+.brand a {
+  font-weight: 600;
+  text-decoration: none;
+  color: inherit;
+}
+.mainnav {
+  display: flex;
+  gap: 1rem;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+.mainnav a {
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.9;
+}
+.mainnav a:hover { opacity: 1; text-decoration: underline; }
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.account .btn {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.account .btn.primary {
+  border-color: #646cff;
+}
+
+.user-menu { position: relative; }
+.user-button { all: unset; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.2); }
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  min-width: 180px;
+  background: #111;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+}
+.user-dropdown a, .user-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: inherit;
+  border: none;
+  text-decoration: none;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+.user-dropdown a:hover, .user-dropdown button:hover { background: rgba(255,255,255,0.06); }
+
 .logo {
 	height: 6em;
 	padding: 1.5em;
@@ -43,3 +119,5 @@
 .read-the-docs {
 	color: #888;
 }
+
+section { scroll-margin-top: 64px; }

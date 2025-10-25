@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
@@ -9,6 +9,8 @@ function App() {
   const [name, setName] = useState('unknown')
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   // Memoize same-origin target for message filtering
   const expectedOrigin = useMemo(() => window.location.origin, [])
@@ -16,9 +18,9 @@ function App() {
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
       if (ev.origin !== expectedOrigin) return
-      const msg = ev.data as any
+      const msg = ev.data as unknown as { type?: string; data?: { ok: boolean; provider: string; email?: string; error?: string } }
       if (!msg || msg.type !== 'oauth:google') return
-      const data = msg.data as { ok: boolean; provider: string; email?: string; error?: string }
+      const data = msg.data
       if (data?.ok && data.email) {
         setUserEmail(data.email)
         setAuthError(null)
@@ -29,6 +31,19 @@ function App() {
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [expectedOrigin])
+
+  // Close account dropdown on outside click / escape
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!menuRef.current) return
+      if (!menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('click', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onKey) }
+  }, [menuOpen])
 
   const startGoogleLogin = () => {
     const w = 480, h = 640
@@ -41,9 +56,42 @@ function App() {
     window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x},noopener`)
   }
 
+  const displayName = userEmail ?? 'Account'
+
   return (
     <>
-      <div>
+      <header className='topbar'>
+        <div className='brand'><a href='#home'>SAAS Wrapper</a></div>
+        <nav className='mainnav' aria-label='Main'>
+          <a href='#home'>Home</a>
+          <a href='#features'>Features</a>
+          <a href='#pricing'>Pricing</a>
+          <a href='#about'>About</a>
+        </nav>
+        <div className='account'>
+          {!userEmail ? (
+            <>
+              <button className='btn' onClick={startGoogleLogin}>Login</button>
+              <button className='btn primary' onClick={startGoogleLogin}>Sign Up</button>
+            </>
+          ) : (
+            <div className='user-menu' ref={menuRef}>
+              <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
+                {displayName}
+              </button>
+              {menuOpen && (
+                <div className='user-dropdown' role='menu'>
+                  <a href='#profile' role='menuitem'>Profile</a>
+                  <a href='#settings' role='menuitem'>Settings</a>
+                  <button role='menuitem' onClick={() => { setUserEmail(null); setMenuOpen(false) }}>Logout</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      <section id='home'>
         <a href='https://vite.dev' target='_blank'>
           <img src={viteLogo} className='logo' alt='Vite logo' />
         </a>
@@ -53,7 +101,7 @@ function App() {
         <a href='https://workers.cloudflare.com/' target='_blank'>
           <img src={cloudflareLogo} className='logo cloudflare' alt='Cloudflare logo' />
         </a>
-      </div>
+      </section>
       <h1>Vite + React + Cloudflare</h1>
       <div className='card'>
         <button
@@ -66,6 +114,20 @@ function App() {
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
       </div>
+      <section id='features' className='card'>
+        <h2>Features</h2>
+        <p>Modern React frontend hosted on Cloudflare Workers with OAuth and API proxying.</p>
+      </section>
+
+      <section id='pricing' className='card'>
+        <h2>Pricing</h2>
+        <p>Contact us to discuss plans and usage-based pricing.</p>
+      </section>
+
+      <section id='about' className='card'>
+        <h2>About</h2>
+        <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
+      </section>
       <div className='card'>
         <button onClick={startGoogleLogin} aria-label='google login'>
           {userEmail ? `Logged in as ${userEmail}` : 'Sign in with Google'}
