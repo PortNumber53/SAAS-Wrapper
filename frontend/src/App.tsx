@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Routes, Route, Link } from 'react-router-dom'
+import TermsPage from './pages/Terms'
+import PrivacyPage from './pages/Privacy'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
@@ -153,6 +155,8 @@ function App() {
             <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
           </section>
         } />
+        <Route path='/pages/terms-of-service' element={<TermsPage />} />
+        <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
         <Route path='*' element={
           <section className='card'>
             <h2>404 — Page Not Found</h2>
@@ -166,9 +170,9 @@ function App() {
         <div style={{display:'flex',justifyContent:'space-between',gap:'1rem',maxWidth:1100,margin:'0 auto'}}>
           <span>© {new Date().getFullYear()} SAAS Wrapper</span>
           <span>
-            <a href='/pages/terms-of-service/'>Terms</a>
+            <Link to='/pages/terms-of-service'>Terms</Link>
             {' · '}
-            <a href='/pages/privacy-policy/'>Privacy</a>
+            <Link to='/pages/privacy-policy'>Privacy</Link>
           </span>
         </div>
       </footer>
