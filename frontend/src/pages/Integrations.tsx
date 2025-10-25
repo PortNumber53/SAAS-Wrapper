@@ -27,15 +27,30 @@ export default function IntegrationsPage() {
     setProviders(prev => prev.filter(p => p.provider !== provider))
   }
 
+  useEffect(() => {
+    const onMsg = (ev: MessageEvent) => {
+      if (typeof ev.data !== 'object' || !ev.data) return
+      if (ev.data.type === 'oauth:instagram' && ev.data.data?.ok) {
+        // refresh list
+        fetch('/api/integrations').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
+          if (j?.ok && j.providers) setProviders(j.providers)
+        })
+      }
+    }
+    window.addEventListener('message', onMsg)
+    return () => window.removeEventListener('message', onMsg)
+  }, [])
+
   const connect = async (provider: string) => {
+    const w = 480, h = 640
+    const y = window.top?.outerHeight ? Math.max(0, ((window.top!.outerHeight - h) / 2) + (window.top!.screenY || 0)) : 0
+    const x = window.top?.outerWidth ? Math.max(0, ((window.top!.outerWidth - w) / 2) + (window.top!.screenX || 0)) : 0
     if (provider === 'google') {
-      window.location.href = '/api/auth/google/start'
+      window.open('/api/auth/google/start', '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
       return
     }
     if (provider === 'instagram') {
-      // Placeholder: backend returns 501 until configured
-      const res = await fetch('/api/auth/instagram/start')
-      if (!res.ok) alert('Instagram connection not yet configured')
+      window.open('/api/auth/instagram/start', '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
       return
     }
   }
@@ -68,4 +83,3 @@ export default function IntegrationsPage() {
     </section>
   )
 }
-

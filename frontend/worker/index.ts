@@ -56,11 +56,10 @@ export default {
       return new Response(null, { status: 405 });
     }
     if (url.pathname === '/api/auth/instagram/start') {
-      // Placeholder: implement full OAuth flow later
-      return new Response(JSON.stringify({ ok: false, error: 'instagram_oauth_not_configured' }), { status: 501, headers: { 'content-type': 'application/json' } });
+      return startInstagramOAuth(request, env, url);
     }
     if (url.pathname === '/api/auth/instagram/callback') {
-      return new Response('Instagram OAuth is not configured.', { status: 501 });
+      return handleInstagramCallback(request, env, url);
     }
     // Remove legacy HTTP debug route; we now use direct Postgres
 
@@ -465,6 +464,105 @@ type OAuthAccount = { provider: string; provider_user_id: string; email: string 
 async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<void> {
   const sql = getPg(env);
   await sql`insert into public.oauth_accounts (provider, provider_user_id, email) values (${acct.provider}, ${acct.provider_user_id}, ${acct.email}) on conflict (provider, provider_user_id) do update set email=excluded.email`;
+}
+
+// --- Instagram OAuth (Basic Display) ---
+async function startInstagramOAuth(request: Request, env: Env, url: URL): Promise<Response> {
+  const clientId = env.INSTAGRAM_CLIENT_ID || '';
+  const clientSecret = env.INSTAGRAM_CLIENT_SECRET || '';
+  if (!clientId || !clientSecret) {
+    return new Response('Missing INSTAGRAM_CLIENT_ID/INSTAGRAM_CLIENT_SECRET', { status: 500 });
+  }
+  // Require a logged-in session to link the integration
+  const sess = await getSessionFromCookie(request, env);
+  if (!sess) return new Response('Not authenticated', { status: 401 });
+
+  const state = newState();
+  const redirectUri = `${url.origin}/api/auth/instagram/callback`;
+  const authorize = new URL('https://api.instagram.com/oauth/authorize');
+  authorize.searchParams.set('client_id', clientId);
+  authorize.searchParams.set('redirect_uri', redirectUri);
+  authorize.searchParams.set('scope', 'user_profile');
+  authorize.searchParams.set('response_type', 'code');
+  authorize.searchParams.set('state', state);
+
+  const headers = new Headers({ Location: authorize.toString() });
+  headers.append('Set-Cookie', setCookie('oauth_state_ig', state, { maxAgeSec: 600, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/instagram' }));
+  return new Response(null, { status: 302, headers });
+}
+
+async function handleInstagramCallback(request: Request, env: Env, url: URL): Promise<Response> {
+  const clientId = env.INSTAGRAM_CLIENT_ID || '';
+  const clientSecret = env.INSTAGRAM_CLIENT_SECRET || '';
+  if (!clientId || !clientSecret) return new Response('Missing INSTAGRAM_CLIENT_ID/INSTAGRAM_CLIENT_SECRET', { status: 500 });
+  // Require session to link to current user
+  const sess = await getSessionFromCookie(request, env);
+  if (!sess?.email) return new Response('Not authenticated', { status: 401 });
+
+  const qs = url.searchParams;
+  const code = qs.get('code');
+  const state = qs.get('state');
+  if (!code) return new Response('Missing code', { status: 400 });
+  const cookies = getCookies(request);
+  if (!state || !cookies.oauth_state_ig || cookies.oauth_state_ig !== state) {
+    return new Response('Invalid state', { status: 400 });
+  }
+
+  const redirectUri = `${url.origin}/api/auth/instagram/callback`;
+  // Exchange code for access token
+  const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      code,
+    }),
+  });
+  if (!tokenRes.ok) {
+    const t = await tokenRes.text();
+    return new Response(`Instagram token exchange failed: ${t}`, { status: 502 });
+  }
+  const tokenJson = await tokenRes.json() as { access_token?: string; user_id?: string };
+  const accessToken = tokenJson.access_token;
+  if (!accessToken) return new Response('No access token', { status: 502 });
+
+  // Fetch user info
+  const uRes = await fetch(`https://graph.instagram.com/me?fields=id,username&access_token=${encodeURIComponent(accessToken)}`);
+  if (!uRes.ok) {
+    const t = await uRes.text();
+    return new Response(`Instagram userinfo failed: ${t}`, { status: 502 });
+  }
+  const profile = await uRes.json() as { id?: string; username?: string };
+  if (!profile?.id) return new Response('Missing instagram id', { status: 502 });
+
+  // Store linkage
+  try {
+    await upsertOAuthAccountToXata(env, { provider: 'instagram', provider_user_id: profile.id, email: sess.email });
+  } catch (e) {
+    // log but don’t block UX
+    console.error('Instagram upsert failed', e);
+  }
+
+  // Notify opener and close
+  const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
+  headers.append('Set-Cookie', setCookie('oauth_state_ig', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/instagram' }));
+  const targetOrigin = url.origin;
+  const msg = { ok: true, provider: 'instagram' };
+  const html = `<!doctype html><html><body><script>
+    (function(){
+      try {
+        var data = ${JSON.stringify(msg)};
+        if (window.opener && typeof window.opener.postMessage === 'function') {
+          window.opener.postMessage({ type: 'oauth:instagram', data: data }, ${JSON.stringify(targetOrigin)});
+        }
+      } catch (e) {}
+      window.close();
+    })();
+  </script></body></html>`;
+  return new Response(html, { status: 200, headers });
 }
 
 async function listUserIntegrations(env: Env, email: string): Promise<Array<{ provider: string }>> {

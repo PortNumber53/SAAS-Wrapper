@@ -28,12 +28,15 @@ function App() {
     const onMessage = (ev: MessageEvent) => {
       if (ev.origin !== expectedOrigin) return
       const msg = ev.data as unknown as { type?: string; data?: { ok: boolean; provider: string; email?: string; name?: string; picture?: string; error?: string } }
-      if (!msg || msg.type !== 'oauth:google') return
+      if (!msg || !msg.type || !msg.type.startsWith('oauth:')) return
       const data = msg.data
-      if (data?.ok && data.email) {
+      if (msg.type === 'oauth:google' && data?.ok && data.email) {
         setUserEmail(data.email)
         if (data.name) setUserName(data.name)
         if (data.picture) setUserAvatar(data.picture)
+        setAuthError(null)
+      } else if (msg.type === 'oauth:instagram' && data?.ok) {
+        // Integration linked; nothing to update in header
         setAuthError(null)
       } else {
         setAuthError(data?.error || 'Authentication failed')
