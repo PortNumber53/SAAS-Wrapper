@@ -44,6 +44,63 @@ Use the built-in continuous integration in GitLab.
 
 ***
 
+## Cloudflare Workers Deployment
+
+- Frontend lives under `frontend/` and deploys to Cloudflare Workers via Wrangler.
+- Runtime configuration is provided via Cloudflare Variables and Secrets (not committed).
+
+### Required runtime variables/secrets
+
+- BACKEND_ORIGIN: e.g. https://api.example.com
+- XATA_DATABASE_URL: e.g. https://<workspace>.<region>.xata.sh/db/<db>
+- XATA_BRANCH: e.g. main
+- GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (secrets)
+- XATA_API_KEY (secret)
+
+### Local dev
+
+In `frontend/` copy `.dev.vars.example` to `.dev.vars`, fill values, then run `npx wrangler dev`.
+
+### GitLab CI example (production)
+
+Below is an example `deploy` job that installs dependencies and deploys the Worker with production variables. Store secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, XATA_API_KEY) as protected CI/CD variables in GitLab and non-secrets (BACKEND_ORIGIN, XATA_DATABASE_URL, XATA_BRANCH) as variables too.
+
+```
+stages:
+  - test
+  - deploy
+
+deploy_production:
+  image: node:20
+  stage: deploy
+  rules:
+    - if: "$CI_COMMIT_BRANCH == 'master'"
+  before_script:
+    - cd frontend
+    - npm ci
+    # Authenticate Wrangler (use CF_API_TOKEN as a protected variable with "Edit Workers" perms)
+    - test -n "$CF_API_TOKEN" || (echo "Missing CF_API_TOKEN" && exit 1)
+    # Provide secrets non-interactively
+    - printf "%s" "$GOOGLE_CLIENT_ID" | npx wrangler secret put GOOGLE_CLIENT_ID --yes
+    - printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --yes
+    - printf "%s" "$XATA_API_KEY" | npx wrangler secret put XATA_API_KEY --yes
+  script:
+    - npx wrangler deploy \
+        --var BACKEND_ORIGIN="$BACKEND_ORIGIN" \
+        --var XATA_DATABASE_URL="$XATA_DATABASE_URL" \
+        --var XATA_BRANCH="$XATA_BRANCH"
+  environment:
+    name: production
+    url: $WORKER_PUBLIC_URL
+  only:
+    - master
+```
+
+Notes:
+- Set `CF_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as CI variables. Wrangler reads them from env.
+- Optionally set `WORKER_PUBLIC_URL` to your worker URL for visibility in GitLab environments.
+
+
 # Editing this README
 
 When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
