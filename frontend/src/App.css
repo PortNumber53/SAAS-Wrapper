@@ -78,13 +78,14 @@ main.content.wide { max-width: none; width: 100%; margin: 0; padding-left: 24px;
 .user-dropdown {
   position: absolute;
   right: 0;
-  top: calc(100% + 0.4rem);
+  top: 100%;
   min-width: 180px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.25rem;
   box-shadow: var(--shadow);
+  z-index: 20;
 }
 .user-dropdown a, .user-dropdown button {
   display: block;
