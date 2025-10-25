@@ -13,6 +13,8 @@ function App() {
   const [count, setCount] = useState(0)
   const [name, setName] = useState('unknown')
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -23,11 +25,13 @@ function App() {
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
       if (ev.origin !== expectedOrigin) return
-      const msg = ev.data as unknown as { type?: string; data?: { ok: boolean; provider: string; email?: string; error?: string } }
+      const msg = ev.data as unknown as { type?: string; data?: { ok: boolean; provider: string; email?: string; name?: string; picture?: string; error?: string } }
       if (!msg || msg.type !== 'oauth:google') return
       const data = msg.data
       if (data?.ok && data.email) {
         setUserEmail(data.email)
+        if (data.name) setUserName(data.name)
+        if (data.picture) setUserAvatar(data.picture)
         setAuthError(null)
       } else {
         setAuthError(data?.error || 'Authentication failed')
@@ -41,7 +45,13 @@ function App() {
   useEffect(() => {
     fetch('/api/auth/session')
       .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((j: { ok: boolean; email?: string }) => { if (j?.ok && j.email) setUserEmail(j.email) })
+      .then((j: { ok: boolean; email?: string; name?: string; picture?: string }) => {
+        if (j?.ok && j.email) {
+          setUserEmail(j.email)
+          if (j.name) setUserName(j.name)
+          if (j.picture) setUserAvatar(j.picture)
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -69,7 +79,7 @@ function App() {
     window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
   }
 
-  const displayName = userEmail ?? 'Account'
+  const displayName = userName || userEmail || 'Account'
 
   return (
     <div className='layout'>
@@ -90,7 +100,12 @@ function App() {
           ) : (
             <div className='user-menu' ref={menuRef}>
               <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
-                {displayName}
+                {userAvatar ? (
+                  <img className='avatar' src={userAvatar} alt='' />
+                ) : (
+                  <div className='avatar fallback' aria-hidden>🙂</div>
+                )}
+                <span>{displayName}</span>
               </button>
               {menuOpen && (
                 <div className='user-dropdown' role='menu'>
@@ -98,7 +113,7 @@ function App() {
                   <Link to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</Link>
                   <button role='menuitem' onClick={() => {
                     fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
-                      setUserEmail(null); setMenuOpen(false)
+                      setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false)
                     })
                   }}>Logout</button>
                 </div>

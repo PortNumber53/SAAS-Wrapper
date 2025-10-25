@@ -146,7 +146,7 @@ async function signHmacSHA256(secret: string, data: string): Promise<Uint8Array>
   return new Uint8Array(sig);
 }
 
-type SessionPayload = { email: string; name?: string; sub?: string; iat: number; exp: number };
+type SessionPayload = { email: string; name?: string; picture?: string; sub?: string; iat: number; exp: number };
 
 async function createSessionToken(payload: SessionPayload, secret?: string): Promise<string> {
   const header = { alg: secret ? 'HS256' : 'none', typ: 'JWT' };
@@ -283,7 +283,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
 
   // Issue session cookie
   const now = Math.floor(Date.now() / 1000);
-  const payload: SessionPayload = { email: profile.email, name: profile.name ?? '', sub: profile.sub ?? '', iat: now, exp: now + 60 * 60 * 24 * 7 };
+  const payload: SessionPayload = { email: profile.email, name: profile.name ?? '', picture: profile.picture ?? '', sub: profile.sub ?? '', iat: now, exp: now + 60 * 60 * 24 * 7 };
   const token = await createSessionToken(payload, env.SESSION_SECRET);
 
   // Clear state cookie and return a tiny HTML that posts a message to the opener
@@ -291,7 +291,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   headers.append('Set-Cookie', setCookie('oauth_state', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
   headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
   const targetOrigin = url.origin;
-  const message = { ok: true, provider: 'google', email: profile.email };
+  const message = { ok: true, provider: 'google', email: profile.email, name: profile.name ?? '', picture: profile.picture ?? '' };
   const html = `<!doctype html><html><body><script>
     (function(){
       try {
@@ -416,6 +416,6 @@ async function handleSession(request: Request, env: Env): Promise<Response> {
   if (!tok) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
   const payload = await verifySessionToken(tok, env.SESSION_SECRET);
   if (!payload) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
-  const body = { ok: true, email: payload.email, name: payload.name ?? '' };
+  const body = { ok: true, email: payload.email, name: payload.name ?? '', picture: payload.picture ?? '' };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 }
