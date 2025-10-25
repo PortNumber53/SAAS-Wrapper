@@ -35,6 +35,14 @@ function App() {
     return () => window.removeEventListener('message', onMessage)
   }, [expectedOrigin])
 
+  // Hydrate auth state from session on first load
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((j: { ok: boolean; email?: string }) => { if (j?.ok && j.email) setUserEmail(j.email) })
+      .catch(() => {})
+  }, [])
+
   // Close account dropdown on outside click / escape
   useEffect(() => {
     if (!menuOpen) return
@@ -87,7 +95,11 @@ function App() {
                 <div className='user-dropdown' role='menu'>
                   <a href='#profile' role='menuitem'>Profile</a>
                   <a href='#settings' role='menuitem'>Settings</a>
-                  <button role='menuitem' onClick={() => { setUserEmail(null); setMenuOpen(false) }}>Logout</button>
+                  <button role='menuitem' onClick={() => {
+                    fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
+                      setUserEmail(null); setMenuOpen(false)
+                    })
+                  }}>Logout</button>
                 </div>
               )}
             </div>

@@ -9,6 +9,8 @@ interface Env {
   // Google OAuth
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  // Optional session secret used to sign cookies
+  SESSION_SECRET?: string;
   // Xata configuration
   XATA_DATABASE_URL: string; // e.g. https://<workspace>.<region>.xata.sh/db/<db>
   XATA_BRANCH: string; // e.g. main

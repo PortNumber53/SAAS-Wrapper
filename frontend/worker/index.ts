@@ -9,6 +9,14 @@ export default {
     if (url.pathname === "/api/auth/google/callback") {
       return handleGoogleCallback(request, env, url);
     }
+    if (url.pathname === "/api/auth/session") {
+      return handleSession(request, env);
+    }
+    if (url.pathname === "/api/auth/logout") {
+      const headers = new Headers();
+      headers.append('Set-Cookie', setCookie('session', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
+      return new Response(null, { status: 204, headers });
+    }
 
     // API proxy: forward remaining /api/* to the Go backend
     if (url.pathname.startsWith("/api/")) {
@@ -72,7 +80,7 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-// --- Google OAuth 2.0 helpers ---
+// --- Helpers: base64url & cookies ---
 function b64url(bytes: Uint8Array): string {
   // @ts-ignore: Buffer not present in workers; convert using btoa
   let bin = "";
@@ -108,6 +116,64 @@ function setCookie(name: string, value: string, opts: { maxAgeSec?: number; secu
   return parts.join('; ');
 }
 
+function b64urlDecodeToBytes(s: string): Uint8Array {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 ? 4 - (b64.length % 4) : 0;
+  const b64p = b64 + '='.repeat(pad);
+  const bin = atob(b64p);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function utf8(bytes: Uint8Array): string { return new TextDecoder().decode(bytes); }
+function utf8Bytes(s: string): Uint8Array { return new TextEncoder().encode(s); }
+
+async function signHmacSHA256(secret: string, data: string): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', utf8Bytes(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, utf8Bytes(data));
+  return new Uint8Array(sig);
+}
+
+type SessionPayload = { email: string; name?: string; sub?: string; iat: number; exp: number };
+
+async function createSessionToken(payload: SessionPayload, secret?: string): Promise<string> {
+  const header = { alg: secret ? 'HS256' : 'none', typ: 'JWT' };
+  const encHeader = b64url(utf8Bytes(JSON.stringify(header)));
+  const encPayload = b64url(utf8Bytes(JSON.stringify(payload)));
+  const msg = `${encHeader}.${encPayload}`;
+  if (!secret) return `${msg}.`;
+  const sig = await signHmacSHA256(secret, msg);
+  return `${msg}.${b64url(sig)}`;
+}
+
+async function verifySessionToken(token: string, secret?: string): Promise<SessionPayload | null> {
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  const [encHeader, encPayload, encSig] = parts;
+  try {
+    const payload = JSON.parse(utf8(b64urlDecodeToBytes(encPayload)));
+    if (!secret) {
+      // No secret; trust unsigned token only in dev
+      if (payload?.exp && Date.now() / 1000 > payload.exp) return null;
+      return payload as SessionPayload;
+    }
+    const expected = await signHmacSHA256(secret, `${encHeader}.${encPayload}`);
+    if (!encSig) return null;
+    const given = b64urlDecodeToBytes(encSig);
+    if (given.length !== expected.length) return null;
+    // constant-time compare
+    let ok = 0;
+    for (let i = 0; i < given.length; i++) ok |= given[i] ^ expected[i];
+    if (ok !== 0) return null;
+    if (payload?.exp && Date.now() / 1000 > payload.exp) return null;
+    return payload as SessionPayload;
+  } catch {
+    return null;
+  }
+}
+
+// --- Google OAuth 2.0 helpers ---
 async function startGoogleOAuth(env: Env, url: URL): Promise<Response> {
   const clientId = env.GOOGLE_CLIENT_ID;
   const clientSecret = env.GOOGLE_CLIENT_SECRET;
@@ -203,15 +269,21 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     }
   }
 
+  // Issue session cookie
+  const now = Math.floor(Date.now() / 1000);
+  const payload: SessionPayload = { email: profile.email, name: profile.name ?? '', sub: profile.sub ?? '', iat: now, exp: now + 60 * 60 * 24 * 7 };
+  const token = await createSessionToken(payload, env.SESSION_SECRET);
+
   // Clear state cookie and return a tiny HTML that posts a message to the opener
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
   headers.append('Set-Cookie', setCookie('oauth_state', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
+  headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
   const targetOrigin = url.origin;
-  const payload = { ok: true, provider: 'google', email: profile.email };
+  const message = { ok: true, provider: 'google', email: profile.email };
   const html = `<!doctype html><html><body><script>
     (function(){
       try {
-        const data = ${JSON.stringify(payload)};
+        const data = ${JSON.stringify(message)};
         if (window.opener && typeof window.opener.postMessage === 'function') {
           window.opener.postMessage({ type: 'oauth:google', data }, ${JSON.stringify(targetOrigin)});
         }
@@ -324,4 +396,14 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
       throw new Error(`Create failed: ${t}`);
     }
   }
+}
+
+async function handleSession(request: Request, env: Env): Promise<Response> {
+  const cookies = getCookies(request);
+  const tok = cookies.session;
+  if (!tok) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+  const payload = await verifySessionToken(tok, env.SESSION_SECRET);
+  if (!payload) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+  const body = { ok: true, email: payload.email, name: payload.name ?? '' };
+  return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 }
