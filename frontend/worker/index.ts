@@ -348,6 +348,11 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
         provider: 'google',
         provider_id: profile.sub ?? '',
       });
+      await upsertOAuthAccountToXata(env, {
+        provider: 'google',
+        provider_user_id: profile.sub ?? '',
+        email: profile.email,
+      });
     } catch (e: unknown) {
       // Log but do not block login in dev
       console.error('Xata upsert failed', e);
@@ -546,6 +551,65 @@ async function setUserSettings(env: Env, email: string, updates: Record<string, 
     const url = `${base}/tables/user_settings/data`;
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.ok) throw new Error(await res.text());
+  }
+}
+
+type OAuthAccount = { provider: string; provider_user_id: string; email: string };
+
+async function upsertOAuthAccountToXata(env: Env, acct: OAuthAccount): Promise<void> {
+  const base = (env.XATA_DATABASE_URL || '').replace(/\/$/, '');
+  const apiKey = env.XATA_API_KEY;
+  if (!base || !apiKey) throw new Error('Missing Xata configuration');
+  const headersObj = xataHeaders(env);
+
+  // 1) Query existing by (provider, provider_user_id)
+  const queryUrl = `${base}/tables/oauth_accounts/query`;
+  let qRes = await fetch(queryUrl, { method: 'POST', headers: headersObj, body: JSON.stringify({ filter: { provider: acct.provider, provider_user_id: acct.provider_user_id }, page: { size: 1 } }) });
+  if (!qRes.ok) {
+    const t = await qRes.text();
+    if (/invalid base branch/i.test(t)) {
+      const tryHeaders = new Headers(headersObj as any);
+      tryHeaders.delete('xata-branch');
+      qRes = await fetch(queryUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify({ filter: { provider: acct.provider, provider_user_id: acct.provider_user_id }, page: { size: 1 } }) });
+      if (!qRes.ok) throw new Error(await qRes.text());
+      // overwrite headersObj to the working version for subsequent calls
+      (headersObj as any)['xata-branch'] && delete (headersObj as any)['xata-branch'];
+    } else {
+      throw new Error(`Query failed: ${t}`);
+    }
+  }
+  const qJson = await qRes.json() as { records?: Array<{ id: string }> };
+  const existing = qJson?.records?.[0];
+
+  const recordBody = { provider: acct.provider, provider_user_id: acct.provider_user_id, email: acct.email } as Record<string, unknown>;
+  if (existing?.id) {
+    const upUrl = `${base}/tables/oauth_accounts/data/${encodeURIComponent(existing.id)}`;
+    let upRes = await fetch(upUrl, { method: 'PATCH', headers: headersObj, body: JSON.stringify(recordBody) });
+    if (!upRes.ok) {
+      const t = await upRes.text();
+      if (/invalid base branch/i.test(t)) {
+        const tryHeaders = new Headers(headersObj as any);
+        tryHeaders.delete('xata-branch');
+        upRes = await fetch(upUrl, { method: 'PATCH', headers: tryHeaders, body: JSON.stringify(recordBody) });
+        if (!upRes.ok) throw new Error(await upRes.text());
+      } else {
+        throw new Error(`Update failed: ${t}`);
+      }
+    }
+  } else {
+    const crUrl = `${base}/tables/oauth_accounts/data`;
+    let crRes = await fetch(crUrl, { method: 'POST', headers: headersObj, body: JSON.stringify(recordBody) });
+    if (!crRes.ok) {
+      const t = await crRes.text();
+      if (/invalid base branch/i.test(t)) {
+        const tryHeaders = new Headers(headersObj as any);
+        tryHeaders.delete('xata-branch');
+        crRes = await fetch(crUrl, { method: 'POST', headers: tryHeaders, body: JSON.stringify(recordBody) });
+        if (!crRes.ok) throw new Error(await crRes.text());
+      } else {
+        throw new Error(`Create failed: ${t}`);
+      }
+    }
   }
 }
 
