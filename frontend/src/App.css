@@ -52,6 +52,14 @@ main.content.wide { max-width: none; width: 100%; margin: 0; padding-left: 24px;
 .mainnav a:hover { opacity: 1; background: rgba(37,99,235,0.06); }
 .mainnav a.active { opacity: 1; color: var(--primary); background: rgba(37,99,235,0.12); }
 
+.toolbar { display: flex; gap: 16px; align-items: center; }
+.menu { position: relative; }
+.menu > button { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: #f9fafb; }
+.menu:hover .menu-dropdown { display: block; }
+.menu-dropdown { display: none; position: absolute; top: 100%; left: 0; min-width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; box-shadow: var(--shadow); z-index: 15; }
+.menu-dropdown a { display: block; padding: 8px 10px; border-radius: 6px; color: var(--text); text-decoration: none; }
+.menu-dropdown a:hover { background: rgba(37,99,235,0.08); }
+
 .account {
   display: flex;
   align-items: center;

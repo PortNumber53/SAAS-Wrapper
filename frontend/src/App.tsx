@@ -102,12 +102,25 @@ function App() {
     <div className='layout'>
       <header className='topbar'>
         <div className='brand'><NavLink to='/'>SAAS Wrapper</NavLink></div>
-        <nav className='mainnav' aria-label='Main'>
-          <NavLink to='/' end>Home</NavLink>
-          <NavLink to='/features'>Features</NavLink>
-          <NavLink to='/pricing'>Pricing</NavLink>
-          <NavLink to='/about'>About</NavLink>
-        </nav>
+        {!userEmail ? (
+          <nav className='mainnav' aria-label='Main'>
+            <NavLink to='/' end>Home</NavLink>
+            <NavLink to='/features'>Features</NavLink>
+            <NavLink to='/pricing'>Pricing</NavLink>
+            <NavLink to='/about'>About</NavLink>
+          </nav>
+        ) : (
+          <div className='toolbar' aria-label='User Toolbar'>
+            <div className='menu'>
+              <button>Manage Content ▾</button>
+              <div className='menu-dropdown'>
+                <Link to='/dashboard'>Dashboard</Link>
+                <Link to='/account/integrations'>Integrations</Link>
+                {/* Additional content management links can be added here */}
+              </div>
+            </div>
+          </div>
+        )}
         <div className='account'>
           {!userEmail ? (
             <>
