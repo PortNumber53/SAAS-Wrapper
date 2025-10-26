@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import FileDrop from '../components/FileDrop'
 import { Link } from 'react-router-dom'
 
 type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }
@@ -75,21 +76,24 @@ export default function DashboardPage() {
                 <div className='field'>
                   <label>Image</label>
                   <div className='upload-row'>
-                    <input type='file' accept='image/*' onChange={async (e) => {
-                      const f = e.target.files?.[0]
-                      if (!f) return
-                      setUploading(true)
-                      try {
-                        const fd = new FormData()
-                        fd.append('file', f)
-                        const res = await fetch('/api/uploads', { method: 'POST', body: fd })
-                        if (!res.ok) { alert(await res.text()); return }
-                        const j = await res.json() as any
-                        if (j?.ok && j.url) setImageUrl(j.url)
-                      } finally {
-                        setUploading(false)
-                      }
-                    }} />
+                    <FileDrop
+                      accept='image/*'
+                      primary='Click to choose an image'
+                      secondary='or drag and drop here'
+                      onSelect={async (f) => {
+                        setUploading(true)
+                        try {
+                          const fd = new FormData()
+                          fd.append('file', f)
+                          const res = await fetch('/api/uploads', { method: 'POST', body: fd })
+                          if (!res.ok) { alert(await res.text()); return }
+                          const j = await res.json() as any
+                          if (j?.ok && j.url) setImageUrl(j.url)
+                        } finally {
+                          setUploading(false)
+                        }
+                      }}
+                    />
                     {uploading && <span className='read-the-docs'>Uploading…</span>}
                   </div>
                 </div>

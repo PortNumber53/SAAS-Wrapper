@@ -114,8 +114,8 @@ function App() {
             <div className='menu'>
               <button>Manage Content ▾</button>
               <div className='menu-dropdown'>
-                <Link to='/dashboard'>Dashboard</Link>
-                <Link to='/account/integrations'>Integrations</Link>
+                <NavLink to='/dashboard'>Dashboard</NavLink>
+                <NavLink to='/account/integrations'>Integrations</NavLink>
                 {/* Additional content management links can be added here */}
               </div>
             </div>
@@ -147,10 +147,10 @@ function App() {
               </button>
               {menuOpen && (
                 <div className='user-dropdown' role='menu'>
-                  <Link to='/dashboard' role='menuitem' onClick={() => setMenuOpen(false)}>Dashboard</Link>
-                  <Link to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</Link>
-                  <Link to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</Link>
-                  <Link to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</Link>
+                  <NavLink to='/dashboard' role='menuitem' onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
+                  <NavLink to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</NavLink>
+                  <NavLink to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</NavLink>
+                  <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
                   <button role='menuitem' onClick={() => {
                     fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
                       setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false)
