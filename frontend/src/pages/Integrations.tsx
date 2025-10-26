@@ -104,7 +104,7 @@ export default function IntegrationsPage() {
             <div style={{border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
               <strong>Instagram Business Accounts</strong>
               <div className='read-the-docs'>Linked IG users for this account.</div>
-              <div style={{display:'grid', gap:8, marginTop:8}}>
+              <div style={{display:'grid', gap:8, marginTop:8, paddingLeft:16}}>
                 {accounts.map(acc => (
                   <div key={acc.ig_user_id} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div>
