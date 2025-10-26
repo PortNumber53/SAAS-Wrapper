@@ -90,14 +90,40 @@ export default {
       const sql = getPg(env);
       const urlObj = new URL(request.url);
       const igUserId = urlObj.searchParams.get('ig_user_id') || '';
+      // Ensure table exists; ignore if lacking privilege
+      try {
+        await sql`create table if not exists public.ig_media (
+          media_id text primary key,
+          ig_user_id text not null,
+          caption text,
+          media_type text,
+          media_url text,
+          permalink text,
+          thumbnail_url text,
+          timestamp timestamptz,
+          email text,
+          created_at timestamptz default now(),
+          updated_at timestamptz default now()
+        )`;
+      } catch {}
       // Return recent content, optionally filtered by ig_user_id
-      let rows: Array<any> = [];
-      if (igUserId) {
-        rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} and ig_user_id=${igUserId} order by timestamp desc limit 200` as Array<any>;
-      } else {
-        rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} order by timestamp desc limit 500` as Array<any>;
+      try {
+        let rows: Array<any> = [];
+        if (igUserId) {
+          rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} and ig_user_id=${igUserId} order by timestamp desc limit 200` as Array<any>;
+        } else {
+          rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} order by timestamp desc limit 500` as Array<any>;
+        }
+        return new Response(JSON.stringify({ ok: true, items: rows }), { headers: { 'content-type': 'application/json' } });
+      } catch (e: any) {
+        // If table is missing, return empty result instead of error
+        const msg = String(e?.message || '');
+        const code = (e && typeof e === 'object' && 'code' in e) ? (e as any).code : '';
+        if (code === '42P01' || /relation .* does not exist/i.test(msg)) {
+          return new Response(JSON.stringify({ ok: true, items: [] }), { headers: { 'content-type': 'application/json' } });
+        }
+        return new Response(`query_failed: ${msg}`, { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
-      return new Response(JSON.stringify({ ok: true, items: rows }), { headers: { 'content-type': 'application/json' } });
     }
     if (url.pathname === '/api/ig/sync-content' && request.method === 'POST') {
       const sess = await getSessionFromCookie(request, env);
