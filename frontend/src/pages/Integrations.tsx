@@ -12,7 +12,6 @@ const SUPPORTED = [
 export default function IntegrationsPage() {
   const [providers, setProviders] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
-  const [post, setPost] = useState({ ig_user_id: '', image_url: '', caption: '' })
   const connected = useMemo(() => new Set(providers.map(p => p.provider)), [providers])
   const [accounts, setAccounts] = useState<Array<{ ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null; linked?: boolean }>>([])
 
@@ -137,21 +136,7 @@ export default function IntegrationsPage() {
               </div>
             </div>
           )}
-          {connected.has('iggraph') && (
-            <div style={{border:'1px solid var(--border)',borderRadius:8,padding:'12px',background:'var(--surface)'}}>
-              <strong>Publish to Instagram (Business)</strong>
-              <div className='read-the-docs'>Provide an image URL and caption. Requires an IG Business account connected.</div>
-              <div style={{display:'grid', gap:8, marginTop:8}}>
-                <input placeholder='IG User ID' value={post.ig_user_id} onChange={e => setPost({...post, ig_user_id:e.target.value})} />
-                <input placeholder='Image URL (https://...)' value={post.image_url} onChange={e => setPost({...post, image_url:e.target.value})} />
-                <input placeholder='Caption' value={post.caption} onChange={e => setPost({...post, caption:e.target.value})} />
-                <button className='btn primary' onClick={async () => {
-                  const res = await fetch('/api/ig/publish', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(post) })
-                  if (!res.ok) alert(await res.text()); else alert('Publish enqueued')
-                }}>Publish Image</button>
-              </div>
-            </div>
-          )}
+          {/* Publish form intentionally omitted on Integrations page */}
         </div>
       )}
       <p style={{marginTop:16}}>

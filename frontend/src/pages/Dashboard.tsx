@@ -62,9 +62,7 @@ export default function DashboardPage() {
               )
             })}
           </div>
-          <div className='sidebar-section'>
-            <Link className='sidebar-item' to='/account/integrations'>Integrations</Link>
-          </div>
+          {/* Integrations link removed to keep Dashboard focused */}
         </nav>
       </aside>
       <main className='content'>
