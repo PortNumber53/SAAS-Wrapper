@@ -24,11 +24,24 @@ export default function AgentChatPage() {
     setSending(true)
     try {
       const res = await fetch('/api/agents/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, messages: next.map(m => ({ role: m.role, content: m.content })) }) })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const txt = await res.text()
+        let msg = 'Chat failed'
+        try {
+          const j = JSON.parse(txt)
+          msg = (j?.message as string) || (j?.error as string) || msg
+        } catch {
+          msg = txt.slice(0, 200)
+        }
+        console.error('Chat error', txt)
+        toast.show(msg, 'error')
+        return
+      }
       const j = await res.json() as { ok: boolean; text?: string }
       const reply = j?.text || '(no response)'
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
     } catch (e: any) {
+      console.error('Chat error', e)
       toast.show(`Chat failed: ${e?.message || 'unknown error'}`, 'error')
     } finally {
       setSending(false)

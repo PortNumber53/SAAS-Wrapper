@@ -294,7 +294,12 @@ export default {
       // Load Gemini API key from user_settings
       const rows = await sql`select config from public.user_settings where user_id=${user.id} and key='gemini_key' limit 1` as Array<{ config: any }>;
       const apiKey: string = rows[0]?.config?.api_key || '';
-      if (!apiKey) return new Response(JSON.stringify({ ok: false, error: 'missing_gemini_key' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      if (!apiKey) {
+        return new Response(
+          JSON.stringify({ ok: false, error: 'missing_gemini_key', message: 'Gemini API key not set. Add one under Agents → API Keys.' }),
+          { status: 400, headers: { 'content-type': 'application/json' } }
+        );
+      }
       const body = (await request.json().catch(() => ({}))) as any;
       const model = (typeof body.model === 'string' && body.model) ? body.model : 'gemini-1.5-flash';
       const msgs = Array.isArray(body.messages) ? body.messages as Array<{ role: string; content: string }> : [];
@@ -311,7 +316,22 @@ export default {
       });
       if (!r.ok) {
         const t = await r.text();
-        return new Response(JSON.stringify({ ok: false, error: 'upstream_error', details: t }), { status: 502, headers: { 'content-type': 'application/json' } });
+        let message = 'Upstream error';
+        let statusCode: number | undefined = undefined;
+        let statusText: string | undefined = undefined;
+        try {
+          const ej = JSON.parse(t);
+          statusCode = ej?.error?.code;
+          statusText = ej?.error?.status;
+          const details = Array.isArray(ej?.error?.details) ? ej.error.details : [];
+          const loc = details.find((d: any) => d?.['@type']?.toString().includes('LocalizedMessage'));
+          message = (loc?.message as string) || (ej?.error?.message as string) || message;
+        } catch {}
+        console.error('agents.chat upstream error', { httpStatus: r.status, statusText: r.statusText, body: t });
+        return new Response(
+          JSON.stringify({ ok: false, error: 'upstream_error', message, code: statusCode, status: statusText }),
+          { status: 502, headers: { 'content-type': 'application/json' } }
+        );
       }
       const j = await r.json() as any;
       const text = j?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '')?.join('') || '';
