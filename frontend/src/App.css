@@ -156,3 +156,7 @@ section { scroll-margin-top: 64px; }
 .sidebar-item { all: unset; cursor: pointer; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: #f9fafb; }
 .sidebar-item.active { background: rgba(37,99,235,0.12); border-color: rgba(37,99,235,0.35); }
 .sidebar-empty { color: var(--muted); }
+.sidebar-account { position: relative; }
+.sidebar-account.disabled .sidebar-item { opacity: 0.5; cursor: not-allowed; }
+.sidebar-account .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.6); opacity: 0; transition: opacity 0.15s ease; border-radius: 8px; }
+.sidebar-account.disabled:hover .overlay { opacity: 1; }

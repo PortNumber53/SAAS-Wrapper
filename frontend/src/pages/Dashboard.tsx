@@ -45,11 +45,22 @@ export default function DashboardPage() {
                 <div><Link to='/account/integrations'>Go to Integrations</Link></div>
               </div>
             )}
-            {accounts.map(acc => (
-              <button key={acc.ig_user_id} className={acc.ig_user_id === selected ? 'sidebar-item active' : 'sidebar-item'} onClick={() => setSelected(acc.ig_user_id)}>
-                @{acc.username || acc.ig_user_id}
-              </button>
-            ))}
+            {accounts.map(acc => {
+              const disabled = !(acc as any).token_valid || (acc as any).linked === false
+              const active = acc.ig_user_id === selected
+              return (
+                <div key={acc.ig_user_id} className={`sidebar-account${disabled ? ' disabled' : ''}${active ? ' active' : ''}`}>
+                  <button className='sidebar-item' disabled={disabled} onClick={() => !disabled && setSelected(acc.ig_user_id)}>
+                    @{acc.username || acc.ig_user_id}
+                  </button>
+                  {disabled && (
+                    <div className='overlay'>
+                      <button className='btn primary' onClick={() => window.open('/api/auth/iggraph/start','_blank','popup=yes,width=480,height=640')}>Re-connect</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
           <div className='sidebar-section'>
             <Link className='sidebar-item' to='/account/integrations'>Integrations</Link>
@@ -60,7 +71,6 @@ export default function DashboardPage() {
         {selectedAccount && (
           <section className='card'>
             <h2>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
-            <div className='read-the-docs'>Token: {selectedAccount.token_valid ? 'valid' : 'invalid'} {selectedAccount.token_expires_at ? `(exp ${new Date(selectedAccount.token_expires_at*1000).toLocaleString()})` : ''}</div>
             <div style={{display:'grid', gap:8, marginTop:8}}>
               <input placeholder='Image URL (https://...)' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
               <input placeholder='Caption' value={caption} onChange={e => setCaption(e.target.value)} />
