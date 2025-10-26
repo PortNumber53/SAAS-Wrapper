@@ -5,8 +5,8 @@ type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string }
 
 export default function AgentChatPage() {
   const toast = useToast()
-  const [model, setModel] = useState('gemini-1.5-flash')
-  const [models, setModels] = useState<string[]>(['gemini-1.5-flash', 'gemini-1.5-pro'])
+  const [model, setModel] = useState('')
+  const [models, setModels] = useState<string[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -18,27 +18,26 @@ export default function AgentChatPage() {
 
   // Load agent settings and last-used model
   useEffect(() => {
-    // Always load server settings first, then consider local override
+    // Load server settings; no hard-coded defaults
     fetch('/api/agents/settings')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then((j: { ok: boolean; models?: string[]; default_model?: string }) => {
-        const serverModels = Array.isArray(j.models) && j.models.length ? j.models : ['gemini-1.5-flash', 'gemini-1.5-pro']
-        const serverDefault = (typeof j.default_model === 'string' && serverModels.includes(j.default_model!)) ? j.default_model! : serverModels[0]
+        const serverModels = Array.isArray(j.models) ? j.models : []
         setModels(serverModels)
         const local = localStorage.getItem('agent.defaultModel') || ''
-        if (local && serverModels.includes(local)) {
-          setModel(local)
+        const serverDefault = (typeof j.default_model === 'string' && j.default_model) ? j.default_model : ''
+        const pick = (local && serverModels.includes(local)) ? local : (serverDefault && serverModels.includes(serverDefault) ? serverDefault : (serverModels[0] || ''))
+        if (pick) {
+          setModel(pick)
+          localStorage.setItem('agent.defaultModel', pick)
         } else {
-          setModel(serverDefault)
-          localStorage.setItem('agent.defaultModel', serverDefault)
+          setModel('')
         }
       })
       .catch(() => {
-        // Fallback to local or built-ins
+        // If fetch fails, try local-only
         const local = localStorage.getItem('agent.defaultModel') || ''
-        const builtin = ['gemini-1.5-flash', 'gemini-1.5-pro']
-        setModels(builtin)
-        setModel(local && builtin.includes(local) ? local : builtin[0])
+        setModel(local)
       })
   }, [])
 

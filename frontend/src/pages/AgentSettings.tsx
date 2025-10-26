@@ -8,8 +8,8 @@ export default function AgentSettingsPage() {
   const [apiKey, setApiKey] = useState('')
   const [savingKey, setSavingKey] = useState(false)
 
-  const [models, setModels] = useState<string[]>(['gemini-1.5-flash', 'gemini-1.5-pro'])
-  const [defaultModel, setDefaultModel] = useState<string>('gemini-1.5-flash')
+  const [models, setModels] = useState<string[]>([])
+  const [defaultModel, setDefaultModel] = useState<string>('')
   const [savingModels, setSavingModels] = useState(false)
   const [newModel, setNewModel] = useState('')
 
@@ -77,7 +77,7 @@ export default function AgentSettingsPage() {
 
   return (
     <section className='card'>
-      <h1>Magana AI Agent — Settings</h1>
+      <h1>AI Agent — Settings</h1>
       <div style={{display:'grid', gap:12}}>
         <div style={{border:'1px solid var(--border)', borderRadius:8, padding:12, background:'var(--surface)'}}>
           <strong>Gemini API Key</strong>
