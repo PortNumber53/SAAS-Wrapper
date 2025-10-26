@@ -248,15 +248,40 @@ export default {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
       if (request.method === 'GET') {
-        const s = await getUserSettings(env, sess.email).catch(() => ({} as any));
+        const s = await getUserPrefs(env, sess.email).catch(() => ({} as any));
         return new Response(JSON.stringify({ ok: true, settings: s }), { headers: { 'content-type': 'application/json' } });
       }
       if (request.method === 'PATCH') {
         const payload = await request.json().catch(() => ({} as Record<string, unknown>));
-        const updates: Record<string, unknown> = {};
-        if (typeof (payload as any).theme === 'string') updates.theme = (payload as any).theme;
-        const res = await setUserSettings(env, sess.email, updates).then(() => true).catch(() => false);
+        const theme = typeof (payload as any).theme === 'string' ? (payload as any).theme : undefined;
+        const res = await setUserPrefs(env, sess.email, { theme }).then(() => true).catch(() => false);
         return new Response(JSON.stringify({ ok: res }), { status: res ? 200 : 500, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+    if (url.pathname === "/api/keys/gemini") {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email);
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      if (request.method === 'GET') {
+        const rows = await sql`select config from public.user_settings where user_id=${user.id} and key='gemini_key' limit 1` as Array<{ config: any }>;
+        const cfg = rows[0]?.config || {};
+        const apiKey: string = typeof cfg.api_key === 'string' ? cfg.api_key : '';
+        const last4 = apiKey ? apiKey.slice(-4) : '';
+        return new Response(JSON.stringify({ ok: true, configured: !!apiKey, last4 }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'PUT') {
+        const body = (await request.json().catch(() => ({}))) as any;
+        const apiKey = typeof (body as any).api_key === 'string' ? (body as any).api_key.trim() : '';
+        if (!apiKey) return new Response(JSON.stringify({ ok: false, error: 'missing_api_key' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        await sql`insert into public.user_settings (user_id, key, config) values (${user.id}, 'gemini_key', ${(sql as any).json({ api_key: apiKey })}) on conflict (user_id, key) do update set config=excluded.config, updated_at=now()`;
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'DELETE') {
+        await sql`delete from public.user_settings where user_id=${user.id} and key='gemini_key'`;
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
       }
       return new Response(null, { status: 405 });
     }
@@ -616,21 +641,23 @@ async function updateUserById(env: Env, id: string, body: Record<string, unknown
   await sql`update public.users set name=${name}, profile=${profile} where xata_id=${id}`;
 }
 
-async function getUserSettings(env: Env, email: string): Promise<Record<string, unknown>> {
+async function getUserPrefs(env: Env, email: string): Promise<Record<string, unknown>> {
   const sql = getPg(env);
-  const rows = await sql`select xata_id as id, email, theme from public.user_settings where email=${email} limit 1` as Array<any>;
-  return rows[0] ?? {};
+  const user = await findUserByEmail(env, email);
+  if (!user?.id) return {};
+  const rows = await sql`select config from public.user_settings where user_id=${user.id} and key='prefs' limit 1` as Array<{ config: any }>;
+  return rows[0]?.config || {};
 }
 
-async function setUserSettings(env: Env, email: string, updates: Record<string, unknown>): Promise<void> {
+async function setUserPrefs(env: Env, email: string, updates: { theme?: string }): Promise<void> {
   const sql = getPg(env);
-  const existing = await getUserSettings(env, email);
-  const theme = (updates as any).theme ?? null;
-  if ((existing as any)?.id) {
-    await sql`update public.user_settings set theme=${theme} where xata_id=${(existing as any).id}`;
-  } else {
-    await sql`insert into public.user_settings (email, theme) values (${email}, ${theme})`;
-  }
+  const user = await findUserByEmail(env, email);
+  if (!user?.id) return;
+  const rows = await sql`select config from public.user_settings where user_id=${user.id} and key='prefs' limit 1` as Array<{ config: any }>;
+  const current = rows[0]?.config || {};
+  const next = { ...current } as any;
+  if (typeof updates.theme === 'string') next.theme = updates.theme;
+  await sql`insert into public.user_settings (user_id, key, config) values (${user.id}, 'prefs', ${(sql as any).json(next)}) on conflict (user_id, key) do update set config=excluded.config, updated_at=now()`;
 }
 
 type OAuthAccount = { provider: string; provider_user_id: string; email: string };
