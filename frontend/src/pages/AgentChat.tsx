@@ -22,8 +22,18 @@ export default function AgentChatPage() {
     if (local) setModel(local)
     fetch('/api/agents/settings').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
       if (j?.ok) {
-        if (Array.isArray(j.models) && j.models.length) setModels(j.models)
-        if (!local && typeof j.default_model === 'string') setModel(j.default_model)
+        if (Array.isArray(j.models) && j.models.length) {
+          setModels(j.models)
+          // ensure selected model is valid; if not, pick default/server first
+          const current = local || model
+          if (!j.models.includes(current)) {
+            const pick = (typeof j.default_model === 'string' && j.models.includes(j.default_model)) ? j.default_model : j.models[0]
+            setModel(pick)
+            localStorage.setItem('agent.defaultModel', pick)
+          }
+        } else if (typeof j.default_model === 'string' && !local) {
+          setModel(j.default_model)
+        }
       }
     }).catch(() => {})
   }, [])
