@@ -160,3 +160,19 @@ section { scroll-margin-top: 64px; }
 .sidebar-account.disabled .sidebar-item { opacity: 0.5; cursor: not-allowed; }
 .sidebar-account .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.6); opacity: 0; transition: opacity 0.15s ease; border-radius: 8px; }
 .sidebar-account.disabled:hover .overlay { opacity: 1; }
+
+/* Publish area */
+.publish-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
+.publish-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+.publish-form { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.publish-form .field { display: grid; gap: 6px; }
+.publish-form label { font-weight: 600; font-size: 0.95rem; }
+.publish-form input, .publish-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.upload-row { display: flex; gap: 8px; align-items: center; }
+.publish-preview { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.preview-card { display: grid; gap: 8px; }
+.preview-header { font-weight: 600; }
+.preview-media { display: flex; align-items: center; justify-content: center; background: #f9fafb; border: 1px dashed var(--border); border-radius: 8px; min-height: 260px; }
+.preview-image { max-width: 100%; max-height: 360px; border-radius: 8px; display: block; }
+.preview-placeholder { color: var(--muted); }
+.preview-caption { white-space: pre-wrap; color: var(--text); }

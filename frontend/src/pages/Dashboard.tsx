@@ -68,30 +68,56 @@ export default function DashboardPage() {
       </aside>
       <main className='content'>
         {selectedAccount && (
-          <section className='card'>
-            <h2>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
-            <div style={{display:'grid', gap:8, marginTop:8}}>
-              <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
-                <input type='file' accept='image/*' onChange={async (e) => {
-                  const f = e.target.files?.[0]
-                  if (!f) return
-                  setUploading(true)
-                  try {
-                    const fd = new FormData()
-                    fd.append('file', f)
-                    const res = await fetch('/api/uploads', { method: 'POST', body: fd })
-                    if (!res.ok) { alert(await res.text()); return }
-                    const j = await res.json() as any
-                    if (j?.ok && j.url) setImageUrl(j.url)
-                  } finally {
-                    setUploading(false)
-                  }
-                }} />
-                {uploading && <span className='read-the-docs'>Uploading…</span>}
+          <section className='publish-panel'>
+            <div className='publish-layout'>
+              <div className='publish-form'>
+                <h2 style={{margin:0}}>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
+                <div className='field'>
+                  <label>Image</label>
+                  <div className='upload-row'>
+                    <input type='file' accept='image/*' onChange={async (e) => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      setUploading(true)
+                      try {
+                        const fd = new FormData()
+                        fd.append('file', f)
+                        const res = await fetch('/api/uploads', { method: 'POST', body: fd })
+                        if (!res.ok) { alert(await res.text()); return }
+                        const j = await res.json() as any
+                        if (j?.ok && j.url) setImageUrl(j.url)
+                      } finally {
+                        setUploading(false)
+                      }
+                    }} />
+                    {uploading && <span className='read-the-docs'>Uploading…</span>}
+                  </div>
+                </div>
+                <div className='field'>
+                  <label>Image URL</label>
+                  <input placeholder='https://...' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                </div>
+                <div className='field'>
+                  <label>Caption</label>
+                  <textarea placeholder='Write a caption…' value={caption} onChange={e => setCaption(e.target.value)} rows={6} />
+                </div>
+                <div>
+                  <button className='btn primary' onClick={publish}>Publish Image</button>
+                </div>
               </div>
-              <input placeholder='Image URL (https://...)' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
-              <textarea placeholder='Caption' value={caption} onChange={e => setCaption(e.target.value)} rows={4} />
-              <button className='btn primary' onClick={publish}>Publish Image</button>
+              <div className='publish-preview'>
+                <div className='preview-card'>
+                  <div className='preview-header'>@{selectedAccount.username || selectedAccount.ig_user_id}</div>
+                  <div className='preview-media'>
+                    {imageUrl ? (
+                      <img className='preview-image' src={imageUrl} alt='Preview' />
+                    ) : (
+                      <div className='preview-placeholder'>No image selected</div>
+                    )}
+                  </div>
+                  {caption && <div className='preview-caption'>{caption}</div>}
+                </div>
+              </div>
             </div>
           </section>
         )}
