@@ -84,6 +84,72 @@ export default {
       }));
       return new Response(JSON.stringify({ ok: true, accounts: withStatus }), { headers: { 'content-type': 'application/json' } });
     }
+    if (url.pathname === '/api/ig/content' && (request.method === 'GET')) {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const urlObj = new URL(request.url);
+      const igUserId = urlObj.searchParams.get('ig_user_id') || '';
+      // Return recent content, optionally filtered by ig_user_id
+      let rows: Array<any> = [];
+      if (igUserId) {
+        rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} and ig_user_id=${igUserId} order by timestamp desc limit 200` as Array<any>;
+      } else {
+        rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} order by timestamp desc limit 500` as Array<any>;
+      }
+      return new Response(JSON.stringify({ ok: true, items: rows }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname === '/api/ig/sync-content' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      // Ensure table exists (idempotent)
+      await sql`create table if not exists public.ig_media (
+        media_id text primary key,
+        ig_user_id text not null,
+        caption text,
+        media_type text,
+        media_url text,
+        permalink text,
+        thumbnail_url text,
+        timestamp timestamptz,
+        email text,
+        created_at timestamptz default now(),
+        updated_at timestamptz default now()
+      )`;
+      // Get linked IG accounts for this user
+      const accounts = await sql`select ig_user_id, access_token from public.ig_accounts where email=${sess.email}` as Array<{ ig_user_id: string; access_token: string }>;
+      const counts: Record<string, number> = {};
+      for (const acc of accounts) {
+        const igUserId = acc.ig_user_id;
+        let fetched = 0;
+        // paginate through media
+        let nextUrl = new URL(`https://graph.facebook.com/v19.0/${encodeURIComponent(igUserId)}/media`);
+        nextUrl.searchParams.set('fields', 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp');
+        nextUrl.searchParams.set('limit', '100');
+        while (true) {
+          const r = await fetch(nextUrl.toString(), { headers: { Authorization: `Bearer ${acc.access_token}` } });
+          if (!r.ok) break;
+          const j = await r.json() as any;
+          const items = Array.isArray(j?.data) ? j.data : [];
+          for (const it of items) {
+            await sql`insert into public.ig_media (media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp, email) values (
+              ${String(it.id || '')}, ${igUserId}, ${it.caption || ''}, ${String(it.media_type || '')}, ${String(it.media_url || '')}, ${String(it.permalink || '')}, ${String(it.thumbnail_url || '')}, ${it.timestamp ? new Date(it.timestamp) : null}, ${sess.email}
+            ) on conflict (media_id) do update set caption=excluded.caption, media_type=excluded.media_type, media_url=excluded.media_url, permalink=excluded.permalink, thumbnail_url=excluded.thumbnail_url, timestamp=excluded.timestamp, ig_user_id=excluded.ig_user_id, email=excluded.email, updated_at=now()`;
+            fetched++;
+          }
+          const next = j?.paging?.next as string | undefined;
+          if (next) {
+            try { nextUrl = new URL(next); } catch { break; }
+          } else {
+            break;
+          }
+          if (fetched >= 1000) break; // safety cap per account
+        }
+        counts[igUserId] = fetched;
+      }
+      return new Response(JSON.stringify({ ok: true, counts }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/api/ig/publish' && request.method === 'POST') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
