@@ -7,6 +7,7 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<IGAccount[]>([])
   const [selected, setSelected] = useState<string>('')
   const [imageUrl, setImageUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
   const [caption, setCaption] = useState('')
   const selectedAccount = useMemo(() => accounts.find(a => a.ig_user_id === selected) || null, [accounts, selected])
 
@@ -70,8 +71,26 @@ export default function DashboardPage() {
           <section className='card'>
             <h2>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
             <div style={{display:'grid', gap:8, marginTop:8}}>
+              <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+                <input type='file' accept='image/*' onChange={async (e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  setUploading(true)
+                  try {
+                    const fd = new FormData()
+                    fd.append('file', f)
+                    const res = await fetch('/api/uploads', { method: 'POST', body: fd })
+                    if (!res.ok) { alert(await res.text()); return }
+                    const j = await res.json() as any
+                    if (j?.ok && j.url) setImageUrl(j.url)
+                  } finally {
+                    setUploading(false)
+                  }
+                }} />
+                {uploading && <span className='read-the-docs'>Uploading…</span>}
+              </div>
               <input placeholder='Image URL (https://...)' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
-              <input placeholder='Caption' value={caption} onChange={e => setCaption(e.target.value)} />
+              <textarea placeholder='Caption' value={caption} onChange={e => setCaption(e.target.value)} rows={4} />
               <button className='btn primary' onClick={publish}>Publish Image</button>
             </div>
           </section>

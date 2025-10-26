@@ -6,6 +6,8 @@ interface Env {
   ASSETS?: {
     fetch(request: Request): Promise<Response>;
   };
+  // Optional R2 bucket for image uploads
+  IMAGES?: R2Bucket;
   // Google OAuth
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;

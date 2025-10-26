@@ -34,6 +34,35 @@ export default {
       headers.append('Set-Cookie', setCookie('session', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
       return new Response(null, { status: 204, headers });
     }
+    if (url.pathname === '/api/uploads' && request.method === 'POST') {
+      if (!env.IMAGES) return new Response(JSON.stringify({ ok: false, error: 'uploads_disabled' }), { status: 501, headers: { 'content-type': 'application/json' } });
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const form = await request.formData().catch(() => null);
+      if (!form) return new Response(JSON.stringify({ ok: false, error: 'invalid_form' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const file = form.get('file');
+      if (!(file instanceof File)) return new Response(JSON.stringify({ ok: false, error: 'missing_file' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const type = file.type || 'application/octet-stream';
+      if (!type.startsWith('image/')) return new Response(JSON.stringify({ ok: false, error: 'unsupported_type' }), { status: 415, headers: { 'content-type': 'application/json' } });
+      const name = (file.name || 'upload').toLowerCase();
+      const ext = name.includes('.') ? name.split('.').pop() : (type.split('/')[1] || 'bin');
+      const key = `uploads/${crypto.randomUUID()}.${ext}`;
+      await env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: type } });
+      const publicUrl = `${url.origin}/i/${encodeURIComponent(key)}`;
+      return new Response(JSON.stringify({ ok: true, url: publicUrl, key }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname.startsWith('/i/')) {
+      if (!env.IMAGES) return new Response(null, { status: 404 });
+      const key = decodeURIComponent(url.pathname.slice(3));
+      if (!key) return new Response(null, { status: 404 });
+      const obj = await env.IMAGES.get(key);
+      if (!obj) return new Response(null, { status: 404 });
+      const headers = new Headers();
+      const ct = (obj.httpMetadata as any)?.contentType || 'application/octet-stream';
+      headers.set('content-type', ct);
+      headers.set('cache-control', 'public, max-age=31536000, immutable');
+      return new Response(obj.body, { status: 200, headers });
+    }
     if (url.pathname === "/api/integrations") {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
