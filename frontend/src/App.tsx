@@ -13,7 +13,7 @@ import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
 import './App.css'
 import AgentChatPage from './pages/AgentChat'
-import KeysPage from './pages/Keys'
+import AgentSettingsPage from './pages/AgentSettings'
 
 function App() {
   const toast = useToast()
@@ -151,7 +151,7 @@ function App() {
               <button>Agents ▾</button>
               <div className='menu-dropdown'>
                 <NavLink to='/agents/chat'>Chat Agent</NavLink>
-                <NavLink to='/agents/keys'>API Keys</NavLink>
+                <NavLink to='/agents/settings'>Agent Settings</NavLink>
               </div>
             </div>
           </div>
@@ -266,7 +266,7 @@ function App() {
         <Route path='/dashboard' element={<DashboardPage />} />
         <Route path='/content/instagram' element={<IGContentPage />} />
         <Route path='/agents/chat' element={<AgentChatPage />} />
-        <Route path='/agents/keys' element={<KeysPage />} />
+        <Route path='/agents/settings' element={<AgentSettingsPage />} />
         <Route path='/account/integrations' element={<IntegrationsPage />} />
         <Route path='*' element={
           <section className='card'>

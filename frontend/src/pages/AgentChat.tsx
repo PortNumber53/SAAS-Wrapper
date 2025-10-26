@@ -6,6 +6,7 @@ type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string }
 export default function AgentChatPage() {
   const toast = useToast()
   const [model, setModel] = useState('gemini-1.5-flash')
+  const [models, setModels] = useState<string[]>(['gemini-1.5-flash', 'gemini-1.5-pro'])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -14,6 +15,18 @@ export default function AgentChatPage() {
   const endRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
+
+  // Load agent settings and last-used model
+  useEffect(() => {
+    const local = localStorage.getItem('agent.defaultModel')
+    if (local) setModel(local)
+    fetch('/api/agents/settings').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
+      if (j?.ok) {
+        if (Array.isArray(j.models) && j.models.length) setModels(j.models)
+        if (!local && typeof j.default_model === 'string') setModel(j.default_model)
+      }
+    }).catch(() => {})
+  }, [])
 
   const send = async () => {
     const text = input.trim()
@@ -53,9 +66,10 @@ export default function AgentChatPage() {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
         <h1 style={{margin:0}}>Chat Agent</h1>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <select value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value='gemini-1.5-flash'>Gemini 1.5 Flash</option>
-            <option value='gemini-1.5-pro'>Gemini 1.5 Pro</option>
+          <select value={model} onChange={(e) => { const m = e.target.value; setModel(m); localStorage.setItem('agent.defaultModel', m) }}>
+            {models.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
           </select>
         </div>
       </div>
