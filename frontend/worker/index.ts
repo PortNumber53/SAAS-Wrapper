@@ -90,65 +90,19 @@ export default {
       const sql = getPg(env);
       const urlObj = new URL(request.url);
       const igUserId = urlObj.searchParams.get('ig_user_id') || '';
-      // Ensure table exists; ignore if lacking privilege
-      try {
-        await sql`create table if not exists public.ig_media (
-          media_id text primary key,
-          ig_user_id text not null,
-          caption text,
-          media_type text,
-          media_url text,
-          permalink text,
-          thumbnail_url text,
-          timestamp timestamptz,
-          email text,
-          raw_payload jsonb,
-          created_at timestamptz default now(),
-          updated_at timestamptz default now()
-        )`;
-        // In case table existed before without this column, add it
-        await sql`alter table public.ig_media add column if not exists raw_payload jsonb`;
-      } catch {}
       // Return recent content, optionally filtered by ig_user_id
-      try {
-        let rows: Array<any> = [];
-        if (igUserId) {
-          rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} and ig_user_id=${igUserId} order by timestamp desc limit 200` as Array<any>;
-        } else {
-          rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} order by timestamp desc limit 500` as Array<any>;
-        }
-        return new Response(JSON.stringify({ ok: true, items: rows }), { headers: { 'content-type': 'application/json' } });
-      } catch (e: any) {
-        // If table is missing, return empty result instead of error
-        const msg = String(e?.message || '');
-        const code = (e && typeof e === 'object' && 'code' in e) ? (e as any).code : '';
-        if (code === '42P01' || /relation .* does not exist/i.test(msg)) {
-          return new Response(JSON.stringify({ ok: true, items: [] }), { headers: { 'content-type': 'application/json' } });
-        }
-        return new Response(`query_failed: ${msg}`, { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      let rows: Array<any> = [];
+      if (igUserId) {
+        rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} and ig_user_id=${igUserId} order by timestamp desc limit 200` as Array<any>;
+      } else {
+        rows = await sql`select media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp from public.ig_media where email=${sess.email} order by timestamp desc limit 500` as Array<any>;
       }
+      return new Response(JSON.stringify({ ok: true, items: rows }), { headers: { 'content-type': 'application/json' } });
     }
     if (url.pathname === '/api/ig/sync-content' && request.method === 'POST') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
       const sql = getPg(env);
-      // Ensure table exists (idempotent)
-      await sql`create table if not exists public.ig_media (
-        media_id text primary key,
-        ig_user_id text not null,
-        caption text,
-        media_type text,
-        media_url text,
-        permalink text,
-        thumbnail_url text,
-        timestamp timestamptz,
-        email text,
-        raw_payload jsonb,
-        created_at timestamptz default now(),
-        updated_at timestamptz default now()
-      )`;
-      // Backfill column if table existed already
-      await sql`alter table public.ig_media add column if not exists raw_payload jsonb`;
       // Get linked IG accounts for this user
       const accounts = await sql`select ig_user_id, access_token from public.ig_accounts where email=${sess.email}` as Array<{ ig_user_id: string; access_token: string }>;
       const counts: Record<string, number> = {};
