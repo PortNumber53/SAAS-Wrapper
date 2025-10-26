@@ -18,24 +18,28 @@ export default function AgentChatPage() {
 
   // Load agent settings and last-used model
   useEffect(() => {
-    const local = localStorage.getItem('agent.defaultModel')
-    if (local) setModel(local)
-    fetch('/api/agents/settings').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
-      if (j?.ok) {
-        if (Array.isArray(j.models) && j.models.length) {
-          setModels(j.models)
-          // ensure selected model is valid; if not, pick default/server first
-          const current = local || model
-          if (!j.models.includes(current)) {
-            const pick = (typeof j.default_model === 'string' && j.models.includes(j.default_model)) ? j.default_model : j.models[0]
-            setModel(pick)
-            localStorage.setItem('agent.defaultModel', pick)
-          }
-        } else if (typeof j.default_model === 'string' && !local) {
-          setModel(j.default_model)
+    // Always load server settings first, then consider local override
+    fetch('/api/agents/settings')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((j: { ok: boolean; models?: string[]; default_model?: string }) => {
+        const serverModels = Array.isArray(j.models) && j.models.length ? j.models : ['gemini-1.5-flash', 'gemini-1.5-pro']
+        const serverDefault = (typeof j.default_model === 'string' && serverModels.includes(j.default_model!)) ? j.default_model! : serverModels[0]
+        setModels(serverModels)
+        const local = localStorage.getItem('agent.defaultModel') || ''
+        if (local && serverModels.includes(local)) {
+          setModel(local)
+        } else {
+          setModel(serverDefault)
+          localStorage.setItem('agent.defaultModel', serverDefault)
         }
-      }
-    }).catch(() => {})
+      })
+      .catch(() => {
+        // Fallback to local or built-ins
+        const local = localStorage.getItem('agent.defaultModel') || ''
+        const builtin = ['gemini-1.5-flash', 'gemini-1.5-pro']
+        setModels(builtin)
+        setModel(local && builtin.includes(local) ? local : builtin[0])
+      })
   }, [])
 
   const send = async () => {

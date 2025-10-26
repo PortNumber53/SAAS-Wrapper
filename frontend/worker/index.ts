@@ -289,20 +289,24 @@ export default {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
       const user = await findUserByEmail(env, sess.email);
-      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      // If user record not found, return defaults instead of error so UI still works
+      const defaults = { models: ['gemini-1.5-flash', 'gemini-1.5-pro'], default_model: 'gemini-1.5-flash' } as const;
+      if (!user?.id) {
+        return new Response(JSON.stringify({ ok: true, ...defaults }), { headers: { 'content-type': 'application/json' } });
+      }
       const sql = getPg(env);
       if (request.method === 'GET') {
         const rows = await sql`select config from public.user_settings where user_id=${user.id} and key='agent_settings' limit 1` as Array<{ config: any }>;
         const cfg = rows[0]?.config || {};
-        const models: string[] = Array.isArray(cfg.models) && cfg.models.length ? cfg.models : ['gemini-1.5-flash', 'gemini-1.5-pro'];
-        const defModel: string = typeof cfg.default_model === 'string' && cfg.default_model ? cfg.default_model : models[0];
+        const models: string[] = Array.isArray(cfg.models) && cfg.models.length ? cfg.models : defaults.models;
+        const defModel: string = (typeof cfg.default_model === 'string' && cfg.default_model && models.includes(cfg.default_model)) ? cfg.default_model : models[0];
         return new Response(JSON.stringify({ ok: true, models, default_model: defModel }), { headers: { 'content-type': 'application/json' } });
       }
       if (request.method === 'PUT') {
         const body = (await request.json().catch(() => ({}))) as any;
-        const models = Array.isArray(body.models) ? body.models.filter((m: any) => typeof m === 'string' && m.trim()).map((m: string) => m.trim()) : [];
-        const default_model = typeof body.default_model === 'string' ? body.default_model.trim() : '';
-        const next = { models: models.length ? models : ['gemini-1.5-flash', 'gemini-1.5-pro'], default_model: default_model || (models[0] || 'gemini-1.5-flash') };
+        const models = Array.isArray(body.models) ? Array.from(new Set(body.models.filter((m: any) => typeof m === 'string').map((m: string) => m.trim()).filter(Boolean))) : [];
+        const default_model = (typeof body.default_model === 'string' ? body.default_model.trim() : '') || models[0] || defaults.default_model;
+        const next = { models: models.length ? models : defaults.models, default_model: models.includes(default_model) ? default_model : (models[0] || defaults.default_model) };
         await sql`insert into public.user_settings (user_id, key, config) values (${user.id}, 'agent_settings', ${(sql as any).json(next)}) on conflict (user_id, key) do update set config=excluded.config, updated_at=now()`;
         return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
       }
