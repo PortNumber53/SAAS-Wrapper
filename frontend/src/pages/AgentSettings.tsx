@@ -1,44 +1,42 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../components/ToastProvider'
+import useAppStore, { type AppState } from '../store/app'
 
 export default function AgentSettingsPage() {
   const toast = useToast()
-  const [configured, setConfigured] = useState(false)
-  const [last4, setLast4] = useState('')
+  const gemini = useAppStore((s: AppState) => s.geminiKey)
+  const geminiLoaded = useAppStore((s: AppState) => s.geminiKeyLoaded)
+  const loadGeminiKey = useAppStore((s: AppState) => s.loadGeminiKey)
+  const saveGemini = useAppStore((s: AppState) => s.saveGeminiKey)
+  const removeGemini = useAppStore((s: AppState) => s.removeGeminiKey)
   const [apiKey, setApiKey] = useState('')
   const [savingKey, setSavingKey] = useState(false)
 
-  const [models, setModels] = useState<string[]>([])
-  const [defaultModel, setDefaultModel] = useState<string>('')
+  const agent = useAppStore((s: AppState) => s.agentSettings)
+  const agentLoaded = useAppStore((s: AppState) => s.agentSettingsLoaded)
+  const loadAgent = useAppStore((s: AppState) => s.loadAgentSettings)
+  const saveAgent = useAppStore((s: AppState) => s.saveAgentSettings)
+  const [models, setModels] = useState<string[]>(agent.models)
+  const [defaultModel, setDefaultModel] = useState<string>(agent.default_model)
   const [savingModels, setSavingModels] = useState(false)
   const [newModel, setNewModel] = useState('')
 
-  const load = async () => {
-    // Load key status
-    fetch('/api/keys/gemini').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
-      if (j?.ok) { setConfigured(!!j.configured); setLast4(j.last4 || '') }
-    }).catch(() => {})
-    // Load models
-    fetch('/api/agents/settings').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
-      if (j?.ok) {
-        if (Array.isArray(j.models) && j.models.length) setModels(j.models)
-        if (typeof j.default_model === 'string') setDefaultModel(j.default_model)
-      }
-    }).catch(() => {})
-  }
-
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    if (!geminiLoaded) loadGeminiKey()
+    if (!agentLoaded) loadAgent()
+  }, [])
+  useEffect(() => { setModels(agent.models); setDefaultModel(agent.default_model) }, [agent.models, agent.default_model])
 
   const saveKey = async () => {
     const key = apiKey.trim()
     if (!key) { toast.show('Enter an API key', 'error'); return }
     setSavingKey(true)
     try {
-      const res = await fetch('/api/keys/gemini', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ api_key: key }) })
-      if (!res.ok) throw new Error(await res.text())
+      const ok = await saveGemini(key)
+      if (!ok) throw new Error('failed')
       toast.show('Gemini key saved', 'success')
       setApiKey('')
-      await load()
+      await loadGeminiKey()
     } catch (e: any) {
       toast.show(`Save failed: ${e?.message || 'unknown error'}`, 'error')
     } finally { setSavingKey(false) }
@@ -47,10 +45,9 @@ export default function AgentSettingsPage() {
   const removeKey = async () => {
     setSavingKey(true)
     try {
-      const res = await fetch('/api/keys/gemini', { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
+      const ok = await removeGemini()
+      if (!ok) throw new Error('failed')
       toast.show('Gemini key removed', 'success')
-      setLast4(''); setConfigured(false)
     } catch (e: any) {
       toast.show(`Remove failed: ${e?.message || 'unknown error'}`, 'error')
     } finally { setSavingKey(false) }
@@ -67,8 +64,8 @@ export default function AgentSettingsPage() {
     if (def !== defaultModel) setDefaultModel(def)
     setSavingModels(true)
     try {
-      const res = await fetch('/api/agents/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ models: deduped, default_model: def }) })
-      if (!res.ok) throw new Error(await res.text())
+      const ok = await saveAgent(deduped, def)
+      if (!ok) throw new Error('failed')
       toast.show('Agent models saved', 'success')
     } catch (e: any) {
       toast.show(`Save failed: ${e?.message || 'unknown error'}`, 'error')
@@ -82,9 +79,9 @@ export default function AgentSettingsPage() {
         <div style={{border:'1px solid var(--border)', borderRadius:8, padding:12, background:'var(--surface)'}}>
           <strong>Gemini API Key</strong>
           <div className='read-the-docs'>Used by the Chat Agent.</div>
-          {configured ? (
+          {gemini?.configured ? (
             <div style={{marginTop:8, display:'flex', gap:8, alignItems:'center'}}>
-              <div className='read-the-docs'>Configured (…{last4})</div>
+              <div className='read-the-docs'>Configured (…{gemini?.last4 || ''})</div>
               <button className='btn' disabled={savingKey} onClick={removeKey}>Remove</button>
             </div>
           ) : (

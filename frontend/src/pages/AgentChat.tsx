@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useToast } from '../components/ToastProvider'
+import useAppStore, { type AppState } from '../store/app'
 
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string }
 
 export default function AgentChatPage() {
   const toast = useToast()
   const [model, setModel] = useState('')
-  const [models, setModels] = useState<string[]>([])
+  const agentSettings = useAppStore((s: AppState) => s.agentSettings)
+  const agentSettingsLoaded = useAppStore((s: AppState) => s.agentSettingsLoaded)
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -19,13 +21,11 @@ export default function AgentChatPage() {
   // Load agent settings and last-used model
   useEffect(() => {
     // Load server settings; no hard-coded defaults
-    fetch('/api/agents/settings')
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then((j: { ok: boolean; models?: string[]; default_model?: string }) => {
-        const serverModels = Array.isArray(j.models) ? j.models : []
-        setModels(serverModels)
+    // Use store-loaded models
+    const serverModels = Array.isArray(agentSettings.models) ? agentSettings.models : []
+    if (serverModels.length) {
         const local = localStorage.getItem('agent.defaultModel') || ''
-        const serverDefault = (typeof j.default_model === 'string' && j.default_model) ? j.default_model : ''
+        const serverDefault = agentSettings.default_model || ''
         const pick = (local && serverModels.includes(local)) ? local : (serverDefault && serverModels.includes(serverDefault) ? serverDefault : (serverModels[0] || ''))
         if (pick) {
           setModel(pick)
@@ -33,13 +33,12 @@ export default function AgentChatPage() {
         } else {
           setModel('')
         }
-      })
-      .catch(() => {
-        // If fetch fails, try local-only
-        const local = localStorage.getItem('agent.defaultModel') || ''
-        setModel(local)
-      })
-  }, [])
+    } else {
+      // If not loaded yet, try local-only for initial render; effect reruns on load
+      const local = localStorage.getItem('agent.defaultModel') || ''
+      if (local) setModel(local)
+    }
+  }, [agentSettingsLoaded, agentSettings.models, agentSettings.default_model])
 
   const send = async () => {
     const text = input.trim()
@@ -80,7 +79,7 @@ export default function AgentChatPage() {
         <h1 style={{margin:0}}>Chat Agent</h1>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <select value={model} onChange={(e) => { const m = e.target.value; setModel(m); localStorage.setItem('agent.defaultModel', m) }}>
-            {models.map(m => (
+            {agentSettings.models.map((m: string) => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
