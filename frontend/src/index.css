@@ -117,7 +117,14 @@ button.primary:active, .btn.primary:active {
 }
 .toast.info { border-color: rgba(37,99,235,0.25); }
 .toast.success { border-color: rgba(16,185,129,0.35); }
-.toast.error { border-color: rgba(239,68,68,0.35); }
+.toast.error {
+  border-color: #ef4444;
+  background: #ef4444; /* red background for errors */
+  color: #fff;
+}
+.toast.error .toast-message { color: #fff; }
+.toast.error .toast-close { color: #fff; }
+.toast.error .toast-close:hover { background: rgba(255,255,255,0.15); }
 .toast-message { flex: 1 1 auto; }
 .toast-close { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
 .toast-close:hover { background: rgba(17,24,39,0.05); }
