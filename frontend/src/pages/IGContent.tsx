@@ -64,6 +64,25 @@ export default function IGContentPage() {
             ))}
           </select>
           <button className='btn' onClick={() => load(filter)} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+          <button className='btn' onClick={async (e) => {
+            const b = e.currentTarget as HTMLButtonElement
+            const prev = b.textContent
+            b.disabled = true
+            b.textContent = 'Syncing…'
+            try {
+              const res = await fetch('/api/ig/sync-content', { method: 'POST' })
+              if (!res.ok) throw new Error(await res.text())
+              const j = await res.json() as any
+              const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b)||0), 0) : 0
+              toast.show(`Fetched ${total} items`, 'success')
+              await load(filter)
+            } catch (e: any) {
+              toast.show(`Sync failed: ${e?.message || 'unknown error'}`, 'error')
+            } finally {
+              b.disabled = false
+              b.textContent = prev || 'Sync Now'
+            }
+          }}>Sync Now</button>
         </div>
       </div>
       <div style={{marginTop:12}}>
@@ -102,4 +121,3 @@ export default function IGContentPage() {
     </section>
   )
 }
-
