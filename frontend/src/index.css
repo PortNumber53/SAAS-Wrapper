@@ -94,3 +94,30 @@ button.primary:hover, .btn.primary:hover {
 button.primary:active, .btn.primary:active {
   background: linear-gradient(180deg, var(--btn-primary-active), color-mix(in srgb, var(--btn-primary-active) 92%, #000000));
 }
+
+/* Toasts */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  gap: 8px;
+  z-index: 1000;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(17,24,39,0.12);
+  min-width: 260px;
+}
+.toast.info { border-color: rgba(37,99,235,0.25); }
+.toast.success { border-color: rgba(16,185,129,0.35); }
+.toast.error { border-color: rgba(239,68,68,0.35); }
+.toast-message { flex: 1 1 auto; }
+.toast-close { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.toast-close:hover { background: rgba(17,24,39,0.05); }

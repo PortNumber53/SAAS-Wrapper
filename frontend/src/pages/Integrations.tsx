@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useToast } from '../components/ToastProvider'
 
 type Integration = { provider: string }
 
@@ -10,6 +11,7 @@ const SUPPORTED = [
 ]
 
 export default function IntegrationsPage() {
+  const toast = useToast()
   const [providers, setProviders] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const connected = useMemo(() => new Set(providers.map(p => p.provider)), [providers])
@@ -29,7 +31,10 @@ export default function IntegrationsPage() {
   }, [])
 
   const disconnect = async (provider: string) => {
-    await fetch(`/api/integrations/${provider}`, { method: 'DELETE' })
+    const res = await fetch(`/api/integrations/${provider}`, { method: 'DELETE' })
+    if (!res.ok) {
+      toast.show('Failed to disconnect provider', 'error')
+    }
     // Refresh providers and accounts after disconnect
     fetch('/api/integrations').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
       if (j?.ok && j.providers) setProviders(j.providers)
@@ -118,7 +123,7 @@ export default function IntegrationsPage() {
                           const t = await res.text();
                           try { const j = JSON.parse(t); if (j?.error === 'reauthorization_required' || j?.error === 'ig_account_not_linked') {
                             window.open('/api/auth/iggraph/start', '_blank', 'popup=yes,width=480,height=640');
-                          } else { alert(t) } } catch { alert(t) }
+                          } else { toast.show(t, 'error') } } catch { toast.show(t, 'error') }
                         }
                         const j = await fetch('/api/ig/accounts').then(r=>r.json());
                         if (j?.ok && j.accounts) setAccounts(j.accounts)
@@ -126,7 +131,7 @@ export default function IntegrationsPage() {
                       <button className='btn' onClick={async () => {
                         if (!confirm('Unlink this Instagram account?')) return;
                         const res = await fetch(`/api/ig/account/${acc.ig_user_id}`, { method:'DELETE' })
-                        if (!res.ok) alert(await res.text());
+                        if (!res.ok) toast.show(await res.text(), 'error');
                         const j = await fetch('/api/ig/accounts').then(r=>r.json());
                         if (j?.ok && j.accounts) setAccounts(j.accounts); else setAccounts([])
                       }}>Unlink</button>

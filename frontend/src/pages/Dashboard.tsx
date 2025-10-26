@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import FileDrop from '../components/FileDrop'
+import { useToast } from '../components/ToastProvider'
 import { Link } from 'react-router-dom'
 
 type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }
 
 export default function DashboardPage() {
+  const toast = useToast()
   const [accounts, setAccounts] = useState<IGAccount[]>([])
   const [selected, setSelected] = useState<string>('')
   const [imageUrl, setImageUrl] = useState('')
@@ -26,9 +28,9 @@ export default function DashboardPage() {
     if (!imageUrl) return alert('Provide an image URL')
     const res = await fetch('/api/ig/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ig_user_id: selected, image_url: imageUrl, caption }) })
     if (!res.ok) {
-      alert(await res.text())
+      toast.show(await res.text(), 'error')
     } else {
-      alert('Publish enqueued')
+      toast.show('Publish enqueued', 'success')
       setImageUrl('')
       setCaption('')
     }
@@ -86,7 +88,7 @@ export default function DashboardPage() {
                           const fd = new FormData()
                           fd.append('file', f)
                           const res = await fetch('/api/uploads', { method: 'POST', body: fd })
-                          if (!res.ok) { alert(await res.text()); return }
+                          if (!res.ok) { toast.show(await res.text(), 'error'); return }
                           const j = await res.json() as any
                           if (j?.ok && j.url) setImageUrl(j.url)
                         } finally {

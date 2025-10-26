@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { useToast } from './components/ToastProvider'
+import IGContentPage from './pages/IGContent'
 import DashboardPage from './pages/Dashboard'
 import TermsPage from './pages/Terms'
 import PrivacyPage from './pages/Privacy'
@@ -12,6 +14,7 @@ import cloudflareLogo from './assets/Cloudflare_Logo.svg'
 import './App.css'
 
 function App() {
+  const toast = useToast()
   const [count, setCount] = useState(0)
   const [name, setName] = useState('unknown')
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -116,19 +119,27 @@ function App() {
               <div className='menu-dropdown'>
                 <NavLink to='/dashboard'>Dashboard</NavLink>
                 <NavLink to='/account/integrations'>Integrations</NavLink>
-                <button onClick={async () => {
+                <NavLink to='/content/instagram'>View IG Content</NavLink>
+                <button onClick={async (e) => {
+                  const btn = e.currentTarget as HTMLButtonElement
+                  const prev = btn.textContent
+                  btn.disabled = true
+                  btn.textContent = 'Fetching…'
                   try {
                     const res = await fetch('/api/ig/sync-content', { method: 'POST' })
                     if (!res.ok) {
                       const t = await res.text()
-                      alert(`Sync failed: ${t}`)
+                      toast.show(`Sync failed: ${t}`, 'error')
                       return
                     }
                     const j = await res.json() as any
                     const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b)||0), 0) : 0
-                    alert(`Fetched ${total} items across linked IG accounts`)
+                    toast.show(`Fetched ${total} items across linked IG accounts`, 'success')
                   } catch (e) {
-                    alert('Sync failed')
+                    toast.show('Sync failed', 'error')
+                  } finally {
+                    btn.disabled = false
+                    btn.textContent = prev || 'Fetch IG Content'
                   }
                 }}>Fetch IG Content</button>
                 {/* Additional content management links can be added here */}
@@ -244,6 +255,7 @@ function App() {
         <Route path='/profile' element={<ProfilePage />} />
         <Route path='/settings' element={<SettingsPage />} />
         <Route path='/dashboard' element={<DashboardPage />} />
+        <Route path='/content/instagram' element={<IGContentPage />} />
         <Route path='/account/integrations' element={<IntegrationsPage />} />
         <Route path='*' element={
           <section className='card'>
