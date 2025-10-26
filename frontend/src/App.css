@@ -83,7 +83,7 @@ main.content.wide { max-width: none; width: 100%; margin: 0; padding-left: 24px;
 }
 .menu-dropdown a:hover,
 .user-dropdown a:hover,
-.user-dropdown button:hover { background: rgba(37,99,235,0.08); }
+.user-dropdown button:hover { background: #FFF7CC; }
 .menu-dropdown a:active,
 .user-dropdown a:active,
 .user-dropdown button:active { transform: translateY(1px); }
