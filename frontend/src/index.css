@@ -98,7 +98,7 @@ button.primary:active, .btn.primary:active {
 /* Toasts */
 .toast-container {
   position: fixed;
-  top: 16px;
+  bottom: 16px; /* move to bottom */
   right: 16px;
   display: grid;
   gap: 8px;
@@ -114,6 +114,8 @@ button.primary:active, .btn.primary:active {
   background: #fff;
   box-shadow: 0 8px 24px rgba(17,24,39,0.12);
   min-width: 260px;
+  opacity: 1;
+  animation: toast-in 150ms ease-out;
 }
 .toast.info { border-color: rgba(37,99,235,0.25); }
 .toast.success { border-color: rgba(16,185,129,0.35); }
@@ -128,3 +130,8 @@ button.primary:active, .btn.primary:active {
 .toast-message { flex: 1 1 auto; }
 .toast-close { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
 .toast-close:hover { background: rgba(17,24,39,0.05); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
