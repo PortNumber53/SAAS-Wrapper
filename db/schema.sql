@@ -12,6 +12,7 @@ create table if not exists public.ig_media (
   thumbnail_url text,
   timestamp timestamptz,
   email text,
+  raw_payload jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -20,3 +21,5 @@ create table if not exists public.ig_media (
 create index if not exists idx_ig_media_email_time on public.ig_media (email, timestamp desc);
 create index if not exists idx_ig_media_user_time on public.ig_media (ig_user_id, timestamp desc);
 
+-- Migration helper for existing tables missing raw_payload
+alter table public.ig_media add column if not exists raw_payload jsonb;

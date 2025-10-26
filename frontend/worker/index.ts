@@ -102,9 +102,12 @@ export default {
           thumbnail_url text,
           timestamp timestamptz,
           email text,
+          raw_payload jsonb,
           created_at timestamptz default now(),
           updated_at timestamptz default now()
         )`;
+        // In case table existed before without this column, add it
+        await sql`alter table public.ig_media add column if not exists raw_payload jsonb`;
       } catch {}
       // Return recent content, optionally filtered by ig_user_id
       try {
@@ -140,9 +143,12 @@ export default {
         thumbnail_url text,
         timestamp timestamptz,
         email text,
+        raw_payload jsonb,
         created_at timestamptz default now(),
         updated_at timestamptz default now()
       )`;
+      // Backfill column if table existed already
+      await sql`alter table public.ig_media add column if not exists raw_payload jsonb`;
       // Get linked IG accounts for this user
       const accounts = await sql`select ig_user_id, access_token from public.ig_accounts where email=${sess.email}` as Array<{ ig_user_id: string; access_token: string }>;
       const counts: Record<string, number> = {};
@@ -159,9 +165,9 @@ export default {
           const j = await r.json() as any;
           const items = Array.isArray(j?.data) ? j.data : [];
           for (const it of items) {
-            await sql`insert into public.ig_media (media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp, email) values (
-              ${String(it.id || '')}, ${igUserId}, ${it.caption || ''}, ${String(it.media_type || '')}, ${String(it.media_url || '')}, ${String(it.permalink || '')}, ${String(it.thumbnail_url || '')}, ${it.timestamp ? new Date(it.timestamp) : null}, ${sess.email}
-            ) on conflict (media_id) do update set caption=excluded.caption, media_type=excluded.media_type, media_url=excluded.media_url, permalink=excluded.permalink, thumbnail_url=excluded.thumbnail_url, timestamp=excluded.timestamp, ig_user_id=excluded.ig_user_id, email=excluded.email, updated_at=now()`;
+            await sql`insert into public.ig_media (media_id, ig_user_id, caption, media_type, media_url, permalink, thumbnail_url, timestamp, email, raw_payload) values (
+              ${String(it.id || '')}, ${igUserId}, ${it.caption || ''}, ${String(it.media_type || '')}, ${String(it.media_url || '')}, ${String(it.permalink || '')}, ${String(it.thumbnail_url || '')}, ${it.timestamp ? new Date(it.timestamp) : null}, ${sess.email}, ${JSON.stringify(it)}::jsonb
+            ) on conflict (media_id) do update set caption=excluded.caption, media_type=excluded.media_type, media_url=excluded.media_url, permalink=excluded.permalink, thumbnail_url=excluded.thumbnail_url, timestamp=excluded.timestamp, ig_user_id=excluded.ig_user_id, email=excluded.email, raw_payload=excluded.raw_payload, updated_at=now()`;
             fetched++;
           }
           const next = j?.paging?.next as string | undefined;
