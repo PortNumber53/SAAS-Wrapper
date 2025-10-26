@@ -12,6 +12,8 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import cloudflareLogo from './assets/Cloudflare_Logo.svg'
 import './App.css'
+import AgentChatPage from './pages/AgentChat'
+import KeysPage from './pages/Keys'
 
 function App() {
   const toast = useToast()
@@ -145,6 +147,13 @@ function App() {
                 {/* Additional content management links can be added here */}
               </div>
             </div>
+            <div className='menu'>
+              <button>Agents ▾</button>
+              <div className='menu-dropdown'>
+                <NavLink to='/agents/chat'>Chat Agent</NavLink>
+                <NavLink to='/agents/keys'>API Keys</NavLink>
+              </div>
+            </div>
           </div>
         )}
         <div className='account'>
@@ -256,6 +265,8 @@ function App() {
         <Route path='/settings' element={<SettingsPage />} />
         <Route path='/dashboard' element={<DashboardPage />} />
         <Route path='/content/instagram' element={<IGContentPage />} />
+        <Route path='/agents/chat' element={<AgentChatPage />} />
+        <Route path='/agents/keys' element={<KeysPage />} />
         <Route path='/account/integrations' element={<IntegrationsPage />} />
         <Route path='*' element={
           <section className='card'>

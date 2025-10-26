@@ -285,6 +285,38 @@ export default {
       }
       return new Response(null, { status: 405 });
     }
+    if (url.pathname === '/api/agents/chat' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const user = await findUserByEmail(env, sess.email);
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      // Load Gemini API key from user_settings
+      const rows = await sql`select config from public.user_settings where user_id=${user.id} and key='gemini_key' limit 1` as Array<{ config: any }>;
+      const apiKey: string = rows[0]?.config?.api_key || '';
+      if (!apiKey) return new Response(JSON.stringify({ ok: false, error: 'missing_gemini_key' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const body = (await request.json().catch(() => ({}))) as any;
+      const model = (typeof body.model === 'string' && body.model) ? body.model : 'gemini-1.5-flash';
+      const msgs = Array.isArray(body.messages) ? body.messages as Array<{ role: string; content: string }> : [];
+      // Transform to Gemini generateContent format
+      const contents = msgs.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: String(m.content || '') }],
+      }));
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const r = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ contents }),
+      });
+      if (!r.ok) {
+        const t = await r.text();
+        return new Response(JSON.stringify({ ok: false, error: 'upstream_error', details: t }), { status: 502, headers: { 'content-type': 'application/json' } });
+      }
+      const j = await r.json() as any;
+      const text = j?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '')?.join('') || '';
+      return new Response(JSON.stringify({ ok: true, text }), { headers: { 'content-type': 'application/json' } });
+    }
 
     // API proxy: forward remaining /api/* to the Go backend
     if (url.pathname.startsWith("/api/")) {
