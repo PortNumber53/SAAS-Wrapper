@@ -10,6 +10,7 @@ export type AppState = {
   session: Session | null
   sessionLoaded: boolean
   loadSession: () => Promise<void>
+  resetOnLogout: () => void
 
   // Agent settings
   agentSettings: AgentSettings
@@ -45,6 +46,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       const j = r.ok ? await r.json() : { ok: false }
       set({ session: j, sessionLoaded: true })
     } catch { set({ sessionLoaded: true }) }
+  },
+  resetOnLogout() {
+    set({
+      session: { ok: false },
+      sessionLoaded: true,
+      igAccounts: [],
+      igAccountsLoaded: false,
+    })
   },
 
   agentSettings: { models: [], default_model: '' },

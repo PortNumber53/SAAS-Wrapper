@@ -24,7 +24,8 @@ export default function DashboardPage() {
   const sessionLoaded = useAppStore((s: AppState) => s.sessionLoaded)
 
   useEffect(() => {
-    if (!sessionLoaded || !session?.ok) return
+    if (!sessionLoaded) return
+    if (!session?.ok) { setAccounts([]); return }
     fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
       if (j?.ok && Array.isArray(j.accounts)) {
         setAccounts(j.accounts)

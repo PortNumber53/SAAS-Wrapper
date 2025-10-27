@@ -14,6 +14,7 @@ type PublishState = {
   setCurrent: (id: string) => void
   setDraft: (patch: Partial<PublishDraft>) => void
   clearDraft: () => void
+  resetSession: () => void
 }
 
 export const initialDraft: PublishDraft = {
@@ -43,6 +44,7 @@ export const usePublishStore = create<PublishState>()(
         const next = { ...state.drafts, [id]: { ...initialDraft, ig_user_id: id } }
         return { drafts: next }
       }),
+      resetSession: () => set({ currentId: '' }),
     }),
     {
       name: 'publish.drafts',
