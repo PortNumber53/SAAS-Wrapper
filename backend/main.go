@@ -91,7 +91,8 @@ func main() {
                 return
             }
             defer dst.Close()
-            if _, err := copyLimited(dst, reader, 25<<20); err != nil {
+            nbytes, err := copyLimited(dst, reader, 25<<20)
+            if err != nil {
                 writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "save_failed"})
                 return
             }
@@ -103,7 +104,7 @@ func main() {
             if err := createThumbnail(dstPath, thumbPath, 512); err != nil {
                 log.Printf("thumb generation failed for %s: %v", dstPath, err)
             }
-            writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "thumb_url": "/api/media/" + thumbName, "key": key, "content_type": sniff})
+            writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "thumb_url": "/api/media/" + thumbName, "key": key, "content_type": sniff, "size_bytes": nbytes})
             return
         default:
             http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
