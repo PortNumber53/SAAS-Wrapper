@@ -50,6 +50,8 @@ function App() {
         setAuthError(null)
         // Refresh the app store session after OAuth completes
         storeLoadSession()
+        // Navigate to Dashboard after successful login
+        try { navigate('/dashboard') } catch {}
       } else if (msg.type === 'oauth:instagram' && data?.ok) {
         // Integration linked; nothing to update in header
         setAuthError(null)
