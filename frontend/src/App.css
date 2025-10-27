@@ -246,12 +246,18 @@ section { scroll-margin-top: 64px; }
 
 /* Publish area */
 .publish-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
-.publish-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+.publish-layout { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 24px; }
+.publish-layout > * { min-width: 0; }
+/* Stack publish layout on smaller screens to avoid overflow */
+@media (max-width: 960px) {
+  .publish-layout { grid-template-columns: 1fr; }
+}
 .publish-form { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
 .publish-form .field { display: grid; gap: 6px; }
 .publish-form label { font-weight: 600; font-size: 0.95rem; }
 .publish-form input, .publish-form textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--accent-border-50); border-radius: 8px; background: #fff; }
 .upload-row { display: flex; gap: 8px; align-items: center; }
+.upload-row { flex-wrap: wrap; }
 /* Hidden file input for custom drop area */
 .file-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; margin: -1px; }
 .file-drop {
@@ -268,6 +274,9 @@ section { scroll-margin-top: 64px; }
   padding: 12px;
   color: var(--text);
   transition: background-color .12s ease, border-color .12s ease, transform .06s ease;
+}
+@media (max-width: 600px) {
+  .file-drop { min-width: 0; width: 100%; }
 }
 .file-drop:hover, .file-drop:focus-visible {
   background: var(--hover-bg);

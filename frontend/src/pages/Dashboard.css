@@ -1,0 +1,21 @@
+.pub-page { padding: 16px; }
+.pub-grid { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 960px) { .pub-grid { grid-template-columns: 1fr; } }
+
+.pub-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.pub-title { margin: 0 0 8px 0; font-weight: 600; }
+
+.pub-side .pub-accounts { display: grid; gap: 8px; }
+.pub-side .pub-accounts button { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; text-align: left; }
+.pub-side .pub-accounts button[disabled] { opacity: 0.6; cursor: not-allowed; }
+.pub-side .pub-accounts button.active { border-color: var(--primary); background: rgba(37,99,235,0.08); }
+
+.pub-form { display: grid; gap: 12px; }
+.pub-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pub-form input, .pub-form textarea { width: 100%; }
+
+.pub-preview { display: grid; gap: 8px; }
+.pub-media { display:flex; align-items:center; justify-content:center; border:1px dashed var(--border); border-radius:8px; min-height: 240px; background:#f9fafb; }
+.pub-media img { display:block; max-width:100%; height:auto; border-radius:8px; }
+.pub-muted { color: var(--muted); }
+
