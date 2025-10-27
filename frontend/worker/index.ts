@@ -70,8 +70,11 @@ export default {
     if (url.pathname === '/api/ig/accounts') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess?.email) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
       const sql = getPg(env);
-      const rows = await sql`select ig_user_id, page_id, page_name, username, access_token, user_access_token from public.ig_accounts where email=${sess.email}` as Array<any>;
+      const rows = user?.id
+        ? await sql`select ig_user_id, page_id, page_name, username, access_token, user_access_token from public.ig_accounts where user_id=${user.id} or email=${sess.email}` as Array<any>
+        : await sql`select ig_user_id, page_id, page_name, username, access_token, user_access_token from public.ig_accounts where email=${sess.email}` as Array<any>;
       const withStatus = await Promise.all(rows.map(async (r) => {
         const status: any = await debugFBToken(env, r.access_token).catch(() => ({ is_valid: false }));
         const exp = (status && typeof status.expires_at !== 'undefined') ? status.expires_at : null;
@@ -173,7 +176,10 @@ export default {
       const ig_user_id = (body as any).ig_user_id as string | undefined;
       if (!ig_user_id) return new Response(JSON.stringify({ ok: false, error: 'missing_ig_user_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
       const sql = getPg(env);
-      const rows = await sql`select user_access_token from public.ig_accounts where ig_user_id=${ig_user_id} and email=${sess.email} limit 1` as Array<any>;
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
+      const rows = user?.id
+        ? await sql`select user_access_token from public.ig_accounts where ig_user_id=${ig_user_id} and (email=${sess.email} or user_id=${user.id}) limit 1` as Array<any>
+        : await sql`select user_access_token from public.ig_accounts where ig_user_id=${ig_user_id} and email=${sess.email} limit 1` as Array<any>;
       if (!rows.length || !rows[0].user_access_token) return new Response(JSON.stringify({ ok: false, error: 'reauthorization_required' }), { status: 400, headers: { 'content-type': 'application/json' } });
       const userToken = rows[0].user_access_token as string;
       // Validate the stored user token first; if invalid, require reauthorization
@@ -208,7 +214,12 @@ export default {
       const igUserId = url.pathname.split('/').pop() || '';
       if (!igUserId) return new Response(JSON.stringify({ ok: false, error: 'missing_ig_user_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
       const sql = getPg(env);
-      await sql`delete from public.ig_accounts where ig_user_id=${igUserId} and email=${sess.email}`;
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
+      if (user?.id) {
+        await sql`delete from public.ig_accounts where ig_user_id=${igUserId} and (email=${sess.email} or user_id=${user.id})`;
+      } else {
+        await sql`delete from public.ig_accounts where ig_user_id=${igUserId} and email=${sess.email}`;
+      }
       // Also drop oauth mapping for that iggraph user id if present
       await sql`delete from public.oauth_accounts where provider='iggraph' and provider_user_id=${igUserId} and email=${sess.email}`;
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
@@ -998,7 +1009,8 @@ async function handleIGGraphCallback(request: Request, env: Env, url: URL): Prom
     const username = igUJson?.username || '';
     // Save
     const sql = getPg(env);
-    await sql`insert into public.ig_accounts (ig_user_id, page_id, page_name, username, access_token, user_access_token, user_expires_at, email) values (${ig}, ${p.id}, ${p.name}, ${username}, ${p.access_token}, ${userToken}, ${userExpiresAt ? new Date(userExpiresAt*1000) : null}, ${sess.email}) on conflict (ig_user_id) do update set page_id=excluded.page_id, page_name=excluded.page_name, username=excluded.username, access_token=excluded.access_token, user_access_token=excluded.user_access_token, user_expires_at=excluded.user_expires_at, email=excluded.email, updated_at=now()`;
+    const me = await findUserByEmail(env, sess.email).catch(() => null as any)
+    await sql`insert into public.ig_accounts (ig_user_id, page_id, page_name, username, access_token, user_access_token, user_expires_at, email, user_id) values (${ig}, ${p.id}, ${p.name}, ${username}, ${p.access_token}, ${userToken}, ${userExpiresAt ? new Date(userExpiresAt*1000) : null}, ${sess.email}, ${me?.id || null}) on conflict (ig_user_id) do update set page_id=excluded.page_id, page_name=excluded.page_name, username=excluded.username, access_token=excluded.access_token, user_access_token=excluded.user_access_token, user_expires_at=excluded.user_expires_at, email=excluded.email, user_id=coalesce(excluded.user_id, public.ig_accounts.user_id), updated_at=now()`;
     // Mark provider connected as 'iggraph' too for unified integrations list
     try { await upsertOAuthAccountToXata(env, { provider: 'iggraph', provider_user_id: ig, email: sess.email }); } catch {}
     savedAny = true;
