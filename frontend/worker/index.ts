@@ -776,7 +776,7 @@ async function upsertUserToXata(env: Env, user: NewUser): Promise<void> {
     profile: user.picture ?? '',
   } as const;
   if (rows.length) {
-    await sql`update public.users set name=${record.name}, profile=${record.profile} where id=${rows[0].id}`;
+    await sql`update public.users set name=${record.name}, profile=${record.profile} where xata_id=${rows[0].id}`;
   } else {
     await sql`insert into public.users (email, password, name, profile) values (${record.email}, ${record.password}, ${record.name}, ${record.profile})`;
   }
