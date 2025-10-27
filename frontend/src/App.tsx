@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { NavLink, Routes, Route, Link, useNavigate, Navigate } from 'react-router-dom'
 import { useToast } from './components/ToastProvider'
 import IGContentPage from './pages/IGContent'
 import DashboardPage from './pages/Dashboard'
@@ -14,6 +14,8 @@ import cloudflareLogo from './assets/Cloudflare_Logo.svg'
 import './App.css'
 import AgentChatPage from './pages/AgentChat'
 import AgentSettingsPage from './pages/AgentSettings'
+import useAppStore, { type AppState } from './store/app'
+import usePublishStore from './store/publish'
 
 function App() {
   const toast = useToast()
@@ -27,6 +29,8 @@ function App() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const resetOnLogout = useAppStore((s: AppState) => s.resetOnLogout)
+  const resetDraftSession = usePublishStore(s => s.resetSession)
 
   // Memoize same-origin target for message filtering
   const expectedOrigin = useMemo(() => window.location.origin, [])
@@ -188,7 +192,9 @@ function App() {
                   <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
                   <button role='menuitem' onClick={() => {
                     fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
-                      setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false)
+                      setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false);
+                      resetOnLogout(); resetDraftSession();
+                      navigate('/')
                     })
                   }}>Logout</button>
                 </div>
@@ -262,11 +268,11 @@ function App() {
         <Route path='/pages/terms-of-service' element={<TermsPage />} />
         <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
         <Route path='/profile' element={<ProfilePage />} />
-        <Route path='/settings' element={<SettingsPage />} />
-        <Route path='/dashboard' element={<DashboardPage />} />
-        <Route path='/content/instagram' element={<IGContentPage />} />
-        <Route path='/agents/chat' element={<AgentChatPage />} />
-        <Route path='/agents/settings' element={<AgentSettingsPage />} />
+        <Route path='/settings' element={<RequireAuth><SettingsPage /></RequireAuth>} />
+        <Route path='/dashboard' element={<RequireAuth><DashboardPage /></RequireAuth>} />
+        <Route path='/content/instagram' element={<RequireAuth><IGContentPage /></RequireAuth>} />
+        <Route path='/agents/chat' element={<RequireAuth><AgentChatPage /></RequireAuth>} />
+        <Route path='/agents/settings' element={<RequireAuth><AgentSettingsPage /></RequireAuth>} />
         <Route path='/account/integrations' element={<IntegrationsPage />} />
         <Route path='*' element={
           <section className='card'>
@@ -292,3 +298,11 @@ function App() {
 }
 
 export default App
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const session = useAppStore((s: AppState) => s.session)
+  const loaded = useAppStore((s: AppState) => s.sessionLoaded)
+  if (!loaded) return null
+  if (!session?.ok) return <Navigate to='/' replace />
+  return <>{children}</>
+}
