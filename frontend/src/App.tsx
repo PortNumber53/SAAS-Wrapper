@@ -68,19 +68,17 @@ function App() {
     return () => window.removeEventListener('focus', onFocus)
   }, [storeSessionOk])
 
-  // Hydrate auth state from session on first load
+  // Reflect store session into header display
+  const storeSession = useAppStore((s: AppState) => s.session)
   useEffect(() => {
-    fetch('/api/auth/session')
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((j: { ok: boolean; email?: string; name?: string; picture?: string }) => {
-        if (j?.ok && j.email) {
-          setUserEmail(j.email)
-          if (j.name) setUserName(j.name)
-          if (j.picture) setUserAvatar(j.picture)
-        }
-      })
-      .catch(() => {})
-  }, [])
+    if (storeSession?.ok) {
+      setUserEmail(storeSession.email || null)
+      setUserName((storeSession as any).name || null)
+      setUserAvatar((storeSession as any).picture || null)
+    } else {
+      setUserEmail(null); setUserName(null); setUserAvatar(null)
+    }
+  }, [storeSession?.ok, (storeSession as any)?.email, (storeSession as any)?.name, (storeSession as any)?.picture])
 
   // Close account dropdown on outside click / escape
   useEffect(() => {
