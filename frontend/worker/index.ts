@@ -1052,9 +1052,9 @@ async function deleteUserIntegration(env: Env, email: string, provider: string):
 async function handleSession(request: Request, env: Env): Promise<Response> {
   const cookies = getCookies(request);
   const tok = cookies.session;
-  if (!tok) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+  if (!tok) return new Response(JSON.stringify({ ok: false }), { status: 200, headers: { 'content-type': 'application/json' } });
   const payload = await verifySessionToken(tok, env.SESSION_SECRET);
-  if (!payload) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+  if (!payload) return new Response(JSON.stringify({ ok: false }), { status: 200, headers: { 'content-type': 'application/json' } });
   const body = { ok: true, email: payload.email, name: payload.name ?? '', picture: payload.picture ?? '' };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 }
