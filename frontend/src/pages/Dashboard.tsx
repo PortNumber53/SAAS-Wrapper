@@ -77,124 +77,108 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className='dashboard'>
-      <aside className='sidebar'>
-        <h3>Dashboard</h3>
-        <nav className='sidebar-nav'>
-          <div className='sidebar-section'>
-            <div className='sidebar-title'>Instagram Accounts</div>
-            {accounts.length === 0 && (
-              <div className='sidebar-empty'>
-                No IG Business accounts linked.
-                <div><Link to='/account/integrations'>Go to Integrations</Link></div>
-              </div>
-            )}
+    <div className='pub-page'>
+      <div className='pub-grid'>
+        <aside className='pub-card pub-side'>
+          <h3 className='pub-title'>Instagram Accounts</h3>
+          {accounts.length === 0 && (
+            <div className='pub-muted'>
+              No IG Business accounts linked.
+              <div><Link to='/account/integrations'>Go to Integrations</Link></div>
+            </div>
+          )}
+          <div className='pub-accounts'>
             {accounts.map(acc => {
               const disabled = !(acc as any).token_valid || (acc as any).linked === false
               const active = acc.ig_user_id === selected
               return (
-                <div key={acc.ig_user_id} className={`sidebar-account${disabled ? ' disabled' : ''}${active ? ' active' : ''}`}>
-                  <button className='sidebar-item' disabled={disabled} onClick={() => !disabled && setCurrent(acc.ig_user_id)}>
-                    @{acc.username || acc.ig_user_id}
-                  </button>
-                  {disabled && (
-                    <div className='overlay'>
-                      <button className='btn primary' onClick={() => window.open('/api/auth/iggraph/start','_blank','popup=yes,width=480,height=640')}>Re-connect</button>
-                    </div>
-                  )}
-                </div>
+                <button key={acc.ig_user_id} className={active ? 'active' : ''} disabled={disabled} onClick={() => !disabled && setCurrent(acc.ig_user_id)}>
+                  @{acc.username || acc.ig_user_id}
+                </button>
               )
             })}
           </div>
-          {/* Integrations link removed to keep Dashboard focused */}
-        </nav>
-      </aside>
-      <main className='content'>
-        {selectedAccount && (
-          <section className='publish-panel'>
-            <div className='publish-layout'>
-              <div className='publish-form'>
-                <h2 style={{margin:0}}>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
-                <div className='field'>
-                  <label>Image</label>
-                  <div className='upload-row'>
-                    <FileDrop
-                      accept='image/*'
-                      primary='Click to choose an image'
-                      secondary='or drag and drop here'
-                      onSelect={async (f) => {
-                        setUploading(true); setUploadPct(0)
-                        try {
-                          const res = await uploadWithProgress(f, (pct) => setUploadPct(pct))
-                          if (res?.url || res?.thumb_url) {
-                            setDraft({ image_url: res?.url || '', thumb_url: res?.thumb_url || '' })
-                            // Fire-and-forget: record file metadata to the server
-                            try {
-                              await fetch('/api/files', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(res) })
-                            } catch {}
-                          }
-                        } catch (e: any) {
-                          toast.show(e?.message || 'Upload failed', 'error')
-                        } finally {
-                          setUploading(false)
-                        }
-                      }}
-                    />
-                    {uploading ? (
-                      <div style={{minWidth:160}}>
-                        <div className='read-the-docs'>Uploading… {Math.round(uploadPct)}%</div>
-                        <div style={{height:6, background:'var(--border)', borderRadius:4, overflow:'hidden'}}>
-                          <div style={{height:6, width:`${uploadPct}%`, background:'var(--primary)'}} />
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <div className='field'>
-                  <label>Image URL</label>
-                  <div style={{display:'flex', gap:8}}>
-                    <input placeholder='https://...' value={imageUrl} onChange={e => setDraft({ image_url: e.target.value, thumb_url: '' })} />
-                    {imageUrl && (
-                      <button className='btn' onClick={async () => {
-                        try {
-                          const u = new URL(imageUrl, window.location.origin)
-                          if (u.pathname.startsWith('/api/media/')) {
-                            const name = u.pathname.split('/').pop() || ''
-                            if (name) {
-                              await fetch(`/api/uploads/${name}`, { method: 'DELETE' })
+        </aside>
+        <main>
+          {selectedAccount && (
+            <div className='pub-grid' style={{gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)'}}>
+              <section className='pub-card'>
+                <h2 className='pub-title'>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
+                <div className='pub-form'>
+                  <div>
+                    <label>Image</label>
+                    <div className='pub-row'>
+                      <FileDrop
+                        accept='image/*'
+                        primary='Click to choose an image'
+                        secondary='or drag and drop here'
+                        onSelect={async (f) => {
+                          setUploading(true); setUploadPct(0)
+                          try {
+                            const res = await uploadWithProgress(f, (pct) => setUploadPct(pct))
+                            if (res?.url || res?.thumb_url) {
+                              setDraft({ image_url: res?.url || '', thumb_url: res?.thumb_url || '' })
+                              try { await fetch('/api/files', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(res) }) } catch {}
                             }
-                          }
-                        } catch {}
-                        setDraft({ image_url: '', thumb_url: '' })
-                      }}>Clear</button>
-                    )}
+                          } catch (e: any) {
+                            toast.show(e?.message || 'Upload failed', 'error')
+                          } finally { setUploading(false) }
+                        }}
+                      />
+                      {uploading ? (
+                        <div style={{minWidth:160}}>
+                          <div className='read-the-docs'>Uploading… {Math.round(uploadPct)}%</div>
+                          <div style={{height:6, background:'var(--border)', borderRadius:4, overflow:'hidden'}}>
+                            <div style={{height:6, width:`${uploadPct}%`, background:'var(--primary)'}} />
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div>
+                    <label>Image URL</label>
+                    <div className='pub-row'>
+                      <input placeholder='https://...' value={imageUrl} onChange={e => setDraft({ image_url: e.target.value, thumb_url: '' })} />
+                      {imageUrl && (
+                        <button className='btn' onClick={async () => {
+                          try {
+                            const u = new URL(imageUrl, window.location.origin)
+                            if (u.pathname.startsWith('/api/media/')) {
+                              const name = u.pathname.split('/').pop() || ''
+                              if (name) { await fetch(`/api/uploads/${name}`, { method: 'DELETE' }) }
+                            }
+                          } catch {}
+                          setDraft({ image_url: '', thumb_url: '' })
+                        }}>Clear</button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label>Caption</label>
+                    <textarea placeholder='Write a caption…' value={caption} onChange={e => setDraft({ caption: e.target.value })} rows={6} />
+                  </div>
+                  <div>
+                    <button className='btn primary' onClick={publish}>Publish Image</button>
                   </div>
                 </div>
-                <div className='field'>
-                  <label>Caption</label>
-                  <textarea placeholder='Write a caption…' value={caption} onChange={e => setDraft({ caption: e.target.value })} rows={6} />
-                </div>
-                <div>
-                  <button className='btn primary' onClick={publish}>Publish Image</button>
-                </div>
-              </div>
-              <div className='publish-preview'>
-                <div className='preview-card'>
-                  <div className='preview-header'>@{selectedAccount.username || selectedAccount.ig_user_id}</div>
-                  <div className='preview-media'>
+              </section>
+              <section className='pub-card'>
+                <div className='pub-preview'>
+                  <div className='pub-title'>@{selectedAccount.username || selectedAccount.ig_user_id}</div>
+                  <div className='pub-media'>
                     {(draft.thumb_url || imageUrl) ? (
-                      <img className='preview-image' src={draft.thumb_url || imageUrl} alt='Preview' />
+                      <img src={draft.thumb_url || imageUrl} alt='Preview' />
                     ) : (
-                      <div className='preview-placeholder'>No image selected</div>
+                      <div className='pub-muted'>No image selected</div>
                     )}
                   </div>
-                  {caption && <div className='preview-caption'>{caption}</div>}
+                  {caption && <div style={{whiteSpace:'pre-wrap'}}>{caption}</div>}
                 </div>
-              </div>
+              </section>
             </div>
-          </section>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
     </div>
   )
 }
