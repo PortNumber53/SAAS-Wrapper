@@ -302,6 +302,31 @@ export default {
       await sql`insert into public.user_uploads (user_id, key, url, thumb_url, content_type, size_bytes) values (${user.id}, ${key}, ${urlStr}, ${thumb || null}, ${ct || null}, ${size}) on conflict (user_id, key) do update set url=excluded.url, thumb_url=excluded.thumb_url, content_type=excluded.content_type, size_bytes=excluded.size_bytes, updated_at=now()`;
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
     }
+    if (url.pathname === '/api/drafts') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email);
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      if (request.method === 'GET') {
+        const ig = new URL(request.url).searchParams.get('ig_user_id') || '';
+        if (ig) {
+          const rows = await sql`select payload, updated_at from public.user_drafts where user_id=${user.id} and ig_user_id=${ig} limit 1` as Array<{ payload: any; updated_at: string }>;
+          return new Response(JSON.stringify({ ok: true, payload: rows[0]?.payload || null, updated_at: rows[0]?.updated_at || null }), { headers: { 'content-type': 'application/json' } });
+        }
+        const rows = await sql`select ig_user_id, updated_at from public.user_drafts where user_id=${user.id}` as Array<{ ig_user_id: string; updated_at: string }>;
+        return new Response(JSON.stringify({ ok: true, drafts: rows }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'PUT') {
+        const body = (await request.json().catch(() => ({}))) as any;
+        const ig = typeof body.ig_user_id === 'string' ? body.ig_user_id : '';
+        const payload = typeof body.payload === 'object' && body.payload ? body.payload : {};
+        if (!ig) return new Response(JSON.stringify({ ok: false, error: 'missing_ig_user_id' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        await sql`insert into public.user_drafts (user_id, ig_user_id, payload) values (${user.id}, ${ig}, ${(sql as any).json(payload)}) on conflict (user_id, ig_user_id) do update set payload=excluded.payload, updated_at=now()`;
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
     if (url.pathname === '/api/agents/settings') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });

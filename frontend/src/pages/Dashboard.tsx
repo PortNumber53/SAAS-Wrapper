@@ -29,6 +29,36 @@ export default function DashboardPage() {
     })
   }, [])
 
+  // Lazy hydrate from server if local draft is empty
+  useEffect(() => {
+    if (!selected) return
+    const empty = !draft.image_url && !draft.caption
+    if (!empty) return
+    let cancelled = false
+    fetch(`/api/drafts?ig_user_id=${encodeURIComponent(selected)}`)
+      .then(r => r.ok ? r.json() : { ok: false })
+      .then((j) => {
+        if (cancelled) return
+        const p = j?.payload as any
+        if (p && (p.image_url || p.caption)) {
+          setDraft({ image_url: p.image_url || '', thumb_url: p.thumb_url || '', caption: p.caption || '' })
+        }
+      }).catch(() => {})
+    return () => { cancelled = true }
+  }, [selected])
+
+  // Debounced save of draft to server on changes
+  useEffect(() => {
+    if (!selected) return
+    const handler = setTimeout(() => {
+      const payload = { image_url: draft.image_url, thumb_url: draft.thumb_url, caption: draft.caption }
+      // Skip saving if truly empty
+      if (!payload.image_url && !payload.caption) return
+      fetch('/api/drafts', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ig_user_id: selected, payload }) }).catch(() => {})
+    }, 800)
+    return () => clearTimeout(handler)
+  }, [selected, draft.image_url, draft.thumb_url, draft.caption])
+
   const publish = async () => {
     if (!selected) return toast.show('Select an Instagram account', 'error')
     if (!imageUrl) return toast.show('Provide an image URL', 'error')
