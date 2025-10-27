@@ -746,7 +746,8 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   // Clear state cookie and return a tiny HTML that posts a message to the opener
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
   headers.append('Set-Cookie', setCookie('oauth_state', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
-  headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure: true, httpOnly: true, sameSite: 'Lax', path: '/' }));
+  const isHTTPS = url.protocol === 'https:';
+  headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure: isHTTPS, httpOnly: true, sameSite: 'Lax', path: '/' }));
   const targetOrigin = url.origin;
   const message = { ok: true, provider: 'google', email: profile.email, name: profile.name ?? '', picture: profile.picture ?? '' };
   const html = `<!doctype html><html><body><script>
