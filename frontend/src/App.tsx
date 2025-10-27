@@ -31,6 +31,8 @@ function App() {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const resetOnLogout = useAppStore((s: AppState) => s.resetOnLogout)
   const resetDraftSession = usePublishStore(s => s.resetSession)
+  const storeLoadSession = useAppStore((s: AppState) => s.loadSession)
+  const storeSessionOk = useAppStore((s: AppState) => !!s.session?.ok)
 
   // Memoize same-origin target for message filtering
   const expectedOrigin = useMemo(() => window.location.origin, [])
@@ -46,6 +48,8 @@ function App() {
         if (data.name) setUserName(data.name)
         if (data.picture) setUserAvatar(data.picture)
         setAuthError(null)
+        // Refresh the app store session after OAuth completes
+        storeLoadSession()
       } else if (msg.type === 'oauth:instagram' && data?.ok) {
         // Integration linked; nothing to update in header
         setAuthError(null)
@@ -56,6 +60,13 @@ function App() {
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [expectedOrigin])
+
+  // Opportunistically refresh session on window focus if not authenticated yet
+  useEffect(() => {
+    const onFocus = () => { if (!storeSessionOk) storeLoadSession() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [storeSessionOk])
 
   // Hydrate auth state from session on first load
   useEffect(() => {
@@ -270,10 +281,12 @@ function App() {
         <Route path='/profile' element={<ProfilePage />} />
         <Route path='/settings' element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path='/dashboard' element={<RequireAuth><DashboardPage /></RequireAuth>} />
+        {/* Common typo alias */}
+        <Route path='/dashbord' element={<Navigate to='/dashboard' replace />} />
         <Route path='/content/instagram' element={<RequireAuth><IGContentPage /></RequireAuth>} />
         <Route path='/agents/chat' element={<RequireAuth><AgentChatPage /></RequireAuth>} />
         <Route path='/agents/settings' element={<RequireAuth><AgentSettingsPage /></RequireAuth>} />
-        <Route path='/account/integrations' element={<IntegrationsPage />} />
+        <Route path='/account/integrations' element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
         <Route path='*' element={
           <section className='card'>
             <h2>404 — Page Not Found</h2>
@@ -302,7 +315,7 @@ export default App
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useAppStore((s: AppState) => s.session)
   const loaded = useAppStore((s: AppState) => s.sessionLoaded)
-  if (!loaded) return null
+  if (!loaded) return <section className='card'><p>Checking session…</p></section>
   if (!session?.ok) return <Navigate to='/' replace />
   return <>{children}</>
 }
