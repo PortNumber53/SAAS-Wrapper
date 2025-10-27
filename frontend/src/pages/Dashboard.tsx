@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import FileDrop from '../components/FileDrop'
 import { useToast } from '../components/ToastProvider'
 import usePublishStore, { initialDraft } from '../store/publish'
+import useAppStore, { type AppState } from '../store/app'
 import { Link } from 'react-router-dom'
 
 type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }
@@ -19,15 +20,18 @@ export default function DashboardPage() {
   const [uploadPct, setUploadPct] = useState(0)
   const caption = draft.caption
   const selectedAccount = useMemo(() => accounts.find(a => a.ig_user_id === selected) || null, [accounts, selected])
+  const session = useAppStore((s: AppState) => s.session)
+  const sessionLoaded = useAppStore((s: AppState) => s.sessionLoaded)
 
   useEffect(() => {
+    if (!sessionLoaded || !session?.ok) return
     fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
       if (j?.ok && Array.isArray(j.accounts)) {
         setAccounts(j.accounts)
         if (j.accounts.length && !selected) setCurrent(j.accounts[0].ig_user_id)
       }
     })
-  }, [])
+  }, [sessionLoaded, session?.ok])
 
   // Lazy hydrate from server if local draft is empty
   useEffect(() => {
