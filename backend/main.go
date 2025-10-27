@@ -201,9 +201,32 @@ func copyLimited(dst io.Writer, src io.Reader, max int64) (int64, error) {
     return io.Copy(dst, io.LimitReader(src, max))
 }
 
+type statusRecorder struct {
+    http.ResponseWriter
+    status int
+    nbytes int64
+}
+
+func (sr *statusRecorder) WriteHeader(code int) {
+    sr.status = code
+    sr.ResponseWriter.WriteHeader(code)
+}
+func (sr *statusRecorder) Write(b []byte) (int, error) {
+    if sr.status == 0 {
+        sr.status = http.StatusOK
+    }
+    n, err := sr.ResponseWriter.Write(b)
+    sr.nbytes += int64(n)
+    return n, err
+}
+
 func logRequest(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        next.ServeHTTP(w, r)
+        start := time.Now()
+        sr := &statusRecorder{ResponseWriter: w}
+        next.ServeHTTP(sr, r)
+        dur := time.Since(start)
+        log.Printf("%s %s -> %d %dB %s", r.Method, r.URL.Path, sr.status, sr.nbytes, dur)
     })
 }
 

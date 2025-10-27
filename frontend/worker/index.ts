@@ -10,6 +10,7 @@ function getPg(env: Env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    try {
 
     // Handle auth routes inside the Worker first
     if (url.pathname === "/api/auth/google/start") {
@@ -390,22 +391,40 @@ export default {
         return res;
       }
 
-      const backendRequest = new Request(backendUrl.toString(), {
-        method: request.method,
-        headers: reqHeaders,
-        body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
-        redirect: "manual",
-      });
+      try {
+        const backendRequest = new Request(backendUrl.toString(), {
+          method: request.method,
+          headers: reqHeaders,
+          body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+          redirect: "manual",
+        });
 
-      const backendResponse = await fetch(backendRequest);
-      // Pass-through response; optionally set CORS for safety (same-origin typically not needed)
-      const resHeaders = new Headers(backendResponse.headers);
-      resHeaders.set("access-control-allow-origin", url.origin);
-      return new Response(backendResponse.body, {
-        status: backendResponse.status,
-        statusText: backendResponse.statusText,
-        headers: resHeaders,
-      });
+        const backendResponse = await fetch(backendRequest);
+        if (backendResponse.status >= 500) {
+          console.error('api_proxy upstream 5xx', {
+            method: request.method,
+            path: url.pathname,
+            target: backendUrl.toString(),
+            status: backendResponse.status,
+          });
+        }
+        // Pass-through response; optionally set CORS for safety (same-origin typically not needed)
+        const resHeaders = new Headers(backendResponse.headers);
+        resHeaders.set("access-control-allow-origin", url.origin);
+        return new Response(backendResponse.body, {
+          status: backendResponse.status,
+          statusText: backendResponse.statusText,
+          headers: resHeaders,
+        });
+      } catch (e: any) {
+        console.error('api_proxy fetch error', {
+          method: request.method,
+          path: url.pathname,
+          target: backendUrl.toString(),
+          error: String(e?.message || e),
+        });
+        return new Response(JSON.stringify({ ok: false, error: 'proxy_error', message: 'Network error talking to backend' }), { status: 502, headers: { 'content-type': 'application/json' } });
+      }
     }
 
     // Delegate non-API requests to static assets. For GET/HEAD navigations to
@@ -429,6 +448,11 @@ export default {
       }
     }
     return new Response(null, { status: 404 });
+    } catch (e: any) {
+      // Top-level safeguard to avoid opaque failures
+      console.error('unhandled worker error', { path: url.pathname, error: String(e?.message || e) });
+      return new Response(JSON.stringify({ ok: false, error: 'internal_error', message: 'Unexpected error' }), { status: 500, headers: { 'content-type': 'application/json' } });
+    }
   },
 } satisfies ExportedHandler<Env>;
 
