@@ -286,6 +286,22 @@ export default {
       }
       return new Response(null, { status: 405 });
     }
+    if (url.pathname === '/api/files' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email);
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const body = (await request.json().catch(() => ({}))) as any;
+      const key = typeof body.key === 'string' ? body.key : '';
+      const urlStr = typeof body.url === 'string' ? body.url : '';
+      const thumb = typeof body.thumb_url === 'string' ? body.thumb_url : '';
+      const ct = typeof body.content_type === 'string' ? body.content_type : '';
+      const size = typeof body.size_bytes === 'number' ? Math.max(0, Math.floor(body.size_bytes)) : null;
+      if (!key || !urlStr) return new Response(JSON.stringify({ ok: false, error: 'missing_fields' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      await sql`insert into public.user_uploads (user_id, key, url, thumb_url, content_type, size_bytes) values (${user.id}, ${key}, ${urlStr}, ${thumb || null}, ${ct || null}, ${size}) on conflict (user_id, key) do update set url=excluded.url, thumb_url=excluded.thumb_url, content_type=excluded.content_type, size_bytes=excluded.size_bytes, updated_at=now()`;
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/api/agents/settings') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });

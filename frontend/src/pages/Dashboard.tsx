@@ -93,6 +93,10 @@ export default function DashboardPage() {
                           const res = await uploadWithProgress(f, (pct) => setUploadPct(pct))
                           if (res?.url || res?.thumb_url) {
                             setDraft({ image_url: res?.url || '', thumb_url: res?.thumb_url || '' })
+                            // Fire-and-forget: record file metadata to the server
+                            try {
+                              await fetch('/api/files', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(res) })
+                            } catch {}
                           }
                         } catch (e: any) {
                           toast.show(e?.message || 'Upload failed', 'error')
