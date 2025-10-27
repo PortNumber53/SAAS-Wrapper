@@ -1,10 +1,11 @@
 package main
 
 import (
+    "bytes"
+    "io"
     "encoding/json"
     "fmt"
     "log"
-    "mime/multipart"
     "net/http"
     "os"
     "path/filepath"
@@ -23,67 +24,110 @@ func main() {
     if storageDir == "" {
         storageDir = "./storage"
     }
+    storageDir, _ = filepath.Abs(storageDir)
     if err := os.MkdirAll(filepath.Join(storageDir, "uploads"), 0o755); err != nil {
         log.Fatalf("create storage: %v", err)
     }
+    backendSecret := os.Getenv("BACKEND_SECRET")
 
     // Upload endpoint (Worker proxies /api/uploads -> /uploads)
     mux.HandleFunc("/uploads", func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodPost {
+        switch r.Method {
+        case http.MethodPost:
+            // Limit body size (25MB)
+            r.Body = http.MaxBytesReader(w, r.Body, 25<<20)
+            if err := r.ParseMultipartForm(25 << 20); err != nil {
+                writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "invalid_form"})
+                return
+            }
+            file, header, err := r.FormFile("file")
+            if err != nil {
+                writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "missing_file"})
+                return
+            }
+            defer file.Close()
+
+            // Sniff content type from first 512 bytes
+            sniffBuf := make([]byte, 512)
+            n, _ := io.ReadFull(file, sniffBuf)
+            if n <= 0 {
+                writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "empty_file"})
+                return
+            }
+            sniff := http.DetectContentType(sniffBuf[:n])
+            if !strings.HasPrefix(sniff, "image/") {
+                writeJSON(w, http.StatusUnsupportedMediaType, jsonResp{"ok": false, "error": "unsupported_type"})
+                return
+            }
+            name := strings.ToLower(header.Filename)
+            ext := filepath.Ext(name)
+            if ext == "" {
+                parts := strings.Split(sniff, "/")
+                if len(parts) == 2 {
+                    ext = "." + parts[1]
+                } else {
+                    ext = ".bin"
+                }
+            }
+            id := uuid.New().String()
+            key := fmt.Sprintf("uploads/%s%s", id, ext)
+            dstPath := filepath.Join(storageDir, key)
+            if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+                writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "mkdir_failed"})
+                return
+            }
+            // Reconstruct reader with sniffed bytes + remainder
+            reader := io.MultiReader(bytes.NewReader(sniffBuf[:n]), file)
+            dst, err := os.Create(dstPath)
+            if err != nil {
+                writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "write_failed"})
+                return
+            }
+            defer dst.Close()
+            if _, err := copyLimited(dst, reader, 25<<20); err != nil {
+                writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "save_failed"})
+                return
+            }
+            publicURL := "/api/media/" + id + ext
+            writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "key": key, "content_type": sniff})
+            return
+        default:
             http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
             return
         }
-        // Limit body size (25MB)
-        r.Body = http.MaxBytesReader(w, r.Body, 25<<20)
-        if err := r.ParseMultipartForm(25 << 20); err != nil {
-            writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "invalid_form"})
-            return
-        }
-        file, header, err := r.FormFile("file")
-        if err != nil {
-            writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "missing_file"})
-            return
-        }
-        defer file.Close()
+    })
 
-        // Validate content type
-        ct := header.Header.Get("Content-Type")
-        if !strings.HasPrefix(ct, "image/") {
-            writeJSON(w, http.StatusUnsupportedMediaType, jsonResp{"ok": false, "error": "unsupported_type"})
+    // Delete uploaded file via DELETE /uploads/<uuid>.<ext>
+    mux.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method != http.MethodDelete {
+            http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
             return
         }
-
-        name := strings.ToLower(header.Filename)
-        ext := filepath.Ext(name)
-        if ext == "" {
-            // try derive from content type
-            parts := strings.Split(ct, "/")
-            if len(parts) == 2 {
-                ext = "." + parts[1]
-            } else {
-                ext = ".bin"
+        // Optional shared secret check (dev can omit)
+        if backendSecret != "" && r.Header.Get("X-Backend-Secret") != backendSecret {
+            http.Error(w, "unauthorized", http.StatusUnauthorized)
+            return
+        }
+        base := strings.TrimPrefix(r.URL.Path, "/uploads/")
+        if base == "" {
+            http.NotFound(w, r)
+            return
+        }
+        rel := filepath.Join("uploads", base)
+        fp := filepath.Join(storageDir, rel)
+        if !isPathWithin(fp, storageDir) {
+            http.Error(w, "forbidden", http.StatusForbidden)
+            return
+        }
+        if err := os.Remove(fp); err != nil {
+            if os.IsNotExist(err) {
+                http.NotFound(w, r)
+                return
             }
-        }
-        id := uuid.New().String()
-        key := fmt.Sprintf("uploads/%s%s", id, ext)
-        dstPath := filepath.Join(storageDir, key)
-        if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
-            writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "mkdir_failed"})
+            writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "delete_failed"})
             return
         }
-        dst, err := os.Create(dstPath)
-        if err != nil {
-            writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "write_failed"})
-            return
-        }
-        defer dst.Close()
-        if _, err := copyLimited(dst, file, 25<<20); err != nil {
-            writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "save_failed"})
-            return
-        }
-        // Return a proxyable URL under /api/media (Worker will strip /api and hit /media here)
-        publicURL := "/api/media/" + id + ext
-        writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "key": key})
+        writeJSON(w, http.StatusOK, jsonResp{"ok": true})
     })
 
     // Media serving (Worker proxies /api/media/* -> /media/*)
@@ -107,6 +151,10 @@ func main() {
             rel = filepath.Join("uploads", base)
         }
         fp := filepath.Join(storageDir, rel)
+        if !isPathWithin(fp, storageDir) {
+            http.Error(w, "forbidden", http.StatusForbidden)
+            return
+        }
         f, err := os.Open(fp)
         if err != nil {
             http.NotFound(w, r)
@@ -125,7 +173,11 @@ func main() {
         default:
             w.Header().Set("Content-Type", "application/octet-stream")
         }
-        http.ServeContent(w, r, filepath.Base(fp), time.Now(), f)
+        // Use file's mod time for caching correctness
+        stat, _ := f.Stat()
+        modTime := time.Now()
+        if stat != nil { modTime = stat.ModTime() }
+        http.ServeContent(w, r, filepath.Base(fp), modTime, f)
     })
 
     addr := os.Getenv("PORT")
@@ -144,9 +196,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
     _ = json.NewEncoder(w).Encode(v)
 }
 
-func copyLimited(dst multipart.File, src multipart.File, max int64) (int64, error) {
-    // We already limited body; here just stream
-    return dst.ReadFrom(src)
+func copyLimited(dst io.Writer, src io.Reader, max int64) (int64, error) {
+    // We already limited body at the request level; also guard at copy time
+    return io.Copy(dst, io.LimitReader(src, max))
 }
 
 func logRequest(next http.Handler) http.Handler {
@@ -155,3 +207,11 @@ func logRequest(next http.Handler) http.Handler {
     })
 }
 
+// isPathWithin ensures the given path resides within base to prevent traversal
+func isPathWithin(path, base string) bool {
+    absPath, _ := filepath.Abs(path)
+    absBase, _ := filepath.Abs(base)
+    rel, err := filepath.Rel(absBase, absPath)
+    if err != nil { return false }
+    return !strings.HasPrefix(rel, "..") && !strings.Contains(rel, string(filepath.Separator)+"..")
+}

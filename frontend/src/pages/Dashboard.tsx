@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [selected, setSelected] = useState<string>('')
   const [imageUrl, setImageUrl] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
   const [caption, setCaption] = useState('')
   const selectedAccount = useMemo(() => accounts.find(a => a.ig_user_id === selected) || null, [accounts, selected])
 
@@ -83,25 +84,46 @@ export default function DashboardPage() {
                       primary='Click to choose an image'
                       secondary='or drag and drop here'
                       onSelect={async (f) => {
-                        setUploading(true)
+                        setUploading(true); setUploadPct(0)
                         try {
-                          const fd = new FormData()
-                          fd.append('file', f)
-                          const res = await fetch('/api/uploads', { method: 'POST', body: fd })
-                          if (!res.ok) { toast.show(await res.text(), 'error'); return }
-                          const j = await res.json() as any
-                          if (j?.ok && j.url) setImageUrl(j.url)
+                          const url = await uploadWithProgress(f, (pct) => setUploadPct(pct))
+                          if (url) setImageUrl(url)
+                        } catch (e: any) {
+                          toast.show(e?.message || 'Upload failed', 'error')
                         } finally {
                           setUploading(false)
                         }
                       }}
                     />
-                    {uploading && <span className='read-the-docs'>Uploading…</span>}
+                    {uploading ? (
+                      <div style={{minWidth:160}}>
+                        <div className='read-the-docs'>Uploading… {Math.round(uploadPct)}%</div>
+                        <div style={{height:6, background:'var(--border)', borderRadius:4, overflow:'hidden'}}>
+                          <div style={{height:6, width:`${uploadPct}%`, background:'var(--primary)'}} />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <div className='field'>
                   <label>Image URL</label>
-                  <input placeholder='https://...' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                  <div style={{display:'flex', gap:8}}>
+                    <input placeholder='https://...' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                    {imageUrl && (
+                      <button className='btn' onClick={async () => {
+                        try {
+                          const u = new URL(imageUrl, window.location.origin)
+                          if (u.pathname.startsWith('/api/media/')) {
+                            const name = u.pathname.split('/').pop() || ''
+                            if (name) {
+                              await fetch(`/api/uploads/${name}`, { method: 'DELETE' })
+                            }
+                          }
+                        } catch {}
+                        setImageUrl('')
+                      }}>Clear</button>
+                    )}
+                  </div>
                 </div>
                 <div className='field'>
                   <label>Caption</label>
@@ -130,4 +152,29 @@ export default function DashboardPage() {
       </main>
     </div>
   )
+}
+
+async function uploadWithProgress(file: File, onProgress: (pct: number) => void): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/uploads')
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress((e.loaded / e.total) * 100)
+    }
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === XMLHttpRequest.DONE) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const j = JSON.parse(xhr.responseText)
+            resolve((j && j.ok && j.url) ? String(j.url) : null)
+          } catch { resolve(null) }
+        } else {
+          reject(new Error(xhr.responseText || 'upload_failed'))
+        }
+      }
+    }
+    const fd = new FormData()
+    fd.append('file', file)
+    xhr.send(fd)
+  })
 }
