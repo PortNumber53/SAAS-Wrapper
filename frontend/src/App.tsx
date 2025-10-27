@@ -38,7 +38,7 @@ function App() {
   const expectedOrigin = useMemo(() => window.location.origin, [])
 
   useEffect(() => {
-    const onMessage = (ev: MessageEvent) => {
+    const onMessage = async (ev: MessageEvent) => {
       if (ev.origin !== expectedOrigin) return
       const msg = ev.data as unknown as { type?: string; data?: { ok: boolean; provider: string; email?: string; name?: string; picture?: string; error?: string } }
       if (!msg || !msg.type || !msg.type.startsWith('oauth:')) return
@@ -49,9 +49,18 @@ function App() {
         if (data.picture) setUserAvatar(data.picture)
         setAuthError(null)
         // Refresh the app store session after OAuth completes
-        storeLoadSession()
-        // Navigate to Dashboard after successful login
-        try { navigate('/dashboard') } catch {}
+        try {
+          await storeLoadSession()
+          // Ensure guard sees authenticated session before navigating
+          const st = useAppStore.getState() as AppState
+          if (st.session?.ok) navigate('/dashboard')
+        } catch {
+          // Fallback: small delay then re-check
+          setTimeout(() => {
+            const st = useAppStore.getState() as AppState
+            if (st.session?.ok) navigate('/dashboard')
+          }, 100)
+        }
       } else if (msg.type === 'oauth:instagram' && data?.ok) {
         // Integration linked; nothing to update in header
         setAuthError(null)

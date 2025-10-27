@@ -754,8 +754,9 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     (function(){
       try {
         const data = ${JSON.stringify(message)};
-        if (window.opener && typeof window.opener.postMessage === 'function') {
-          window.opener.postMessage({ type: 'oauth:google', data }, ${JSON.stringify(targetOrigin)});
+        if (window.opener) {
+          try { window.opener.postMessage({ type: 'oauth:google', data }, ${JSON.stringify(targetOrigin)}); } catch (e) {}
+          try { window.opener.location.href = ${JSON.stringify(origin + '/dashboard')}; } catch (e) {}
         }
       } catch (e) {}
       window.close();

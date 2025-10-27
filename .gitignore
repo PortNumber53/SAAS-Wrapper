@@ -1,0 +1,12 @@
+# Backend build outputs and temp
+backend/tmp/
+backend/saas-wrapper-backend
+
+# Uploaded files (local dev storage)
+backend/storage/uploads/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.log
