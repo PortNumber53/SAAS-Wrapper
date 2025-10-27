@@ -1,39 +1,43 @@
 import { useEffect, useMemo, useState } from 'react'
 import FileDrop from '../components/FileDrop'
 import { useToast } from '../components/ToastProvider'
+import usePublishStore from '../store/publish'
 import { Link } from 'react-router-dom'
 
 type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }
 
 export default function DashboardPage() {
   const toast = useToast()
+  const draft = usePublishStore(s => s.draft)
+  const setDraft = usePublishStore(s => s.setDraft)
   const [accounts, setAccounts] = useState<IGAccount[]>([])
-  const [selected, setSelected] = useState<string>('')
-  const [imageUrl, setImageUrl] = useState('')
+  const selected = draft.ig_user_id
+  const imageUrl = draft.image_url
+  const [previewUrl, setPreviewUrl] = useState(draft.thumb_url || '')
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
-  const [caption, setCaption] = useState('')
+  const caption = draft.caption
   const selectedAccount = useMemo(() => accounts.find(a => a.ig_user_id === selected) || null, [accounts, selected])
 
   useEffect(() => {
     fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
       if (j?.ok && Array.isArray(j.accounts)) {
         setAccounts(j.accounts)
-        if (j.accounts.length) setSelected(j.accounts[0].ig_user_id)
+        if (j.accounts.length && !draft.ig_user_id) setDraft({ ig_user_id: j.accounts[0].ig_user_id })
       }
     })
   }, [])
 
   const publish = async () => {
-    if (!selected) return alert('Select an Instagram account')
-    if (!imageUrl) return alert('Provide an image URL')
+    if (!selected) return toast.show('Select an Instagram account', 'error')
+    if (!imageUrl) return toast.show('Provide an image URL', 'error')
     const res = await fetch('/api/ig/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ig_user_id: selected, image_url: imageUrl, caption }) })
     if (!res.ok) {
       toast.show(await res.text(), 'error')
     } else {
       toast.show('Publish enqueued', 'success')
-      setImageUrl('')
-      setCaption('')
+      setDraft({ image_url: '', thumb_url: '', caption: '' })
+      setPreviewUrl('')
     }
   }
 
@@ -55,7 +59,7 @@ export default function DashboardPage() {
               const active = acc.ig_user_id === selected
               return (
                 <div key={acc.ig_user_id} className={`sidebar-account${disabled ? ' disabled' : ''}${active ? ' active' : ''}`}>
-                  <button className='sidebar-item' disabled={disabled} onClick={() => !disabled && setSelected(acc.ig_user_id)}>
+                  <button className='sidebar-item' disabled={disabled} onClick={() => !disabled && setDraft({ ig_user_id: acc.ig_user_id })}>
                     @{acc.username || acc.ig_user_id}
                   </button>
                   {disabled && (
@@ -86,8 +90,11 @@ export default function DashboardPage() {
                       onSelect={async (f) => {
                         setUploading(true); setUploadPct(0)
                         try {
-                          const url = await uploadWithProgress(f, (pct) => setUploadPct(pct))
-                          if (url) setImageUrl(url)
+                          const res = await uploadWithProgress(f, (pct) => setUploadPct(pct))
+                          if (res?.url || res?.thumb_url) {
+                            setDraft({ image_url: res?.url || '', thumb_url: res?.thumb_url || '' })
+                            if (res?.thumb_url) setPreviewUrl(res.thumb_url)
+                          }
                         } catch (e: any) {
                           toast.show(e?.message || 'Upload failed', 'error')
                         } finally {
@@ -108,7 +115,7 @@ export default function DashboardPage() {
                 <div className='field'>
                   <label>Image URL</label>
                   <div style={{display:'flex', gap:8}}>
-                    <input placeholder='https://...' value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                    <input placeholder='https://...' value={imageUrl} onChange={e => setDraft({ image_url: e.target.value })} />
                     {imageUrl && (
                       <button className='btn' onClick={async () => {
                         try {
@@ -120,14 +127,14 @@ export default function DashboardPage() {
                             }
                           }
                         } catch {}
-                        setImageUrl('')
+                        setDraft({ image_url: '', thumb_url: '' }); setPreviewUrl('')
                       }}>Clear</button>
                     )}
                   </div>
                 </div>
                 <div className='field'>
                   <label>Caption</label>
-                  <textarea placeholder='Write a caption…' value={caption} onChange={e => setCaption(e.target.value)} rows={6} />
+                  <textarea placeholder='Write a caption…' value={caption} onChange={e => setDraft({ caption: e.target.value })} rows={6} />
                 </div>
                 <div>
                   <button className='btn primary' onClick={publish}>Publish Image</button>
@@ -137,8 +144,8 @@ export default function DashboardPage() {
                 <div className='preview-card'>
                   <div className='preview-header'>@{selectedAccount.username || selectedAccount.ig_user_id}</div>
                   <div className='preview-media'>
-                    {imageUrl ? (
-                      <img className='preview-image' src={imageUrl} alt='Preview' />
+                    {(previewUrl || imageUrl) ? (
+                      <img className='preview-image' src={previewUrl || imageUrl} alt='Preview' />
                     ) : (
                       <div className='preview-placeholder'>No image selected</div>
                     )}
@@ -154,7 +161,8 @@ export default function DashboardPage() {
   )
 }
 
-async function uploadWithProgress(file: File, onProgress: (pct: number) => void): Promise<string | null> {
+type UploadResp = { ok?: boolean; url?: string; thumb_url?: string }
+async function uploadWithProgress(file: File, onProgress: (pct: number) => void): Promise<UploadResp | null> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/uploads')
@@ -165,8 +173,8 @@ async function uploadWithProgress(file: File, onProgress: (pct: number) => void)
       if (xhr.readyState === XMLHttpRequest.DONE) {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
-            const j = JSON.parse(xhr.responseText)
-            resolve((j && j.ok && j.url) ? String(j.url) : null)
+            const j = JSON.parse(xhr.responseText) as UploadResp
+            resolve(j)
           } catch { resolve(null) }
         } else {
           reject(new Error(xhr.responseText || 'upload_failed'))

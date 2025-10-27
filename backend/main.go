@@ -13,6 +13,13 @@ import (
     "time"
 
     "github.com/google/uuid"
+    "image"
+    _ "image/gif"
+    _ "image/jpeg"
+    _ "image/png"
+    "image/jpeg"
+    xdraw "golang.org/x/image/draw"
+    _ "golang.org/x/image/webp"
 )
 
 type jsonResp map[string]any
@@ -89,7 +96,14 @@ func main() {
                 return
             }
             publicURL := "/api/media/" + id + ext
-            writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "key": key, "content_type": sniff})
+            // Create thumbnail alongside original (best-effort)
+            thumbName := id + ".thumb.jpg"
+            thumbKey := filepath.Join("uploads", thumbName)
+            thumbPath := filepath.Join(storageDir, thumbKey)
+            if err := createThumbnail(dstPath, thumbPath, 512); err != nil {
+                log.Printf("thumb generation failed for %s: %v", dstPath, err)
+            }
+            writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "thumb_url": "/api/media/" + thumbName, "key": key, "content_type": sniff})
             return
         default:
             http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -237,4 +251,35 @@ func isPathWithin(path, base string) bool {
     rel, err := filepath.Rel(absBase, absPath)
     if err != nil { return false }
     return !strings.HasPrefix(rel, "..") && !strings.Contains(rel, string(filepath.Separator)+"..")
+}
+
+// createThumbnail decodes src image and writes a JPEG thumbnail at dst with max dimension maxDim
+func createThumbnail(src, dst string, maxDim int) error {
+    f, err := os.Open(src)
+    if err != nil { return err }
+    defer f.Close()
+    img, _, err := image.Decode(f)
+    if err != nil { return err }
+    b := img.Bounds()
+    w := b.Dx()
+    h := b.Dy()
+    if w <= 0 || h <= 0 { return fmt.Errorf("invalid image size") }
+    // Compute target size preserving aspect ratio
+    tw, th := w, h
+    if w >= h {
+        if w > maxDim { th = h * maxDim / w; tw = maxDim }
+    } else {
+        if h > maxDim { tw = w * maxDim / h; th = maxDim }
+    }
+    if tw <= 0 { tw = 1 }
+    if th <= 0 { th = 1 }
+    // Resize using ApproxBiLinear
+    dstImg := image.NewRGBA(image.Rect(0, 0, tw, th))
+    xdraw.ApproxBiLinear.Scale(dstImg, dstImg.Bounds(), img, b, xdraw.Over, nil)
+    if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { return err }
+    out, err := os.Create(dst)
+    if err != nil { return err }
+    defer out.Close()
+    // JPEG quality
+    return jpeg.Encode(out, dstImg, &jpeg.Options{Quality: 80})
 }
