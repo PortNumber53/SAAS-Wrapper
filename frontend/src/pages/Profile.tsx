@@ -1,26 +1,23 @@
 import { useEffect, useState } from 'react'
-
-type Session = { ok: boolean; email?: string; name?: string }
+import useAppStore, { type AppState } from '../store/app'
 
 export default function ProfilePage() {
-  const [session, setSession] = useState<Session | null>(null)
+  const session = useAppStore((s: AppState) => s.session)
+  const sessionLoaded = useAppStore((s: AppState) => s.sessionLoaded)
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [picture, setPicture] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/auth/session').then(r => r.ok ? r.json() : { ok: false }),
-      fetch('/api/me').then(r => r.ok ? r.json() : { ok: false }),
-    ]).then(([sess, me]) => {
-      setSession(sess)
+    if (!sessionLoaded || !session?.ok) { setLoading(false); return }
+    fetch('/api/me').then(r => r.ok ? r.json() : { ok: false }).then((me) => {
       if (me?.ok && me.user) {
         if (me.user.name) setName(String(me.user.name))
         if (me.user.picture) setPicture(String(me.user.picture))
       }
     }).finally(() => setLoading(false))
-  }, [])
+  }, [sessionLoaded, session?.ok])
 
   const onSave = async () => {
     setSaving(true)

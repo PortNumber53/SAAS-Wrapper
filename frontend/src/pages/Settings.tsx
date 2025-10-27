@@ -1,23 +1,20 @@
 import { useEffect, useState } from 'react'
-
-type Session = { ok: boolean; email?: string }
+import useAppStore, { type AppState } from '../store/app'
 
 export default function SettingsPage() {
-  const [session, setSession] = useState<Session | null>(null)
+  const session = useAppStore((s: AppState) => s.session)
+  const sessionLoaded = useAppStore((s: AppState) => s.sessionLoaded)
   const [theme, setTheme] = useState<string>('system')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/auth/session').then(r => r.ok ? r.json() : { ok: false }),
-      fetch('/api/settings').then(r => r.ok ? r.json() : { ok: false }),
-    ]).then(([sess, s]) => {
-      setSession(sess)
+    if (!sessionLoaded || !session?.ok) return
+    fetch('/api/settings').then(r => r.ok ? r.json() : { ok: false }).then((s) => {
       if (s?.ok && s.settings) {
         if (typeof s.settings.theme === 'string') setTheme(s.settings.theme)
       }
-    }).catch(() => setSession({ ok: false }))
-  }, [])
+    }).catch(() => {})
+  }, [sessionLoaded, session?.ok])
 
   const onSave = async () => {
     setSaving(true)
@@ -28,7 +25,7 @@ export default function SettingsPage() {
   return (
     <section className='card'>
       <h1>Settings</h1>
-      {session?.ok ? (
+      {sessionLoaded && session?.ok ? (
         <div>
           <p>Manage your preferences for <strong>{session.email}</strong>.</p>
           <label>
@@ -43,8 +40,10 @@ export default function SettingsPage() {
             <button disabled={saving} onClick={onSave}>{saving ? 'Saving…' : 'Save'}</button>
           </div>
         </div>
-      ) : (
+      ) : sessionLoaded ? (
         <p>You are not logged in. Please use the Login button in the header.</p>
+      ) : (
+        <p>Loading…</p>
       )}
     </section>
   )
