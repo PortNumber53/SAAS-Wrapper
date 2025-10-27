@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import useAppStore from './store/app'
+import useAppStore, { type AppState } from './store/app'
 import { ToastProvider } from './components/ToastProvider'
 
 createRoot(document.getElementById('root')!).render(
@@ -20,11 +20,16 @@ createRoot(document.getElementById('root')!).render(
 function Boot() {
   // Preload common app data to reduce on-page lazy loading
   useEffect(() => {
-    const s = useAppStore.getState()
-    s.loadSession()
-    s.loadPrefs()
-    s.loadAgentSettings()
-    s.loadGeminiKey()
+    (async () => {
+      const api = useAppStore.getState() as AppState
+      await api.loadSession()
+      const st = useAppStore.getState() as AppState
+      if (st.session?.ok) {
+        st.loadPrefs()
+        st.loadAgentSettings()
+        st.loadGeminiKey()
+      }
+    })()
   }, [])
   return null
 }
