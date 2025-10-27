@@ -377,9 +377,10 @@ export default {
       backendUrl.search = url.search;
 
       // Clone request with original method/body, pass along headers
+      // Avoid forbidden headers like 'host' and avoid reusing a consumed body
       const reqHeaders = new Headers(request.headers);
-      // Ensure Host header matches backend origin
-      reqHeaders.set("host", backendUrl.host);
+      reqHeaders.delete('host');
+      reqHeaders.delete('content-length');
 
       // Handle preflight quickly (useful if custom headers are sent)
       if (request.method === "OPTIONS") {
@@ -392,12 +393,13 @@ export default {
       }
 
       try {
-        const backendRequest = new Request(backendUrl.toString(), {
-          method: request.method,
-          headers: reqHeaders,
-          body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
-          redirect: "manual",
-        });
+      const cloned = request.clone();
+      const backendRequest = new Request(backendUrl.toString(), {
+        method: cloned.method,
+        headers: reqHeaders,
+        body: ["GET", "HEAD"].includes(cloned.method) ? undefined : cloned.body,
+        redirect: "manual",
+      });
 
         const backendResponse = await fetch(backendRequest);
         if (backendResponse.status >= 500) {

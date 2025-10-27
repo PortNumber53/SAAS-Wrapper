@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import FileDrop from '../components/FileDrop'
 import { useToast } from '../components/ToastProvider'
-import usePublishStore from '../store/publish'
+import usePublishStore, { initialDraft } from '../store/publish'
 import { Link } from 'react-router-dom'
 
 type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }
 
 export default function DashboardPage() {
   const toast = useToast()
-  const draft = usePublishStore(s => s.draft)
+  const currentId = usePublishStore(s => s.currentId)
+  const draft = usePublishStore(s => (s.drafts[s.currentId] || initialDraft))
+  const setCurrent = usePublishStore(s => s.setCurrent)
   const setDraft = usePublishStore(s => s.setDraft)
   const [accounts, setAccounts] = useState<IGAccount[]>([])
-  const selected = draft.ig_user_id
+  const selected = currentId || draft.ig_user_id
   const imageUrl = draft.image_url
-  const [previewUrl, setPreviewUrl] = useState(draft.thumb_url || '')
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
   const caption = draft.caption
@@ -23,7 +24,7 @@ export default function DashboardPage() {
     fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
       if (j?.ok && Array.isArray(j.accounts)) {
         setAccounts(j.accounts)
-        if (j.accounts.length && !draft.ig_user_id) setDraft({ ig_user_id: j.accounts[0].ig_user_id })
+        if (j.accounts.length && !selected) setCurrent(j.accounts[0].ig_user_id)
       }
     })
   }, [])
@@ -37,7 +38,6 @@ export default function DashboardPage() {
     } else {
       toast.show('Publish enqueued', 'success')
       setDraft({ image_url: '', thumb_url: '', caption: '' })
-      setPreviewUrl('')
     }
   }
 
@@ -59,7 +59,7 @@ export default function DashboardPage() {
               const active = acc.ig_user_id === selected
               return (
                 <div key={acc.ig_user_id} className={`sidebar-account${disabled ? ' disabled' : ''}${active ? ' active' : ''}`}>
-                  <button className='sidebar-item' disabled={disabled} onClick={() => !disabled && setDraft({ ig_user_id: acc.ig_user_id })}>
+                  <button className='sidebar-item' disabled={disabled} onClick={() => !disabled && setCurrent(acc.ig_user_id)}>
                     @{acc.username || acc.ig_user_id}
                   </button>
                   {disabled && (
@@ -93,7 +93,6 @@ export default function DashboardPage() {
                           const res = await uploadWithProgress(f, (pct) => setUploadPct(pct))
                           if (res?.url || res?.thumb_url) {
                             setDraft({ image_url: res?.url || '', thumb_url: res?.thumb_url || '' })
-                            if (res?.thumb_url) setPreviewUrl(res.thumb_url)
                           }
                         } catch (e: any) {
                           toast.show(e?.message || 'Upload failed', 'error')
@@ -115,7 +114,7 @@ export default function DashboardPage() {
                 <div className='field'>
                   <label>Image URL</label>
                   <div style={{display:'flex', gap:8}}>
-                    <input placeholder='https://...' value={imageUrl} onChange={e => setDraft({ image_url: e.target.value })} />
+                    <input placeholder='https://...' value={imageUrl} onChange={e => setDraft({ image_url: e.target.value, thumb_url: '' })} />
                     {imageUrl && (
                       <button className='btn' onClick={async () => {
                         try {
@@ -127,7 +126,7 @@ export default function DashboardPage() {
                             }
                           }
                         } catch {}
-                        setDraft({ image_url: '', thumb_url: '' }); setPreviewUrl('')
+                        setDraft({ image_url: '', thumb_url: '' })
                       }}>Clear</button>
                     )}
                   </div>
@@ -144,8 +143,8 @@ export default function DashboardPage() {
                 <div className='preview-card'>
                   <div className='preview-header'>@{selectedAccount.username || selectedAccount.ig_user_id}</div>
                   <div className='preview-media'>
-                    {(previewUrl || imageUrl) ? (
-                      <img className='preview-image' src={previewUrl || imageUrl} alt='Preview' />
+                    {(draft.thumb_url || imageUrl) ? (
+                      <img className='preview-image' src={draft.thumb_url || imageUrl} alt='Preview' />
                     ) : (
                       <div className='preview-placeholder'>No image selected</div>
                     )}
