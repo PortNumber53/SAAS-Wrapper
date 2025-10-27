@@ -9,12 +9,14 @@ export type PublishDraft = {
 }
 
 type PublishState = {
-  draft: PublishDraft
+  currentId: string
+  drafts: Record<string, PublishDraft>
+  setCurrent: (id: string) => void
   setDraft: (patch: Partial<PublishDraft>) => void
   clearDraft: () => void
 }
 
-const initialDraft: PublishDraft = {
+export const initialDraft: PublishDraft = {
   ig_user_id: '',
   image_url: '',
   thumb_url: '',
@@ -23,19 +25,32 @@ const initialDraft: PublishDraft = {
 
 export const usePublishStore = create<PublishState>()(
   persist(
-    (set, get) => ({
-      draft: initialDraft,
-      setDraft: (patch) => set({ draft: { ...get().draft, ...patch } }),
-      clearDraft: () => set({ draft: initialDraft }),
+    (set) => ({
+      currentId: '',
+      drafts: {},
+      setCurrent: (id) => set((state) => {
+        const existing = state.drafts[id] || { ...initialDraft, ig_user_id: id }
+        return { currentId: id, drafts: { ...state.drafts, [id]: existing } }
+      }),
+      setDraft: (patch) => set((state) => {
+        const id = state.currentId
+        const base = state.drafts[id] || { ...initialDraft, ig_user_id: id }
+        return { drafts: { ...state.drafts, [id]: { ...base, ...patch } } }
+      }),
+      clearDraft: () => set((state) => {
+        const id = state.currentId
+        if (!id) return state
+        const next = { ...state.drafts, [id]: { ...initialDraft, ig_user_id: id } }
+        return { drafts: next }
+      }),
     }),
     {
-      name: 'publish.draft',
+      name: 'publish.drafts',
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ draft: s.draft }),
+      partialize: (s) => ({ currentId: s.currentId, drafts: s.drafts }),
     }
   )
 )
 
 export default usePublishStore
-
