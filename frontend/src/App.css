@@ -267,6 +267,12 @@ main.content.wide { max-width: none; width: 100%; margin: 0; padding-left: 12px;
 
 section { scroll-margin-top: 64px; }
 
+/* Instagram Content page title */
+.igc-title { font-size: 1.6rem; line-height: 1.3; margin: 0; font-weight: 600; }
+
+/* Normalize page h1 size across views */
+h1 { font-size: 1.6rem; line-height: 1.3; margin: 0.25rem 0 0.75rem; font-weight: 600; }
+
 /* Sticky footer */
 .footer {
   position: sticky; bottom: 0; z-index: 5;
