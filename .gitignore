@@ -10,3 +10,13 @@ backend/storage/uploads/
 Thumbs.db
 *.swp
 *.log
+
+# Frontend/node: dependencies and build artifacts
+**/node_modules/
+**/.next/
+**/.wrangler/
+DEAD_frontend/
+
+# Env files
+.env
+.env.*
