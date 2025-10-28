@@ -202,7 +202,8 @@ function App() {
                       </div>
                     )}
                     { igAccounts.length > 0 && igAccounts.map((acc: any) => {
-                      const disabled = !acc.token_valid || acc.linked === false;
+                      // Keep items clickable in prod even if token_valid is unknown/false (e.g., missing FB app vars)
+                      const disabled = acc.linked === false;
                       return (
                         <button
                           key={acc.ig_user_id}
