@@ -144,7 +144,7 @@ main.content.wide { max-width: none; width: 100%; margin: 0; padding-left: 12px;
 .menu-dropdown button,
 .user-dropdown a,
 .user-dropdown button {
-  display: block; padding: 9px 12px; border-radius: 8px; color: #e5e7eb;
+  display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; color: #e5e7eb;
   text-decoration: none;
   border: 1px solid transparent;
   background: transparent; /* override global button gradient */
