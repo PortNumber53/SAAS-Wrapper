@@ -78,16 +78,17 @@ pipeline {
             set -euo pipefail
             BIN_LOCAL="artifacts/saas-wrapper-backend-linux-amd64"
             # Upload binary and unit file to /tmp on target
-            scp -o StrictHostKeyChecking=no "$BIN_LOCAL" jenkins@${TARGET_HOST}:/tmp/saas-wrapper-backend
+            scp "$BIN_LOCAL" grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend
             cat > saas-wrapper-backend.service << 'EOF'
             [Unit]
             Description=SAAS Wrapper Backend
             After=network-online.target
             [Service]
-            User=saas
-            Group=saas
+            User=grimlock
+            Group=grimlock
             WorkingDirectory=${TARGET_DIR}
             EnvironmentFile=/etc/default/saas-wrapper-backend
+            Environment=BACKEND_PORT=18000
             ExecStart=${TARGET_DIR}/saas-wrapper-backend
             Restart=always
             RestartSec=2s
@@ -98,15 +99,15 @@ pipeline {
             [Install]
             WantedBy=multi-user.target
             EOF
-            scp -o StrictHostKeyChecking=no saas-wrapper-backend.service jenkins@${TARGET_HOST}:/tmp/saas-wrapper-backend.service
+            scp saas-wrapper-backend.service grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend.service
 
             # Prepare target and (re)start service
-            ssh -o StrictHostKeyChecking=no jenkins@${TARGET_HOST} "
+            ssh grimlock@${TARGET_HOST} "
               set -euo pipefail
               sudo mkdir -p ${TARGET_DIR} ${TARGET_DIR}/logs
-              sudo chown -R saas:saas ${TARGET_DIR}
+              sudo chown -R grimlock:grimlock ${TARGET_DIR}
               sudo mv /tmp/saas-wrapper-backend ${TARGET_DIR}/saas-wrapper-backend
-              sudo chown saas:saas ${TARGET_DIR}/saas-wrapper-backend
+              sudo chown grimlock:grimlock ${TARGET_DIR}/saas-wrapper-backend
               sudo chmod 0755 ${TARGET_DIR}/saas-wrapper-backend
               sudo mv /tmp/saas-wrapper-backend.service /etc/systemd/system/${SERVICE_NAME}.service
               sudo systemctl daemon-reload

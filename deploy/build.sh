@@ -13,6 +13,7 @@ BACKEND_DIR="${WS}/backend"
 TARGET_HOST="${TARGET_HOST:-web1}"
 TARGET_DIR="${TARGET_DIR:-/var/www/vhosts/social.portnumber53.com}"
 SERVICE_NAME="${SERVICE_NAME:-saas-wrapper-backend}"
+TARGET_USER="${TARGET_USER:-grimlock}"
 
 echo "[build] Building backend for linux/${ARCH}"
 
@@ -30,7 +31,7 @@ if [[ "${GOARCH}" == "amd64" ]]; then
   echo "[deploy] Deploying ${OUT} to ${TARGET_HOST}:${TARGET_DIR}"
 
   # Upload binary
-  scp -o StrictHostKeyChecking=no "${OUT}" "jenkins@${TARGET_HOST}:/tmp/saas-wrapper-backend"
+  scp "${OUT}" "${TARGET_USER}@${TARGET_HOST}:/tmp/saas-wrapper-backend"
 
   # Create and upload systemd unit with expanded variables
   UNIT_FILE="${WS}/saas-wrapper-backend.service"
@@ -40,10 +41,11 @@ Description=SAAS Wrapper Backend
 After=network-online.target
 
 [Service]
-User=saas
-Group=saas
+User=${TARGET_USER}
+Group=${TARGET_USER}
 WorkingDirectory=${TARGET_DIR}
 EnvironmentFile=/etc/default/saas-wrapper-backend
+Environment=BACKEND_PORT=18000
 ExecStart=${TARGET_DIR}/saas-wrapper-backend
 Restart=always
 RestartSec=2s
@@ -56,15 +58,15 @@ StandardError=append:${TARGET_DIR}/logs/error.log
 WantedBy=multi-user.target
 EOF
 
-  scp -o StrictHostKeyChecking=no "${UNIT_FILE}" "jenkins@${TARGET_HOST}:/tmp/${SERVICE_NAME}.service"
+  scp "${UNIT_FILE}" "${TARGET_USER}@${TARGET_HOST}:/tmp/${SERVICE_NAME}.service"
 
   # Install on target and restart service
-  ssh -o StrictHostKeyChecking=no "jenkins@${TARGET_HOST}" "
+  ssh "${TARGET_USER}@${TARGET_HOST}" "
     set -euo pipefail
     sudo mkdir -p '${TARGET_DIR}' '${TARGET_DIR}/logs'
-    sudo chown -R saas:saas '${TARGET_DIR}'
+    sudo chown -R ${TARGET_USER}:${TARGET_USER} '${TARGET_DIR}'
     sudo mv /tmp/saas-wrapper-backend '${TARGET_DIR}/saas-wrapper-backend'
-    sudo chown saas:saas '${TARGET_DIR}/saas-wrapper-backend'
+    sudo chown ${TARGET_USER}:${TARGET_USER} '${TARGET_DIR}/saas-wrapper-backend'
     sudo chmod 0755 '${TARGET_DIR}/saas-wrapper-backend'
     sudo mv /tmp/${SERVICE_NAME}.service /etc/systemd/system/${SERVICE_NAME}.service
     sudo systemctl daemon-reload
@@ -77,4 +79,3 @@ EOF
 else
   echo "[deploy] Skipping deploy for GOARCH=${GOARCH}"
 fi
-
