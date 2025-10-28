@@ -60,6 +60,12 @@ EOF
 
   scp "${UNIT_FILE}" "${TARGET_USER}@${TARGET_HOST}:/tmp/${SERVICE_NAME}.service"
 
+  # Upload environment sample file (do not overwrite current env file)
+  SAMPLE_LOCAL="${WS}/deploy/saas-wrapper-backend.env.sample"
+  if [[ -f "${SAMPLE_LOCAL}" ]]; then
+    scp "${SAMPLE_LOCAL}" "${TARGET_USER}@${TARGET_HOST}:/tmp/saas-wrapper-backend.env.sample"
+  fi
+
   # Install on target and restart service
   ssh "${TARGET_USER}@${TARGET_HOST}" "
     set -euo pipefail
@@ -69,6 +75,17 @@ EOF
     sudo chown ${TARGET_USER}:${TARGET_USER} '${TARGET_DIR}/saas-wrapper-backend'
     sudo chmod 0755 '${TARGET_DIR}/saas-wrapper-backend'
     sudo mv /tmp/${SERVICE_NAME}.service /etc/systemd/system/${SERVICE_NAME}.service
+    # Install env sample; if main env file missing, seed it from sample
+    if [ -f /tmp/saas-wrapper-backend.env.sample ]; then
+      sudo mkdir -p /etc/default
+      sudo mv /tmp/saas-wrapper-backend.env.sample /etc/default/saas-wrapper-backend.env.sample
+      sudo chown root:root /etc/default/saas-wrapper-backend.env.sample
+      sudo chmod 0644 /etc/default/saas-wrapper-backend.env.sample
+      if [ ! -f /etc/default/saas-wrapper-backend ]; then
+        sudo cp /etc/default/saas-wrapper-backend.env.sample /etc/default/saas-wrapper-backend
+        sudo chmod 0640 /etc/default/saas-wrapper-backend
+      fi
+    fi
     sudo systemctl daemon-reload
     sudo systemctl enable ${SERVICE_NAME}
     sudo systemctl restart ${SERVICE_NAME}
