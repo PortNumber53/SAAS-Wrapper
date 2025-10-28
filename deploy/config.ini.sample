@@ -1,0 +1,12 @@
+# Configuration for saas-wrapper-backend systemd service
+
+# Required: Go HTTP server port
+PORT=18000
+
+# Optional: custom storage root (default ./storage under WorkingDirectory)
+# STORAGE_DIR=/var/www/vhosts/social.portnumber53.com/storage
+
+# Optional: protect DELETE /api/uploads/<name>
+# Clients must send header: X-Backend-Secret: $BACKEND_SECRET
+# BACKEND_SECRET=change-me
+

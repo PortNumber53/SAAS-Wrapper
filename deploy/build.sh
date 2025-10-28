@@ -44,7 +44,7 @@ After=network-online.target
 User=${TARGET_USER}
 Group=${TARGET_USER}
 WorkingDirectory=${TARGET_DIR}
-EnvironmentFile=/etc/default/saas-wrapper-backend
+EnvironmentFile=/etc/saas-wrapper-backend/config.ini
 Environment=PORT=18000
 ExecStart=${TARGET_DIR}/saas-wrapper-backend
 Restart=always
@@ -61,9 +61,9 @@ EOF
   scp "${UNIT_FILE}" "${TARGET_USER}@${TARGET_HOST}:/tmp/${SERVICE_NAME}.service"
 
   # Upload environment sample file (do not overwrite current env file)
-  SAMPLE_LOCAL="${WS}/deploy/saas-wrapper-backend.env.sample"
+  SAMPLE_LOCAL="${WS}/deploy/config.ini.sample"
   if [[ -f "${SAMPLE_LOCAL}" ]]; then
-    scp "${SAMPLE_LOCAL}" "${TARGET_USER}@${TARGET_HOST}:/tmp/saas-wrapper-backend.env.sample"
+    scp "${SAMPLE_LOCAL}" "${TARGET_USER}@${TARGET_HOST}:/tmp/config.ini.sample"
   fi
 
   # Install on target and restart service
@@ -75,15 +75,15 @@ EOF
     sudo chown ${TARGET_USER}:${TARGET_USER} '${TARGET_DIR}/saas-wrapper-backend'
     sudo chmod 0755 '${TARGET_DIR}/saas-wrapper-backend'
     sudo mv /tmp/${SERVICE_NAME}.service /etc/systemd/system/${SERVICE_NAME}.service
-    # Install env sample; if main env file missing, seed it from sample
-    if [ -f /tmp/saas-wrapper-backend.env.sample ]; then
-      sudo mkdir -p /etc/default
-      sudo mv /tmp/saas-wrapper-backend.env.sample /etc/default/saas-wrapper-backend.env.sample
-      sudo chown root:root /etc/default/saas-wrapper-backend.env.sample
-      sudo chmod 0644 /etc/default/saas-wrapper-backend.env.sample
-      if [ ! -f /etc/default/saas-wrapper-backend ]; then
-        sudo cp /etc/default/saas-wrapper-backend.env.sample /etc/default/saas-wrapper-backend
-        sudo chmod 0640 /etc/default/saas-wrapper-backend
+    # Install env sample; if main config missing, seed it from sample
+    if [ -f /tmp/config.ini.sample ]; then
+      sudo mkdir -p /etc/saas-wrapper-backend
+      sudo mv /tmp/config.ini.sample /etc/saas-wrapper-backend/config.ini.sample
+      sudo chown root:root /etc/saas-wrapper-backend/config.ini.sample
+      sudo chmod 0644 /etc/saas-wrapper-backend/config.ini.sample
+      if [ ! -f /etc/saas-wrapper-backend/config.ini ]; then
+        sudo cp /etc/saas-wrapper-backend/config.ini.sample /etc/saas-wrapper-backend/config.ini
+        sudo chmod 0640 /etc/saas-wrapper-backend/config.ini
       fi
     fi
     sudo systemctl daemon-reload

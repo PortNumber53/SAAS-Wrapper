@@ -87,7 +87,7 @@ pipeline {
             User=grimlock
             Group=grimlock
             WorkingDirectory=${TARGET_DIR}
-            EnvironmentFile=/etc/default/saas-wrapper-backend
+            EnvironmentFile=/etc/saas-wrapper-backend/config.ini
             Environment=PORT=18000
             ExecStart=${TARGET_DIR}/saas-wrapper-backend
             Restart=always
