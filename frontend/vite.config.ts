@@ -20,16 +20,6 @@ export default defineConfig(({ command, mode }) => {
           changeOrigin: true,
           // Do not rewrite the path; the Worker expects '/api/*'
           xfwd: true,
-          configure: (proxy) => {
-            proxy.on('proxyReq', (proxyReq, req) => {
-              try {
-                const host = (req.headers['host'] as string) || 'localhost:5173'
-                const proto = ((req.connection as any)?.encrypted ? 'https' : 'http')
-                proxyReq.setHeader('x-forwarded-host', host)
-                proxyReq.setHeader('x-forwarded-proto', proto)
-              } catch {}
-            })
-          },
         },
       },
     },
