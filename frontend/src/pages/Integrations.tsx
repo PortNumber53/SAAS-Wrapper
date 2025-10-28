@@ -69,7 +69,9 @@ export default function IntegrationsPage() {
     const y = window.top?.outerHeight ? Math.max(0, ((window.top!.outerHeight - h) / 2) + (window.top!.screenY || 0)) : 0
     const x = window.top?.outerWidth ? Math.max(0, ((window.top!.outerWidth - w) / 2) + (window.top!.screenX || 0)) : 0
     if (provider === 'google') {
-      window.open('/api/auth/google/start', '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
+      const start = new URL('/api/auth/google/start', window.location.origin)
+      start.searchParams.set('origin', window.location.origin)
+      window.open(start.toString(), '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
       return
     }
     if (provider === 'instagram') {

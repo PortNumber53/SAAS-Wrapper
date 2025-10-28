@@ -7,16 +7,31 @@ import react from '@vitejs/plugin-react-swc'
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), cloudflare()],
-  server: {
-    proxy: {
-      // When running plain `vite dev`, proxy API to your Go backend
-      '/api': {
-        target: API_PROXY_TARGET,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+export default defineConfig(({ command, mode }) => {
+  const isBuild = command === 'build' || mode === 'production'
+  return {
+    // In dev, run a plain Vite server (no Cloudflare plugin) and proxy /api
+    // to your running Worker via Wrangler. In build, use the Cloudflare plugin.
+    plugins: [react(), isBuild ? cloudflare() : undefined].filter(Boolean) as any,
+    server: {
+      proxy: {
+        '/api': {
+          target: API_PROXY_TARGET,
+          changeOrigin: true,
+          // Do not rewrite the path; the Worker expects '/api/*'
+          xfwd: true,
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              try {
+                const host = (req.headers['host'] as string) || 'localhost:5173'
+                const proto = ((req.connection as any)?.encrypted ? 'https' : 'http')
+                proxyReq.setHeader('x-forwarded-host', host)
+                proxyReq.setHeader('x-forwarded-proto', proto)
+              } catch {}
+            })
+          },
+        },
       },
     },
-  },
+  }
 })

@@ -3,8 +3,11 @@
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
-	"scripts": {
+  "scripts": {
 		"dev": "vite",
+		"dev:vite": "VITE_API_PROXY_TARGET=http://127.0.0.1:8787 vite",
+    "dev:wrangler": "wrangler dev --config wrangler.jsonc",
+		"dev:full": "concurrently -k -n wrangler,vite -c blue,green \"npm:dev:wrangler\" \"npm:dev:vite\"",
 		"build": "tsc -b && vite build",
 		"lint": "eslint .",
 		"preview": "npm run build && vite preview",
@@ -31,6 +34,7 @@
     "typescript": "~5.8.3",
 		"typescript-eslint": "^8.39.1",
 		"vite": "^7.1.2",
-		"wrangler": "^4.45.0"
+		"wrangler": "^4.45.0",
+		"concurrently": "^9.1.2"
 	}
 }

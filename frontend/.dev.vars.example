@@ -2,6 +2,11 @@ BACKEND_ORIGIN=http://localhost:8080
 
 # Copy this file to `.dev.vars` for local `wrangler dev`.
 
+# Enable auto-reload in development (the Worker injects a tiny polling script)
+DEV_AUTORELOAD=1
+# Force OAuth redirects back to Vite origin in dev
+DEV_ORIGIN=http://localhost:5173
+
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
