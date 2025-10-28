@@ -8,9 +8,6 @@ import PrivacyPage from './pages/Privacy'
 import ProfilePage from './pages/Profile'
 import SettingsPage from './pages/Settings'
 import IntegrationsPage from './pages/Integrations'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import cloudflareLogo from './assets/Cloudflare_Logo.svg'
 import './App.css'
 import AgentChatPage from './pages/AgentChat'
 import AgentSettingsPage from './pages/AgentSettings'
@@ -20,8 +17,7 @@ import BottomBar from './components/BottomBar'
 
 function App() {
   const toast = useToast()
-  const [count, setCount] = useState(0)
-  const [name, setName] = useState('unknown')
+  // Landing page uses toolbar CTAs; remove boilerplate counters
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
@@ -266,45 +262,25 @@ function App() {
       <main className={`content${userEmail ? ' wide' : ''}`}>
         <Routes>
         <Route path='/' element={
-          <>
-            <section>
-              <a href='https://vite.dev' target='_blank' rel='noreferrer'>
-                <img src={viteLogo} className='logo' alt='Vite logo' />
-              </a>
-              <a href='https://react.dev' target='_blank' rel='noreferrer'>
-                <img src={reactLogo} className='logo react' alt='React logo' />
-              </a>
-              <a href='https://workers.cloudflare.com/' target='_blank' rel='noreferrer'>
-                <img src={cloudflareLogo} className='logo cloudflare' alt='Cloudflare logo' />
-              </a>
-            </section>
-            <h1>Vite + React + Cloudflare</h1>
-            <div className='card'>
-              <button onClick={() => setCount((count) => count + 1)} aria-label='increment'>
-                count is {count}
-              </button>
-              <p> Edit <code>src/App.tsx</code> and save to test HMR </p>
+          <section className='card' style={{padding:'2rem', textAlign:'left'}}>
+            <h1>SAAS Wrapper</h1>
+            <p style={{marginTop:'0.5rem', color:'var(--muted)'}}>A customizable SaaS foundation with authentication, content, and integrations. Start fast, then tailor features to your business.</p>
+            <div style={{display:'flex', gap:'8px', marginTop:'1rem', flexWrap:'wrap'}}>
+              {!userEmail ? (
+                <button className='btn primary' onClick={startGoogleLogin}>Get Started</button>
+              ) : (
+                <Link className='btn primary' to='/dashboard'>Go to Dashboard</Link>
+              )}
+              <Link className='btn' to='/features'>Explore Features</Link>
             </div>
-            <div className='card'>
-              <button onClick={startGoogleLogin} aria-label='google login'>
-                {userEmail ? `Logged in as ${userEmail}` : 'Sign in with Google'}
-              </button>
-              {authError && <p style={{ color: 'tomato' }}>Error: {authError}</p>}
+            {authError && <p style={{ marginTop:'0.75rem', color: 'tomato' }}>Error: {authError}</p>}
+            <div style={{display:'grid', gap:'8px', marginTop:'1.25rem'}}>
+              <div className='read-the-docs'>- OAuth sign-in and session handling</div>
+              <div className='read-the-docs'>- Instagram content and publishing</div>
+              <div className='read-the-docs'>- Agent chat with configurable models</div>
+              <div className='read-the-docs'>- Drafts, uploads, and thumbnails</div>
             </div>
-            <div className='card'>
-              <button
-                onClick={() => {
-                  fetch('/api/')
-                    .then((res) => res.json() as Promise<{ name: string }>)
-                    .then((data) => setName(data.name))
-                }}
-                aria-label='get name'
-              >
-                Name from API is: {name}
-              </button>
-              <p> Edit <code>worker/index.ts</code> to change the name </p>
-            </div>
-          </>
+          </section>
         } />
         <Route path='/features' element={
           <section className='card'>
