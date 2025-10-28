@@ -59,7 +59,22 @@ Use the built-in continuous integration in GitLab.
 
 ### Local dev
 
-In `frontend/` copy `.dev.vars.example` to `.dev.vars`, fill values, then run `npx wrangler dev`.
+Recommended: run Vite (HMR) + Wrangler together
+
+- In `frontend/` copy `.dev.vars.example` to `.dev.vars` and set your vars. For Worker auto-reload helpers, set `DEV_AUTORELOAD=1`.
+- Start both dev servers (Workers on 8787, Vite on 5173):
+
+```
+cd frontend
+npm i
+npm run dev:full
+```
+
+- Open `http://localhost:5173` for full hot-module replacement. All `/api/*` calls proxy to Wrangler at `http://127.0.0.1:8787`.
+
+Alternative: Worker-only dev
+
+- `npx wrangler dev` will serve the Worker and inject a small auto-reload that refreshes the page on Worker rebuilds. This is best for testing Worker-only changes; frontend HMR works best via Vite as above.
 
 ### GitLab CI example (production)
 

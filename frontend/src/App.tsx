@@ -119,7 +119,9 @@ function App() {
     const w = 480, h = 640
     const y = window.top?.outerHeight ? Math.max(0, ((window.top!.outerHeight - h) / 2) + (window.top!.screenY || 0)) : 0
     const x = window.top?.outerWidth ? Math.max(0, ((window.top!.outerWidth - w) / 2) + (window.top!.screenX || 0)) : 0
-    const url = new URL('/api/auth/google/start', window.location.origin).toString()
+    const start = new URL('/api/auth/google/start', window.location.origin)
+    start.searchParams.set('origin', window.location.origin)
+    const url = start.toString()
     // Helpful in dev to confirm the exact URL opened
     console.log('OAuth start URL:', url)
     // Note: don't use `noopener` here since we rely on window.opener for postMessage

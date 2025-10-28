@@ -7,6 +7,54 @@ function getPg(env: Env) {
   return postgres(dsn, { ssl: 'require' });
 }
 
+// Unique build identifier for dev auto-reload. Changes on every bundle.
+const BUILD_ID = String(Date.now());
+
+function effectiveOrigin(request: Request, url: URL): string {
+  const xfHost = request.headers.get('x-forwarded-host');
+  const xfProto = request.headers.get('x-forwarded-proto');
+  if (xfHost) {
+    const proto = (xfProto && (xfProto === 'http' || xfProto === 'https')) ? xfProto : (url.protocol.replace(':','') || 'https');
+    return `${proto}://${xfHost}`;
+  }
+  // Fall back to Referer header's origin if present (common when called from SPA)
+  const ref = request.headers.get('referer') || request.headers.get('referrer');
+  if (ref) {
+    try { return new URL(ref).origin; } catch {}
+  }
+  return url.origin;
+}
+
+function isHttps(request: Request, url: URL): boolean {
+  const xfProto = request.headers.get('x-forwarded-proto');
+  if (xfProto) return xfProto === 'https';
+  return url.protocol === 'https:';
+}
+
+function paramOrigin(url: URL): string | null {
+  const p = url.searchParams.get('origin');
+  if (!p) return null;
+  try {
+    const u = new URL(p);
+    if ((u.protocol === 'http:' || u.protocol === 'https:') && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) {
+      return `${u.protocol}//${u.host}`;
+    }
+  } catch {}
+  return null;
+}
+
+function devOriginFromEnv(env: Env): string | null {
+  const val = (env as any)?.DEV_ORIGIN as string | undefined;
+  if (!val) return null;
+  try {
+    const u = new URL(val);
+    if ((u.protocol === 'http:' || u.protocol === 'https:') && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) {
+      return `${u.protocol}//${u.host}`;
+    }
+  } catch {}
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -14,7 +62,7 @@ export default {
 
     // Handle auth routes inside the Worker first
     if (url.pathname === "/api/auth/google/start") {
-      return startGoogleOAuth(env, url);
+      return startGoogleOAuth(request, env, url);
     }
     if (url.pathname === "/api/auth/google/callback") {
       return handleGoogleCallback(request, env, url);
@@ -225,6 +273,34 @@ export default {
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
     }
     // Remove legacy HTTP debug route; we now use direct Postgres
+
+    // Dev-only endpoints for auto-reload
+    if (url.pathname === '/__dev/build') {
+      // Legacy polling endpoint (kept as a fallback)
+      return new Response(BUILD_ID, { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+    }
+    if (url.pathname === '/__dev/events') {
+      const stream = new ReadableStream({
+        start(controller) {
+          const enc = new TextEncoder();
+          // Recommend reconnection time
+          controller.enqueue(enc.encode('retry: 1500\n'));
+          // Send current build id
+          controller.enqueue(enc.encode(`data: ${BUILD_ID}\n\n`));
+          // Keepalive comments so proxies keep the connection open
+          const iv = setInterval(() => {
+            try { controller.enqueue(enc.encode(': keepalive\n\n')); } catch {}
+          }, 25000);
+          // On connection close, stop keepalive
+          (controller as any)._iv = iv;
+        },
+        cancel(reason) {
+          const iv = (this as any)._iv as ReturnType<typeof setInterval> | undefined;
+          if (iv) clearInterval(iv);
+        }
+      });
+      return new Response(stream, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-store' } });
+    }
 
     // SPA fallback early for extensionless document paths (prevents any asset-level redirects)
     if (!url.pathname.startsWith('/api/') && (request.method === 'GET' || request.method === 'HEAD')) {
@@ -523,10 +599,42 @@ async function serveIndexHtml(env: Env, request: Request): Promise<Response> {
       res = await env.ASSETS!.fetch(new Request(target.toString(), { method: 'GET' }));
     }
   }
+  // Read the HTML to inject a tiny dev auto-reload script when running locally.
+  const text = await res.text();
+  const wantAutoReload = (env as any)?.DEV_AUTORELOAD === '1';
+  const injected = wantAutoReload
+    ? text.replace('</body>', `  <script>
+      (function(){
+        try {
+          var cur = null;
+          if ('EventSource' in window) {
+            var es = new EventSource('/__dev/events');
+            es.onmessage = function(ev){
+              var t = ev.data || '';
+              if (cur === null) { cur = t; return; }
+              if (t && t !== cur) { location.reload(); }
+            };
+          } else {
+            // Fallback to lightweight polling if EventSource unavailable
+            async function ping(){
+              try {
+                var r = await fetch('/__dev/build', { cache: 'no-store' });
+                var t = await r.text();
+                if (cur === null) { cur = t; return; }
+                if (t && t !== cur) { location.reload(); }
+              } catch (e) {}
+            }
+            setInterval(ping, 2000);
+            ping();
+          }
+        } catch (e) {}
+      })();
+    </script>\n</body>`) : text;
   const headers = new Headers(res.headers);
   headers.set('content-type', 'text/html; charset=utf-8');
+  headers.set('cache-control', 'no-store');
   headers.delete('location');
-  return new Response(res.body, { status: 200, headers });
+  return new Response(injected, { status: 200, headers });
 }
 
 // --- Helpers: base64url & cookies ---
@@ -535,6 +643,10 @@ function b64url(bytes: Uint8Array): string {
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   const b64 = btoa(bin);
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlToString(s: string): string {
+  return utf8(b64urlDecodeToBytes(s));
 }
 
 function newState(): string {
@@ -585,6 +697,39 @@ async function signHmacSHA256(secret: string, data: string): Promise<Uint8Array>
 
 type SessionPayload = { email: string; name?: string; picture?: string; sub?: string; iat: number; exp: number };
 
+// --- Signed state helpers (avoids strict cookie reliance during OAuth) ---
+async function makeSignedState(secret: string | undefined, context: { origin: string }): Promise<string> {
+  // Payload: nonce|timestamp|origin
+  const nonce = newState();
+  const ts = Date.now();
+  const data = `${nonce}|${ts}|${context.origin}`;
+  if (!secret) return `${b64url(utf8Bytes(data))}.`; // unsigned (dev)
+  const sig = await signHmacSHA256(secret, data);
+  return `${b64url(utf8Bytes(data))}.${b64url(sig)}`;
+}
+
+async function verifySignedState(state: string | null, secret: string | undefined): Promise<boolean> {
+  if (!state) return false;
+  const parts = state.split('.');
+  if (parts.length < 1) return false;
+  const raw = parts[0];
+  const sig = parts[1] || '';
+  let data = '';
+  try { data = b64urlToString(raw); } catch { return false; }
+  const fields = data.split('|');
+  if (fields.length < 3) return false;
+  const ts = Number(fields[1] || '0');
+  if (!Number.isFinite(ts)) return false;
+  // Expire in 10 minutes
+  if (Date.now() - ts > 10 * 60 * 1000) return false;
+  if (!secret) return true; // accept unsigned in dev
+  const expected = await signHmacSHA256(secret, data);
+  const given = sig ? b64urlDecodeToBytes(sig) : new Uint8Array(0);
+  if (given.length !== expected.length) return false;
+  let ok = 0; for (let i = 0; i < given.length; i++) ok |= given[i] ^ expected[i];
+  return ok === 0;
+}
+
 async function createSessionToken(payload: SessionPayload, secret?: string): Promise<string> {
   const header = { alg: secret ? 'HS256' : 'none', typ: 'JWT' };
   const encHeader = b64url(utf8Bytes(JSON.stringify(header)));
@@ -629,15 +774,15 @@ async function getSessionFromCookie(request: Request, env: Env): Promise<Session
 }
 
 // --- Google OAuth 2.0 helpers ---
-async function startGoogleOAuth(env: Env, url: URL): Promise<Response> {
+async function startGoogleOAuth(request: Request, env: Env, url: URL): Promise<Response> {
   const clientId = env.GOOGLE_CLIENT_ID;
   const clientSecret = env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     return new Response('Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET', { status: 500 });
   }
 
-  const state = newState();
-  const origin = url.origin;
+  const origin = paramOrigin(url) || devOriginFromEnv(env) || effectiveOrigin(request, url);
+  const state = await makeSignedState(env.SESSION_SECRET, { origin });
   const redirectUri = `${origin}/api/auth/google/callback`;
   const authorize = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authorize.searchParams.set('client_id', clientId);
@@ -650,12 +795,14 @@ async function startGoogleOAuth(env: Env, url: URL): Promise<Response> {
 
   // Debug mode: surface computed values instead of redirecting
   if (url.searchParams.get('debug') === '1') {
-    const body = { origin, redirect_uri: redirectUri, authorize: authorize.toString(), client_id: clientId };
+    const body = { origin, redirect_uri: redirectUri, authorize: authorize.toString(), client_id: clientId, state };
     return new Response(JSON.stringify(body, null, 2), { headers: { 'content-type': 'application/json' } });
   }
 
   const headers = new Headers({ Location: authorize.toString() });
-  headers.append('Set-Cookie', setCookie('oauth_state', state, { maxAgeSec: 600, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
+  const secure = isHttps(request, url);
+  // Best-effort cookie for legacy validation and CSRF defense-in-depth; optional in dev
+  headers.append('Set-Cookie', setCookie('oauth_state', state, { maxAgeSec: 600, secure, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
   return new Response(null, { status: 302, headers });
 }
 
@@ -670,11 +817,13 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   const state = qs.get('state');
   if (!code) return new Response('Missing code', { status: 400 });
   const cookies = getCookies(request);
-  if (!state || !cookies.oauth_state || cookies.oauth_state !== state) {
+  const signedOk = await verifySignedState(state, env.SESSION_SECRET);
+  const cookieOk = (state && cookies.oauth_state === state);
+  if (!signedOk && !cookieOk) {
     return new Response('Invalid state', { status: 400 });
   }
 
-  const origin = url.origin;
+  const origin = effectiveOrigin(request, url);
   const redirectUri = `${origin}/api/auth/google/callback`;
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -745,9 +894,9 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
 
   // Clear state cookie and return a tiny HTML that posts a message to the opener
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
-  headers.append('Set-Cookie', setCookie('oauth_state', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
-  const isHTTPS = url.protocol === 'https:';
-  headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure: isHTTPS, httpOnly: true, sameSite: 'Lax', path: '/' }));
+  const secure = isHttps(request, url);
+  headers.append('Set-Cookie', setCookie('oauth_state', '', { maxAgeSec: 0, secure, httpOnly: true, sameSite: 'Lax', path: '/api/auth/google' }));
+  headers.append('Set-Cookie', setCookie('session', token, { maxAgeSec: 60 * 60 * 24 * 7, secure, httpOnly: true, sameSite: 'Lax', path: '/' }));
   const targetOrigin = url.origin;
   const message = { ok: true, provider: 'google', email: profile.email, name: profile.name ?? '', picture: profile.picture ?? '' };
   const html = `<!doctype html><html><body><script>
@@ -837,7 +986,8 @@ async function startInstagramOAuth(request: Request, env: Env, url: URL): Promis
   if (!sess) return new Response('Not authenticated', { status: 401 });
 
   const state = newState();
-  const redirectUri = `${url.origin}/api/auth/instagram/callback`;
+  const origin = paramOrigin(url) || devOriginFromEnv(env) || effectiveOrigin(request, url);
+  const redirectUri = `${origin}/api/auth/instagram/callback`;
   const authorize = new URL('https://api.instagram.com/oauth/authorize');
   authorize.searchParams.set('client_id', clientId);
   authorize.searchParams.set('redirect_uri', redirectUri);
@@ -846,7 +996,8 @@ async function startInstagramOAuth(request: Request, env: Env, url: URL): Promis
   authorize.searchParams.set('state', state);
 
   const headers = new Headers({ Location: authorize.toString() });
-  headers.append('Set-Cookie', setCookie('oauth_state_ig', state, { maxAgeSec: 600, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/instagram' }));
+  const secure = isHttps(request, url);
+  headers.append('Set-Cookie', setCookie('oauth_state_ig', state, { maxAgeSec: 600, secure, httpOnly: true, sameSite: 'Lax', path: '/api/auth/instagram' }));
   return new Response(null, { status: 302, headers });
 }
 
@@ -867,7 +1018,7 @@ async function handleInstagramCallback(request: Request, env: Env, url: URL): Pr
     return new Response('Invalid state', { status: 400 });
   }
 
-  const redirectUri = `${url.origin}/api/auth/instagram/callback`;
+  const redirectUri = `${effectiveOrigin(request, url)}/api/auth/instagram/callback`;
   // Exchange code for access token
   const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
     method: 'POST',
@@ -907,7 +1058,8 @@ async function handleInstagramCallback(request: Request, env: Env, url: URL): Pr
 
   // Notify opener and close
   const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
-  headers.append('Set-Cookie', setCookie('oauth_state_ig', '', { maxAgeSec: 0, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/instagram' }));
+  const secure = isHttps(request, url);
+  headers.append('Set-Cookie', setCookie('oauth_state_ig', '', { maxAgeSec: 0, secure, httpOnly: true, sameSite: 'Lax', path: '/api/auth/instagram' }));
   const targetOrigin = url.origin;
   const msg = { ok: true, provider: 'instagram' };
   const html = `<!doctype html><html><body><script>
@@ -932,7 +1084,8 @@ async function startIGGraphOAuth(request: Request, env: Env, url: URL): Promise<
   const sess = await getSessionFromCookie(request, env);
   if (!sess) return new Response('Not authenticated', { status: 401 });
   const state = newState();
-  const redirectUri = `${url.origin}/api/auth/iggraph/callback`;
+  const origin = paramOrigin(url) || devOriginFromEnv(env) || effectiveOrigin(request, url);
+  const redirectUri = `${origin}/api/auth/iggraph/callback`;
   const scopes = [
     'instagram_basic',
     'pages_show_list',
@@ -947,7 +1100,8 @@ async function startIGGraphOAuth(request: Request, env: Env, url: URL): Promise<
   auth.searchParams.set('scope', scopes);
   auth.searchParams.set('state', state);
   const headers = new Headers({ Location: auth.toString() });
-  headers.append('Set-Cookie', setCookie('oauth_state_fb', state, { maxAgeSec: 600, secure: true, httpOnly: true, sameSite: 'Lax', path: '/api/auth/iggraph' }));
+  const secure = isHttps(request, url);
+  headers.append('Set-Cookie', setCookie('oauth_state_fb', state, { maxAgeSec: 600, secure, httpOnly: true, sameSite: 'Lax', path: '/api/auth/iggraph' }));
   return new Response(null, { status: 302, headers });
 }
 
@@ -963,7 +1117,7 @@ async function handleIGGraphCallback(request: Request, env: Env, url: URL): Prom
   if (!code) return new Response('Missing code', { status: 400 });
   const cookies = getCookies(request);
   if (!state || cookies.oauth_state_fb !== state) return new Response('Invalid state', { status: 400 });
-  const redirectUri = `${url.origin}/api/auth/iggraph/callback`;
+  const redirectUri = `${effectiveOrigin(request, url)}/api/auth/iggraph/callback`;
 
   // Exchange code → short-lived user token
   const tRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?` + new URLSearchParams({
