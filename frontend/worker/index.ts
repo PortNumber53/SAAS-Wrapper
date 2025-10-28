@@ -294,7 +294,7 @@ export default {
           // On connection close, stop keepalive
           (controller as any)._iv = iv;
         },
-        cancel(reason) {
+        cancel(_reason) {
           const iv = (this as any)._iv as ReturnType<typeof setInterval> | undefined;
           if (iv) clearInterval(iv);
         }
