@@ -13,9 +13,10 @@
 .pub-row { display: block; margin: 0; padding: 0; }
 .pub-form input, .pub-form textarea { }
 
-/* Caption-specific layout: label on its own line, textarea fills width */
+/* Caption-specific layout: label on its own line */
 .pub-caption label { display: block; margin: 6px 0; }
-.pub-caption textarea { width: 100%; max-width: 100%; }
+/* Caption textarea should use available width without extra spacing */
+.pub-caption textarea { display: block; width: 100%; max-width: 100%; margin: 0; }
 
 .pub-preview { display: block; margin: 0; padding: 0; }
 .pub-media { display:block; border:none; border-radius:0; min-height: 0; background: transparent; }

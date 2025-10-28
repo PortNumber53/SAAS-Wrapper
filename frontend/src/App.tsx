@@ -198,6 +198,8 @@ function App() {
                     <NavLink to='/settings'>Settings</NavLink>
                   </div>
                 </div>
+                {/* Push Social Accounts to the right within the group */}
+                <div className='toolbar-spacer' />
                 <div className='menu'>
                   <button>Social Accounts ▾</button>
                   <div className='menu-dropdown'>
