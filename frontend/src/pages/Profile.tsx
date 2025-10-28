@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import useAppStore, { type AppState } from '../store/app'
+import useUIStore from '../store/ui'
 
 export default function ProfilePage() {
   const session = useAppStore((s: AppState) => s.session)
@@ -8,6 +9,8 @@ export default function ProfilePage() {
   const [name, setName] = useState('')
   const [picture, setPicture] = useState('')
   const [saving, setSaving] = useState(false)
+  const setBottomActions = useUIStore(s => s.setBottomActions)
+  const clearBottom = useUIStore(s => s.clearBottomActions)
 
   useEffect(() => {
     if (!sessionLoaded || !session?.ok) { setLoading(false); return }
@@ -25,6 +28,14 @@ export default function ProfilePage() {
     setSaving(false)
   }
 
+  useEffect(() => {
+    // Wire Save action into bottom toolbar
+    setBottomActions([
+      { id: 'save-profile', label: saving ? 'Saving…' : 'Save', primary: true, disabled: !!saving, onClick: onSave },
+    ])
+    return () => { clearBottom() }
+  }, [name, picture, saving])
+
   return (
     <section className='card'>
       <h1>Profile</h1>
@@ -40,9 +51,7 @@ export default function ProfilePage() {
             <div style={{marginTop: '0.5rem'}}>Picture URL</div>
             <input value={picture} onChange={e => setPicture(e.target.value)} placeholder='https://…' />
           </label>
-          <div style={{marginTop: '0.75rem'}}>
-            <button disabled={saving} onClick={onSave}>{saving ? 'Saving…' : 'Save'}</button>
-          </div>
+          {/* Save moved to fixed bottom toolbar */}
         </div>
       )}
       {!loading && !session?.ok && (

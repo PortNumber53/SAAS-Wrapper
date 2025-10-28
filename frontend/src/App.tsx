@@ -16,6 +16,7 @@ import AgentChatPage from './pages/AgentChat'
 import AgentSettingsPage from './pages/AgentSettings'
 import useAppStore, { type AppState } from './store/app'
 import usePublishStore from './store/publish'
+import BottomBar from './components/BottomBar'
 
 function App() {
   const toast = useToast()
@@ -263,7 +264,7 @@ function App() {
       </header>
 
       <main className={`content${userEmail ? ' wide' : ''}`}>
-      <Routes>
+        <Routes>
         <Route path='/' element={
           <>
             <section>
@@ -341,8 +342,10 @@ function App() {
             <p><Link to='/'>Go back home</Link></p>
           </section>
         } />
-      </Routes>
+        </Routes>
       </main>
+      {/* Global CTA bar */}
+      <BottomBar />
       <footer className='footer'>
         <div style={{display:'flex',justifyContent:'space-between',gap:'1rem',maxWidth:1100,margin:'0 auto'}}>
           <span>© {new Date().getFullYear()} SAAS Wrapper</span>

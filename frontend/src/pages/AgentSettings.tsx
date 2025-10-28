@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../components/ToastProvider'
 import useAppStore, { type AppState } from '../store/app'
+import useUIStore from '../store/ui'
 
 export default function AgentSettingsPage() {
   const toast = useToast()
@@ -20,6 +21,8 @@ export default function AgentSettingsPage() {
   const [defaultModel, setDefaultModel] = useState<string>(agent.default_model)
   const [savingModels, setSavingModels] = useState(false)
   const [newModel, setNewModel] = useState('')
+  const setBottomActions = useUIStore(s => s.setBottomActions)
+  const clearBottom = useUIStore(s => s.clearBottomActions)
 
   useEffect(() => {
     if (!geminiLoaded) loadGeminiKey()
@@ -72,6 +75,18 @@ export default function AgentSettingsPage() {
     } finally { setSavingModels(false) }
   }
 
+  // Wire CTAs to bottom bar for this page
+  useEffect(() => {
+    const actions = [] as Array<{ id: string; label: string; primary?: boolean; disabled?: boolean; onClick?: () => void }>
+    if (!gemini?.configured) {
+      const canSaveKey = !!apiKey.trim() && !savingKey
+      actions.push({ id: 'save-key', label: savingKey ? 'Saving…' : 'Save', primary: false, disabled: !canSaveKey, onClick: saveKey })
+    }
+    actions.push({ id: 'save-models', label: savingModels ? 'Saving…' : 'Save Models', primary: true, disabled: !!savingModels, onClick: saveModels })
+    setBottomActions(actions)
+    return () => { clearBottom() }
+  }, [apiKey, savingKey, savingModels, gemini?.configured, models, defaultModel])
+
   return (
     <section className='card'>
       <h1>AI Agent — Settings</h1>
@@ -87,7 +102,7 @@ export default function AgentSettingsPage() {
           ) : (
             <div style={{marginTop:8, display:'flex', gap:8, alignItems:'center'}}>
               <input type='password' placeholder='Enter Gemini API Key' value={apiKey} onChange={(e) => setApiKey(e.target.value)} style={{flex:1}} />
-              <button className='btn primary' disabled={savingKey || !apiKey.trim()} onClick={saveKey}>{savingKey ? 'Saving…' : 'Save'}</button>
+              {/* Save action moved to fixed bottom toolbar */}
             </div>
           )}
         </div>
@@ -125,9 +140,7 @@ export default function AgentSettingsPage() {
                 setModels(prev => [...prev, v]); if (!defaultModel) setDefaultModel(v); setNewModel('')
               }}>Add</button>
             </div>
-            <div>
-              <button className='btn primary' disabled={savingModels} onClick={saveModels}>{savingModels ? 'Saving…' : 'Save Models'}</button>
-            </div>
+            {/* Save Models moved to fixed bottom toolbar */}
           </div>
         </div>
       </div>
