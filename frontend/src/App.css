@@ -17,6 +17,9 @@
   --toolbar-bg: #f3f6fc;              /* very light blue/gray */
   --toolbar-border: rgba(37,99,235,0.25);
   --toolbar-hover-bg: rgba(37,99,235,0.10);
+  /* Layout metrics */
+  --cta-h: 48px;
+  --footer-h: 48px;
 }
 
 /* Reset layout from Vite template and apply light theme */
@@ -284,9 +287,28 @@ h1 { font-size: 1.6rem; line-height: 1.3; margin: 0.25rem 0 0.75rem; font-weight
   position: sticky; bottom: 0; z-index: 5;
   background: lightgray; /* solid light gray */
   border-top: 1px solid var(--border);
-  padding: 0.75rem 1rem;
+  height: var(--footer-h);
+  padding: 0 1rem;
+  display: flex; align-items: center;
   color: var(--muted);
 }
+
+/* Fixed bottom CTA bar */
+.ctabar {
+  position: fixed;
+  bottom: var(--footer-h); left: 0; right: 0;
+  z-index: 30;
+  background: rgba(17,24,39,0.98); /* near-black to match dark toolbar */
+  border-top: 1px solid rgba(253, 224, 71, 0.35);
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.2);
+}
+.ctabar-inner { max-width: 1100px; margin: 0 auto; min-height: var(--cta-h); padding: 8px 12px; display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.ctabar .btn { color: #e5e7eb; background: #111827; border-color: rgba(253, 224, 71, 0.35); }
+.ctabar .btn:hover { background: #1f2937; border-color: rgba(253, 224, 71, 0.75); }
+.ctabar .btn.primary { color: #fff; }
+
+/* Reserve space so the CTA bar doesn't cover content */
+main.content, main.content.wide { padding-bottom: calc(var(--cta-h) + var(--footer-h) + 12px); }
 
 /* Dashboard layout */
 .dashboard { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 56px); }

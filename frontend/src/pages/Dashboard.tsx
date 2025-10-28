@@ -3,6 +3,7 @@ import FileDrop from '../components/FileDrop'
 import { useToast } from '../components/ToastProvider'
 import usePublishStore, { initialDraft } from '../store/publish'
 import useAppStore, { type AppState } from '../store/app'
+import useUIStore from '../store/ui'
 import './Dashboard.css'
 
 // IGAccount type is defined in store; local usage is via store state
@@ -21,6 +22,8 @@ export default function DashboardPage() {
   const [uploadPct, setUploadPct] = useState(0)
   const caption = draft.caption
   const selectedAccount = useMemo(() => igAccounts.find((a: any) => a.ig_user_id === selected) || null, [igAccounts, selected])
+  const setBottomActions = useUIStore(s => s.setBottomActions)
+  const clearBottom = useUIStore(s => s.clearBottomActions)
 
   // Fallback: if nothing selected yet, pick the first account
   useEffect(() => {
@@ -68,6 +71,15 @@ export default function DashboardPage() {
       setDraft({ image_url: '', thumb_url: '', caption: '' })
     }
   }
+
+  // Wire Publish CTA into the global bottom bar
+  useEffect(() => {
+    const disabled = !selected || !imageUrl || uploading
+    setBottomActions([
+      { id: 'publish', label: uploading ? `Uploading… ${Math.round(uploadPct)}%` : 'Publish Image', primary: true, disabled, onClick: publish },
+    ])
+    return () => { clearBottom() }
+  }, [selected, imageUrl, caption, uploading, uploadPct])
 
   return (
     <div className='pub-page'>
@@ -129,9 +141,7 @@ export default function DashboardPage() {
                     <label>Caption</label>
                     <textarea placeholder='Write a caption…' value={caption} onChange={e => setDraft({ caption: e.target.value })} rows={6} />
                   </div>
-                  <div>
-                    <button className='btn primary' onClick={publish}>Publish Image</button>
-                  </div>
+                  {/* CTA moved to fixed bottom toolbar */}
                 </div>
               </section>
               <section className='pub-card'>
