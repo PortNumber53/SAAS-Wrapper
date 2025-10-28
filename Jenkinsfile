@@ -16,7 +16,7 @@ pipeline {
     TARGET_HOST    = 'web1'
     TARGET_DIR     = '/var/www/vhosts/social.portnumber53.com'
     SERVICE_NAME   = 'saas-wrapper-backend'
-    SSH_CREDENTIALS = 'web1_ssh'  // Jenkins credential ID (Username with private key)
+    SSH_CREDENTIALS = 'brain-jenkins-private-key'  // Jenkins credential ID (Username with private key)
   }
 
   stages {
@@ -125,4 +125,3 @@ pipeline {
     always  { sh 'ls -lah artifacts || true' }
   }
 }
-
