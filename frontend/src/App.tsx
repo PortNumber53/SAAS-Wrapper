@@ -37,6 +37,7 @@ function App() {
   const igAccountsLoaded = useAppStore((s: AppState) => s.igAccountsLoaded)
   const loadIGAccounts = useAppStore((s: AppState) => s.loadIGAccounts)
   const setPublishCurrent = usePublishStore(s => s.setCurrent)
+  const currentPublishId = usePublishStore(s => s.currentId)
 
   // Memoize same-origin target for message filtering
   const expectedOrigin = useMemo(() => window.location.origin, [])
@@ -159,7 +160,6 @@ function App() {
                 <div className='menu'>
                   <button>Content ▾</button>
                   <div className='menu-dropdown'>
-                    <NavLink to='/account/integrations'>Integrations</NavLink>
                     <NavLink to='/content/instagram'>View IG Content</NavLink>
                     <button onClick={async (e) => {
                       const btn = e.currentTarget as HTMLButtonElement;
@@ -190,16 +190,9 @@ function App() {
                   <button>Agents ▾</button>
                   <div className='menu-dropdown'>
                     <NavLink to='/agents/chat'>Chat Agent</NavLink>
-                    <NavLink to='/agents/settings'>Agent Settings</NavLink>
                   </div>
                 </div>
-                <div className='menu'>
-                  <button>Settings ▾</button>
-                  <div className='menu-dropdown'>
-                    <NavLink to='/profile'>Profile</NavLink>
-                    <NavLink to='/settings'>Settings</NavLink>
-                  </div>
-                </div>
+                {/* Removed top-level Settings menu (moved items under User Account) */}
                 {/* Push Social Accounts to the right within the group */}
                 <div className='toolbar-spacer' />
                 <div className='menu'>
@@ -214,7 +207,15 @@ function App() {
                     { igAccounts.length > 0 && igAccounts.map((acc: any) => {
                       const disabled = !acc.token_valid || acc.linked === false;
                       return (
-                        <button key={acc.ig_user_id} disabled={disabled} onClick={() => { setPublishCurrent(acc.ig_user_id); navigate('/dashboard') }}>
+                        <button
+                          key={acc.ig_user_id}
+                          disabled={disabled}
+                          className={acc.ig_user_id === currentPublishId ? 'active' : undefined}
+                          onClick={() => {
+                            setPublishCurrent(acc.ig_user_id);
+                            navigate('/dashboard')
+                          }}
+                        >
                           @{acc.username || acc.ig_user_id}
                         </button>
                       )
@@ -242,9 +243,9 @@ function App() {
                 </button>
                 {menuOpen && (
                   <div className='user-dropdown' role='menu'>
-                    <NavLink to='/dashboard' role='menuitem' onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
                     <NavLink to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</NavLink>
                     <NavLink to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</NavLink>
+                    <NavLink to='/agents/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Agent Settings</NavLink>
                     <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
                     <button role='menuitem' onClick={() => {
                       fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
