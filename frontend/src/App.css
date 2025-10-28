@@ -90,14 +90,20 @@ main.content.wide { max-width: none; width: 100%; margin: 0; padding-left: 12px;
 .toolbar > .account { margin-left: auto; }
 .toolbar-spacer { flex: 1; }
 .toolbar-group { display: flex; align-items: center; gap: 2px; border: 1px solid var(--toolbar-border); border-radius: 10px; background: var(--toolbar-bg); padding: 3px; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; }
-.toolbar-link { all: unset; cursor: pointer; padding: 6px 10px; border-radius: 8px; color: #e5e7eb; }
+.toolbar-link { all: unset; cursor: pointer; padding: 6px 10px; border-radius: 8px; color: #e5e7eb; text-decoration: none; }
 .toolbar-link { white-space: nowrap; }
+.toolbar-link:hover, .toolbar-link:focus { text-decoration: none; }
+/* Add subtle yellow borders to first-level toolbar items */
+.topbar .toolbar-link { border: 1px solid transparent; }
+.topbar .toolbar-link:hover, .topbar .toolbar-link:focus-visible { border-color: rgba(253, 224, 71, 0.75); }
 .toolbar-link:hover { background: var(--toolbar-hover-bg); }
 .toolbar-link.active { color: #fde047; background: rgba(253,224,71,0.12); }
 .toolbar-link.brand { font-weight: 600; }
 /* Make dropdown triggers look contiguous within group */
 .toolbar .menu { min-width: 0; }
 .toolbar .menu > button { all: unset; cursor: pointer; padding: 6px 10px; border-radius: 8px; color: #e5e7eb; background: transparent; border: none; box-shadow: none; white-space: nowrap; }
+.topbar .menu > button { border: 1px solid transparent; }
+.topbar .menu > button:hover, .topbar .menu > button:focus-visible { border-color: rgba(253, 224, 71, 0.75); }
 .toolbar .menu > button:hover, .toolbar .menu > button:focus-visible { background: var(--toolbar-hover-bg); }
 .menu { position: relative; }
 .menu > button {
