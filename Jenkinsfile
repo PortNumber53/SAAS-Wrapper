@@ -88,7 +88,7 @@ pipeline {
             Group=grimlock
             WorkingDirectory=${TARGET_DIR}
             EnvironmentFile=/etc/default/saas-wrapper-backend
-            Environment=BACKEND_PORT=18000
+            Environment=PORT=18000
             ExecStart=${TARGET_DIR}/saas-wrapper-backend
             Restart=always
             RestartSec=2s
