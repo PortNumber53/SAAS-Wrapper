@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useToast } from '../components/ToastProvider'
 
 type Integration = { provider: string }
@@ -146,9 +145,7 @@ export default function IntegrationsPage() {
           {/* Publish form intentionally omitted on Integrations page */}
         </div>
       )}
-      <p style={{marginTop:16}}>
-        <Link to='/profile'>Back to Profile</Link>
-      </p>
+      {/* Navigation handled by top toolbar */}
     </section>
   )
 }

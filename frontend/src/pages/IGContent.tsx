@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '../components/ToastProvider'
+import usePublishStore from '../store/publish'
+import useAppStore, { type AppState } from '../store/app'
 
 type Media = {
   media_id: string
@@ -12,14 +14,13 @@ type Media = {
   timestamp?: string
 }
 
-type IGAccount = { ig_user_id: string; username: string; page_name: string }
-
 export default function IGContentPage() {
   const toast = useToast()
   const [items, setItems] = useState<Media[]>([])
   const [loading, setLoading] = useState(true)
-  const [accounts, setAccounts] = useState<IGAccount[]>([])
-  const [filter, setFilter] = useState<string>('')
+  // Use the globally selected IG account from the toolbar
+  const selectedId = usePublishStore(s => s.currentId)
+  const igAccounts = useAppStore((s: AppState) => s.igAccounts)
 
   const load = async (ig?: string) => {
     setLoading(true)
@@ -40,30 +41,21 @@ export default function IGContentPage() {
   }
 
   useEffect(() => {
-    load()
-    fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
-      if (j?.ok && j.accounts) setAccounts(j.accounts)
-    })
-  }, [])
+    load(selectedId || undefined)
+  }, [selectedId])
 
   const title = useMemo(() => {
-    if (!filter) return 'Instagram Content'
-    const acc = accounts.find(a => a.ig_user_id === filter)
-    return acc ? `Instagram Content — @${acc.username}` : 'Instagram Content'
-  }, [filter, accounts])
+    if (!selectedId) return 'Instagram Content'
+    const acc = igAccounts.find((a: any) => a.ig_user_id === selectedId)
+    return acc ? `Instagram Content — @${acc.username || selectedId}` : 'Instagram Content'
+  }, [selectedId, igAccounts])
 
   return (
     <section className='card'>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
-        <h1 style={{margin:0}}>{title}</h1>
+        <h1 className='igc-title'>{title}</h1>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <select value={filter} onChange={(e) => { setFilter(e.target.value); load(e.target.value) }}>
-            <option value=''>All accounts</option>
-            {accounts.map(a => (
-              <option key={a.ig_user_id} value={a.ig_user_id}>@{a.username || a.ig_user_id} — {a.page_name}</option>
-            ))}
-          </select>
-          <button className='btn' onClick={() => load(filter)} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+          <button className='btn' onClick={() => load(selectedId || undefined)} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
           <button className='btn' onClick={async (e) => {
             const b = e.currentTarget as HTMLButtonElement
             const prev = b.textContent
@@ -75,7 +67,7 @@ export default function IGContentPage() {
               const j = await res.json() as any
               const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b)||0), 0) : 0
               toast.show(`Fetched ${total} items`, 'success')
-              await load(filter)
+              await load(selectedId || undefined)
             } catch (e: any) {
               toast.show(`Sync failed: ${e?.message || 'unknown error'}`, 'error')
             } finally {
