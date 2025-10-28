@@ -1,21 +1,23 @@
-.pub-page { padding: 16px; }
-.pub-grid { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pub-page { padding: 0; }
+.pub-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; align-items: start; }
+.pub-grid > * { min-width: 0; }
 @media (max-width: 960px) { .pub-grid { grid-template-columns: 1fr; } }
 
-.pub-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-.pub-title { margin: 0 0 8px 0; font-weight: 600; }
+.pub-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0; }
+.pub-title { margin: 0; font-weight: 600; }
 
-.pub-side .pub-accounts { display: grid; gap: 8px; }
-.pub-side .pub-accounts button { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; text-align: left; }
-.pub-side .pub-accounts button[disabled] { opacity: 0.6; cursor: not-allowed; }
-.pub-side .pub-accounts button.active { border-color: var(--primary); background: rgba(37,99,235,0.08); }
+.pub-side .pub-accounts { display: block; }
+.pub-side .pub-accounts button { }
 
-.pub-form { display: grid; gap: 12px; }
-.pub-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.pub-form input, .pub-form textarea { width: 100%; }
+.pub-form { display: block; margin: 0; padding: 0; }
+.pub-row { display: block; margin: 0; padding: 0; }
+.pub-form input, .pub-form textarea { }
 
-.pub-preview { display: grid; gap: 8px; }
-.pub-media { display:flex; align-items:center; justify-content:center; border:1px dashed var(--border); border-radius:8px; min-height: 240px; background:#f9fafb; }
-.pub-media img { display:block; max-width:100%; height:auto; border-radius:8px; }
+/* Caption-specific layout: label on its own line, textarea fills width */
+.pub-caption label { display: block; margin: 6px 0; }
+.pub-caption textarea { width: 100%; max-width: 100%; }
+
+.pub-preview { display: block; margin: 0; padding: 0; }
+.pub-media { display:block; border:none; border-radius:0; min-height: 0; background: transparent; }
+.pub-media img { }
 .pub-muted { color: var(--muted); }
-

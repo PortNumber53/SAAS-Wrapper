@@ -3,9 +3,9 @@ import FileDrop from '../components/FileDrop'
 import { useToast } from '../components/ToastProvider'
 import usePublishStore, { initialDraft } from '../store/publish'
 import useAppStore, { type AppState } from '../store/app'
-import { Link } from 'react-router-dom'
+import './Dashboard.css'
 
-type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null }
+// IGAccount type is defined in store; local usage is via store state
 
 export default function DashboardPage() {
   const toast = useToast()
@@ -13,26 +13,19 @@ export default function DashboardPage() {
   const draft = usePublishStore(s => (s.drafts[s.currentId] || initialDraft))
   const setCurrent = usePublishStore(s => s.setCurrent)
   const setDraft = usePublishStore(s => s.setDraft)
-  const [accounts, setAccounts] = useState<IGAccount[]>([])
+  // Use global accounts from store; toolbar keeps them fresh
+  const igAccounts = useAppStore((s: AppState) => s.igAccounts)
   const selected = currentId || draft.ig_user_id
   const imageUrl = draft.image_url
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
   const caption = draft.caption
-  const selectedAccount = useMemo(() => accounts.find(a => a.ig_user_id === selected) || null, [accounts, selected])
-  const session = useAppStore((s: AppState) => s.session)
-  const sessionLoaded = useAppStore((s: AppState) => s.sessionLoaded)
+  const selectedAccount = useMemo(() => igAccounts.find((a: any) => a.ig_user_id === selected) || null, [igAccounts, selected])
 
+  // Fallback: if nothing selected yet, pick the first account
   useEffect(() => {
-    if (!sessionLoaded) return
-    if (!session?.ok) { setAccounts([]); return }
-    fetch('/api/ig/accounts').then(r => r.ok ? r.json() : { ok: false }).then((j) => {
-      if (j?.ok && Array.isArray(j.accounts)) {
-        setAccounts(j.accounts)
-        if (j.accounts.length && !selected) setCurrent(j.accounts[0].ig_user_id)
-      }
-    })
-  }, [sessionLoaded, session?.ok])
+    if (!selected && igAccounts.length) setCurrent(igAccounts[0].ig_user_id)
+  }, [selected, igAccounts.length])
 
   // Lazy hydrate from server if local draft is empty
   useEffect(() => {
@@ -78,30 +71,9 @@ export default function DashboardPage() {
 
   return (
     <div className='pub-page'>
-      <div className='pub-grid'>
-        <aside className='pub-card pub-side'>
-          <h3 className='pub-title'>Instagram Accounts</h3>
-          {accounts.length === 0 && (
-            <div className='pub-muted'>
-              No IG Business accounts linked.
-              <div><Link to='/account/integrations'>Go to Integrations</Link></div>
-            </div>
-          )}
-          <div className='pub-accounts'>
-            {accounts.map(acc => {
-              const disabled = !(acc as any).token_valid || (acc as any).linked === false
-              const active = acc.ig_user_id === selected
-              return (
-                <button key={acc.ig_user_id} className={active ? 'active' : ''} disabled={disabled} onClick={() => !disabled && setCurrent(acc.ig_user_id)}>
-                  @{acc.username || acc.ig_user_id}
-                </button>
-              )
-            })}
-          </div>
-        </aside>
-        <main>
-          {selectedAccount && (
-            <div className='pub-grid' style={{gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)'}}>
+      <div>
+        {selectedAccount && (
+          <div className='pub-grid'>
               <section className='pub-card'>
                 <h2 className='pub-title'>Publish to @{selectedAccount.username || selectedAccount.ig_user_id}</h2>
                 <div className='pub-form'>
@@ -153,7 +125,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <div>
+                  <div className='pub-caption'>
                     <label>Caption</label>
                     <textarea placeholder='Write a caption…' value={caption} onChange={e => setDraft({ caption: e.target.value })} rows={6} />
                   </div>
@@ -175,9 +147,8 @@ export default function DashboardPage() {
                   {caption && <div style={{whiteSpace:'pre-wrap'}}>{caption}</div>}
                 </div>
               </section>
-            </div>
-          )}
-        </main>
+          </div>
+        )}
       </div>
     </div>
   )
