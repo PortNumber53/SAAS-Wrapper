@@ -33,6 +33,10 @@ function App() {
   const resetDraftSession = usePublishStore(s => s.resetSession)
   const storeLoadSession = useAppStore((s: AppState) => s.loadSession)
   const storeSessionOk = useAppStore((s: AppState) => !!s.session?.ok)
+  const igAccounts = useAppStore((s: AppState) => s.igAccounts)
+  const igAccountsLoaded = useAppStore((s: AppState) => s.igAccountsLoaded)
+  const loadIGAccounts = useAppStore((s: AppState) => s.loadIGAccounts)
+  const setPublishCurrent = usePublishStore(s => s.setCurrent)
 
   // Memoize same-origin target for message filtering
   const expectedOrigin = useMemo(() => window.location.origin, [])
@@ -78,6 +82,13 @@ function App() {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [storeSessionOk])
+
+  // Ensure IG accounts are loaded when session is authenticated
+  useEffect(() => {
+    if (storeSessionOk && !igAccountsLoaded) {
+      loadIGAccounts()
+    }
+  }, [storeSessionOk, igAccountsLoaded])
 
   // Reflect store session into header display
   const storeSession = useAppStore((s: AppState) => s.session)
@@ -130,97 +141,119 @@ function App() {
   return (
     <div className='layout'>
       <header className='topbar'>
-        <div className='brand'><NavLink to='/'>SAAS Wrapper</NavLink></div>
-        {!userEmail ? (
-          <nav className='mainnav' aria-label='Main'>
-            <NavLink to='/' end>Home</NavLink>
-            <NavLink to='/features'>Features</NavLink>
-            <NavLink to='/pricing'>Pricing</NavLink>
-            <NavLink to='/about'>About</NavLink>
-          </nav>
-        ) : (
-          <div className='toolbar' aria-label='User Toolbar'>
-            <div className='menu'>
-              <button>Manage Content ▾</button>
-              <div className='menu-dropdown'>
-                <NavLink to='/dashboard'>Dashboard</NavLink>
-                <NavLink to='/account/integrations'>Integrations</NavLink>
-                <NavLink to='/content/instagram'>View IG Content</NavLink>
-                <button onClick={async (e) => {
-                  const btn = e.currentTarget as HTMLButtonElement
-                  const prev = btn.textContent
-                  btn.disabled = true
-                  btn.textContent = 'Fetching…'
-                  try {
-                    const res = await fetch('/api/ig/sync-content', { method: 'POST' })
-                    if (!res.ok) {
-                      const t = await res.text()
-                      toast.show(`Sync failed: ${t}`, 'error')
-                      return
-                    }
-                    const j = await res.json() as any
-                    const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b)||0), 0) : 0
-                    toast.show(`Fetched ${total} items across linked IG accounts`, 'success')
-                  } catch (e) {
-                    toast.show('Sync failed', 'error')
-                  } finally {
-                    btn.disabled = false
-                    btn.textContent = prev || 'Fetch IG Content'
-                  }
-                }}>Fetch IG Content</button>
-                {/* Additional content management links can be added here */}
-              </div>
-            </div>
-            <div className='menu'>
-              <button>Agents ▾</button>
-              <div className='menu-dropdown'>
-                <NavLink to='/agents/chat'>Chat Agent</NavLink>
-                <NavLink to='/agents/settings'>Agent Settings</NavLink>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className='account'>
-          {!userEmail ? (
-            <>
-              <button className='btn' onClick={startGoogleLogin}>Login</button>
-              <button className='btn primary' onClick={startGoogleLogin}>Sign Up</button>
-            </>
-          ) : (
-            <div className='user-menu' ref={menuRef} onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)}>
-              <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => navigate('/dashboard')}>
-                {userAvatar && !avatarFailed ? (
-                  <img
-                    className='avatar'
-                    src={userAvatar}
-                    alt=''
-                    loading='lazy'
-                    decoding='async'
-                    referrerPolicy='no-referrer'
-                    onError={() => { setAvatarFailed(true); setUserAvatar(null) }}
-                  />
-                ) : (
-                  <div className='avatar fallback' aria-hidden>{initials}</div>
-                )}
-                <span>{displayName}</span>
-              </button>
-              {menuOpen && (
-                <div className='user-dropdown' role='menu'>
-                  <NavLink to='/dashboard' role='menuitem' onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
-                  <NavLink to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</NavLink>
-                  <NavLink to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</NavLink>
-                  <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
-                  <button role='menuitem' onClick={() => {
-                    fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
-                      setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false);
-                      resetOnLogout(); resetDraftSession();
-                      navigate('/')
-                    })
-                  }}>Logout</button>
+        <div className='toolbar' aria-label='Global Toolbar'>
+          <div className='toolbar-group'>
+            <NavLink to='/' className={({isActive}) => `toolbar-link brand${isActive ? ' active' : ''}`}>SAAS Wrapper</NavLink>
+            { !userEmail ? (
+              <>
+                <NavLink to='/' end className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Home</NavLink>
+                <NavLink to='/features' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Features</NavLink>
+                <NavLink to='/pricing' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Pricing</NavLink>
+                <NavLink to='/about' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>About</NavLink>
+              </>
+            ) : (
+              <>
+                <NavLink to='/dashboard' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Dashboard</NavLink>
+                <div className='menu'>
+                  <button>Content ▾</button>
+                  <div className='menu-dropdown'>
+                    <NavLink to='/account/integrations'>Integrations</NavLink>
+                    <NavLink to='/content/instagram'>View IG Content</NavLink>
+                    <button onClick={async (e) => {
+                      const btn = e.currentTarget as HTMLButtonElement;
+                      const prev = btn.textContent;
+                      btn.disabled = true;
+                      btn.textContent = 'Fetching…';
+                      try {
+                        const res = await fetch('/api/ig/sync-content', { method: 'POST' });
+                        if (!res.ok) {
+                          const t = await res.text();
+                          toast.show(`Sync failed: ${t}`, 'error');
+                          return;
+                        }
+                        const j = await res.json() as any;
+                        const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b)||0), 0) : 0;
+                        toast.show(`Fetched ${total} items across linked IG accounts`, 'success');
+                      } catch (e) {
+                        toast.show('Sync failed', 'error');
+                      } finally {
+                        btn.disabled = false;
+                        btn.textContent = prev || 'Fetch IG Content';
+                      }
+                    }}>Fetch IG Content</button>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+                {/* Accounts moved next to user menu */}
+                <div className='menu'>
+                  <button>Agents ▾</button>
+                  <div className='menu-dropdown'>
+                    <NavLink to='/agents/chat'>Chat Agent</NavLink>
+                    <NavLink to='/agents/settings'>Agent Settings</NavLink>
+                  </div>
+                </div>
+                <div className='menu'>
+                  <button>Settings ▾</button>
+                  <div className='menu-dropdown'>
+                    <NavLink to='/profile'>Profile</NavLink>
+                    <NavLink to='/settings'>Settings</NavLink>
+                  </div>
+                </div>
+                <div className='menu'>
+                  <button>Social Accounts ▾</button>
+                  <div className='menu-dropdown'>
+                    { (!igAccountsLoaded && igAccounts.length === 0) && <span className='read-the-docs' style={{display:'block',padding:'8px 12px'}}>Loading…</span> }
+                    { igAccountsLoaded && igAccounts.length === 0 && (
+                      <div className='read-the-docs' style={{padding:'8px 12px'}}>No IG accounts.
+                        <div><NavLink to='/account/integrations'>Manage Integrations</NavLink></div>
+                      </div>
+                    )}
+                    { igAccounts.length > 0 && igAccounts.map((acc: any) => {
+                      const disabled = !acc.token_valid || acc.linked === false;
+                      return (
+                        <button key={acc.ig_user_id} disabled={disabled} onClick={() => { setPublishCurrent(acc.ig_user_id); navigate('/dashboard') }}>
+                          @{acc.username || acc.ig_user_id}
+                        </button>
+                      )
+                    }) }
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <div className='account'>
+            { !userEmail ? (
+              <>
+                <button className='btn' onClick={startGoogleLogin}>Login</button>
+                <button className='btn primary' onClick={startGoogleLogin}>Sign Up</button>
+              </>
+            ) : (
+              <div className='user-menu' ref={menuRef} onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)}>
+                <button className='user-button' aria-haspopup='menu' aria-expanded={menuOpen} onClick={() => navigate('/dashboard')}>
+                  {userAvatar && !avatarFailed ? (
+                    <img className='avatar' src={userAvatar} alt='' loading='lazy' decoding='async' referrerPolicy='no-referrer' onError={() => { setAvatarFailed(true); setUserAvatar(null) }} />
+                  ) : (
+                    <div className='avatar fallback' aria-hidden>{initials}</div>
+                  )}
+                  <span>{displayName}</span>
+                </button>
+                {menuOpen && (
+                  <div className='user-dropdown' role='menu'>
+                    <NavLink to='/dashboard' role='menuitem' onClick={() => setMenuOpen(false)}>Dashboard</NavLink>
+                    <NavLink to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</NavLink>
+                    <NavLink to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</NavLink>
+                    <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
+                    <button role='menuitem' onClick={() => {
+                      fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
+                        setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false);
+                        resetOnLogout(); resetDraftSession();
+                        navigate('/');
+                      })
+                    }}>Logout</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

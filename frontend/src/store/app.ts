@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 type Session = { ok: boolean; email?: string; name?: string; picture?: string }
 type AgentSettings = { models: string[]; default_model: string }
@@ -37,7 +38,9 @@ export type AppState = {
   savePrefs: (updates: { theme?: string }) => Promise<boolean>
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   session: null,
   sessionLoaded: false,
   async loadSession() {
@@ -125,6 +128,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (res.ok) { await get().loadPrefs(); return true }
     return false
   },
-}))
+    }),
+    {
+      name: 'app.cache',
+      storage: createJSONStorage(() => localStorage),
+      // Only persist accounts (instant toolbar), not sensitive session
+      partialize: (s) => ({ igAccounts: s.igAccounts }),
+      onRehydrateStorage: () => {
+        return () => {
+          try {
+            const acc = (useAppStore.getState().igAccounts || []) as unknown as any[]
+            if (acc.length > 0) useAppStore.setState({ igAccountsLoaded: true })
+          } catch {}
+        }
+      },
+    }
+  )
+)
 
 export default useAppStore
