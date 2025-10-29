@@ -56,12 +56,14 @@ Use the built-in continuous integration in GitLab.
 - XATA_BRANCH: e.g. main
 - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (secrets)
 - XATA_API_KEY (secret)
+- STRIPE_SECRET_KEY (secret) — Stripe API key for product/price/Checkout APIs
 
 ### Local dev
 
 Recommended: run Vite (HMR) + Wrangler together
 
 - In `frontend/` copy `.dev.vars.example` to `.dev.vars` and set your vars. For Worker auto-reload helpers, set `DEV_AUTORELOAD=1`.
+- For Stripe in dev, add `STRIPE_SECRET_KEY=sk_test_xxx` to `.dev.vars` (webhooks optional).
 - Start both dev servers (Workers on 8787, Vite on 5173):
 
 ```
@@ -114,6 +116,16 @@ deploy_production:
 Notes:
 - Set `CF_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as CI variables. Wrangler reads them from env.
 - Optionally set `WORKER_PUBLIC_URL` to your worker URL for visibility in GitLab environments.
+
+## Stripe integration
+
+- Worker endpoints:
+  - `GET/POST /api/stripe/products` — list/create Stripe products (stored per user)
+  - `GET/POST /api/stripe/prices` — list/create Stripe prices (one-time or recurring)
+  - `POST /api/stripe/checkout` — create a Stripe Checkout session for a given price
+- Frontend page: `/account/commerce` to create products/prices.
+- Database: tables `stripe_products`, `stripe_prices` in `db/schema.sql` (apply to your DB).
+- Secrets: set `STRIPE_SECRET_KEY` in the Worker (Wrangler secret).
 
 
 # Editing this README

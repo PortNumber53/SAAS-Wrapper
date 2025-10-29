@@ -373,6 +373,86 @@ export default {
       }
       return new Response(null, { status: 405 });
     }
+    // Stripe: create/list products, create/list prices, checkout session
+    if (url.pathname === '/api/stripe/products') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      if (request.method === 'GET') {
+        const rows = await sql`select stripe_product_id, name, description, active, created_at from public.stripe_products where user_id=${user.id} order by created_at desc` as Array<any>;
+        return new Response(JSON.stringify({ ok: true, products: rows }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'POST') {
+        const body = (await request.json().catch(() => ({}))) as any;
+        const name = (body?.name || '').toString().trim();
+        const description = (body?.description || '').toString();
+        if (!name) return new Response(JSON.stringify({ ok: false, error: 'missing_name' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        const s = await stripe(env, '/v1/products', 'POST', new URLSearchParams({ name, description }));
+        const pid = s?.id as string;
+        if (!pid) return new Response(JSON.stringify({ ok: false }), { status: 502, headers: { 'content-type': 'application/json' } });
+        await sql`insert into public.stripe_products (user_id, stripe_product_id, name, description, active) values (${user.id}, ${pid}, ${name}, ${description}, true) on conflict (stripe_product_id) do nothing`;
+        return new Response(JSON.stringify({ ok: true, product_id: pid }), { headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+    if (url.pathname === '/api/stripe/prices') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      if (request.method === 'GET') {
+        const qp = url.searchParams;
+        const pid = qp.get('product');
+        const rows = pid
+          ? await sql`select stripe_price_id, stripe_product_id, currency, unit_amount, type, interval, interval_count, active, created_at from public.stripe_prices where user_id=${user.id} and stripe_product_id=${pid} order by created_at desc` as Array<any>
+          : await sql`select stripe_price_id, stripe_product_id, currency, unit_amount, type, interval, interval_count, active, created_at from public.stripe_prices where user_id=${user.id} order by created_at desc` as Array<any>;
+        return new Response(JSON.stringify({ ok: true, prices: rows }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (request.method === 'POST') {
+        const body = (await request.json().catch(() => ({}))) as any;
+        const stripe_product_id = (body?.product_id || '').toString().trim();
+        const currency = (body?.currency || 'usd').toString().toLowerCase();
+        const unit_amount = Math.max(50, Number(body?.unit_amount || 0)|0); // min 50 cents
+        const kind = (body?.type || 'one_time').toString();
+        if (!stripe_product_id || !currency || !unit_amount) return new Response(JSON.stringify({ ok: false, error: 'missing_fields' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        const params = new URLSearchParams({ currency, unit_amount: String(unit_amount), product: stripe_product_id });
+        if (kind === 'recurring') {
+          const interval = (body?.interval || 'month').toString();
+          const interval_count = Math.max(1, Number(body?.interval_count || 1)|0);
+          params.set('recurring[interval]', interval);
+          params.set('recurring[interval_count]', String(interval_count));
+        }
+        const s = await stripe(env, '/v1/prices', 'POST', params);
+        const priceId = s?.id as string;
+        if (!priceId) return new Response(JSON.stringify({ ok: false }), { status: 502, headers: { 'content-type': 'application/json' } });
+        await sql`insert into public.stripe_prices (user_id, stripe_product_id, stripe_price_id, currency, unit_amount, type, interval, interval_count, active) values (${user.id}, ${stripe_product_id}, ${priceId}, ${currency}, ${unit_amount}, ${kind}, ${kind==='recurring'? (s?.recurring?.interval||null): null}, ${kind==='recurring'? (s?.recurring?.interval_count||null): null}, true) on conflict (stripe_price_id) do nothing`;
+        return new Response(JSON.stringify({ ok: true, price_id: priceId }), { headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(null, { status: 405 });
+    }
+    if (url.pathname === '/api/stripe/checkout' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const body = (await request.json().catch(() => ({}))) as any;
+      const price = (body?.price_id || '').toString().trim();
+      const mode = (body?.mode || 'payment').toString(); // 'payment' or 'subscription'
+      const success_url = (body?.success_url || (new URL('/', new URL(request.url).origin)).toString());
+      const cancel_url = (body?.cancel_url || success_url);
+      if (!price) return new Response(JSON.stringify({ ok: false, error: 'missing_price' }), { status: 400, headers: { 'content-type': 'application/json' } });
+      const params = new URLSearchParams();
+      params.set('mode', mode);
+      params.set('success_url', success_url);
+      params.set('cancel_url', cancel_url);
+      params.set('line_items[0][price]', price);
+      params.set('line_items[0][quantity]', '1');
+      const s = await stripe(env, '/v1/checkout/sessions', 'POST', params);
+      const urlStr = s?.url as string;
+      if (!urlStr) return new Response(JSON.stringify({ ok: false }), { status: 502, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ ok: true, url: urlStr }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/api/files' && request.method === 'POST') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
@@ -674,6 +754,25 @@ function setCookie(name: string, value: string, opts: { maxAgeSec?: number; secu
   parts.push(`SameSite=${opts.sameSite ?? 'Lax'}`);
   parts.push(`Path=${opts.path ?? '/'}`);
   return parts.join('; ');
+}
+
+async function stripe(env: Env, path: string, method: string, body?: URLSearchParams): Promise<any> {
+  const key = (env as any).STRIPE_SECRET_KEY as string | undefined;
+  if (!key) throw new Error('missing_stripe_secret');
+  const init: RequestInit = {
+    method,
+    headers: {
+      'authorization': `Bearer ${key}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    }
+  };
+  if (body) (init as any).body = body;
+  const res = await fetch(`https://api.stripe.com${path}`, init);
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`stripe_${res.status}: ${t}`);
+  }
+  return await res.json();
 }
 
 function b64urlDecodeToBytes(s: string): Uint8Array {

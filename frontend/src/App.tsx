@@ -11,6 +11,7 @@ import IntegrationsPage from './pages/Integrations'
 import './App.css'
 import AgentChatPage from './pages/AgentChat'
 import AgentSettingsPage from './pages/AgentSettings'
+import CommercePage from './pages/Commerce'
 import useAppStore, { type AppState } from './store/app'
 import usePublishStore from './store/publish'
 import BottomBar from './components/BottomBar'
@@ -158,6 +159,7 @@ function App() {
                   <button>Content ▾</button>
                   <div className='menu-dropdown'>
                     <NavLink to='/content/instagram'>View IG Content</NavLink>
+                    <NavLink to='/account/commerce'>Commerce</NavLink>
                     <button onClick={async (e) => {
                       const btn = e.currentTarget as HTMLButtonElement;
                       const prev = btn.textContent;
@@ -311,6 +313,7 @@ function App() {
         <Route path='/content/instagram' element={<RequireAuth><IGContentPage /></RequireAuth>} />
         <Route path='/agents/chat' element={<RequireAuth><AgentChatPage /></RequireAuth>} />
         <Route path='/agents/settings' element={<RequireAuth><AgentSettingsPage /></RequireAuth>} />
+        <Route path='/account/commerce' element={<RequireAuth><CommercePage /></RequireAuth>} />
         <Route path='/account/integrations' element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
         <Route path='*' element={
           <section className='card'>

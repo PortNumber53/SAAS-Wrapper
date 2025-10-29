@@ -70,6 +70,13 @@ pipeline {
       }
     }
 
+    stage('DB Migrate (Stripe)') {
+      when { expression { return env.XATA_DATABASE_URL?.trim() } }
+      steps {
+        sh 'bash deploy/dbtool-migrate.sh'
+      }
+    }
+
     stage('Deploy (amd64 → web1)') {
       steps {
         unstash "bin-amd64"
