@@ -14,6 +14,7 @@ export default function CommercePage() {
   const [ptype, setPtype] = useState<'one_time'|'recurring'>('one_time')
   const [interval, setInterval] = useState<'day'|'week'|'month'|'year'>('month')
   const [intervalCount, setIntervalCount] = useState<number>(1)
+  const [syncing, setSyncing] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -52,12 +53,29 @@ export default function CommercePage() {
     } catch { toast.show('Create failed', 'error') }
   }
 
+  const syncAll = async () => {
+    setSyncing(true)
+    try {
+      const p = await fetch('/api/stripe/sync-products', { method: 'POST' })
+      if (!p.ok) throw new Error(await p.text())
+      const pr = await fetch('/api/stripe/sync-prices', { method: 'POST' })
+      if (!pr.ok) throw new Error(await pr.text())
+      toast.show('Synced products and prices from Stripe', 'success')
+      await load()
+    } catch (e: any) {
+      toast.show(`Sync failed: ${e?.message || 'unknown error'}`, 'error')
+    } finally { setSyncing(false) }
+  }
+
   return (
     <section className='card'>
       <h1>Commerce</h1>
       <p className='read-the-docs'>Create Stripe products and prices (one-time or subscriptions). Use Checkout to sell.</p>
       {loading ? <p>Loading…</p> : (
         <div style={{display:'grid', gap:12}}>
+          <div style={{display:'flex', justifyContent:'flex-end'}}>
+            <button className='btn' disabled={syncing} onClick={syncAll}>{syncing ? 'Syncing…' : 'Sync from Stripe'}</button>
+          </div>
           <div style={{border:'1px solid var(--border)', borderRadius:8, padding:12, background:'var(--surface)'}}>
             <strong>Create Product</strong>
             <div style={{display:'flex', gap:8, marginTop:8, alignItems:'center', flexWrap:'wrap'}}>
@@ -117,4 +135,3 @@ export default function CommercePage() {
     </section>
   )
 }
-

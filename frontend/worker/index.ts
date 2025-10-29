@@ -433,6 +433,46 @@ export default {
       }
       return new Response(null, { status: 405 });
     }
+    if (url.pathname === '/api/stripe/sync-products' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const fetched = await stripeListAll(env, '/v1/products', new URLSearchParams({ limit: '100' }));
+      let upserts = 0;
+      for (const p of (fetched?.data || [])) {
+        const pid = p?.id as string; if (!pid) continue;
+        const name = (p?.name || '').toString();
+        const description = (p?.description || '').toString();
+        const active = !!p?.active;
+        await sql`insert into public.stripe_products (user_id, stripe_product_id, name, description, active) values (${user.id}, ${pid}, ${name}, ${description}, ${active}) on conflict (stripe_product_id) do update set name=excluded.name, description=excluded.description, active=excluded.active`;
+        upserts++;
+      }
+      return new Response(JSON.stringify({ ok: true, upserts }), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname === '/api/stripe/sync-prices' && request.method === 'POST') {
+      const sess = await getSessionFromCookie(request, env);
+      if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+      const user = await findUserByEmail(env, sess.email).catch(() => null as any)
+      if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+      const sql = getPg(env);
+      const fetched = await stripeListAll(env, '/v1/prices', new URLSearchParams({ limit: '100' }));
+      let upserts = 0;
+      for (const pr of (fetched?.data || [])) {
+        const priceId = pr?.id as string; if (!priceId) continue;
+        const product = (pr?.product || '').toString();
+        const currency = (pr?.currency || '').toString();
+        const unit_amount = Number(pr?.unit_amount || 0) | 0;
+        const type = (pr?.type || (pr?.recurring ? 'recurring' : 'one_time')).toString();
+        const interval = pr?.recurring?.interval ? String(pr?.recurring?.interval) : null;
+        const interval_count = pr?.recurring?.interval_count ? Number(pr?.recurring?.interval_count) : null;
+        const active = !!pr?.active;
+        await sql`insert into public.stripe_prices (user_id, stripe_product_id, stripe_price_id, currency, unit_amount, type, interval, interval_count, active) values (${user.id}, ${product}, ${priceId}, ${currency}, ${unit_amount}, ${type}, ${interval}, ${interval_count}, ${active}) on conflict (stripe_price_id) do update set currency=excluded.currency, unit_amount=excluded.unit_amount, type=excluded.type, interval=excluded.interval, interval_count=excluded.interval_count, active=excluded.active`;
+        upserts++;
+      }
+      return new Response(JSON.stringify({ ok: true, upserts }), { headers: { 'content-type': 'application/json' } });
+    }
     if (url.pathname === '/api/stripe/checkout' && request.method === 'POST') {
       const sess = await getSessionFromCookie(request, env);
       if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
@@ -773,6 +813,23 @@ async function stripe(env: Env, path: string, method: string, body?: URLSearchPa
     throw new Error(`stripe_${res.status}: ${t}`);
   }
   return await res.json();
+}
+
+async function stripeListAll(env: Env, path: string, params: URLSearchParams): Promise<{ data: any[] }> {
+  const out: any[] = [];
+  let starting_after: string | undefined;
+  for (let i = 0; i < 20; i++) {
+    const p = new URLSearchParams(params);
+    if (starting_after) p.set('starting_after', starting_after);
+    const page = await stripe(env, path + '?' + p.toString(), 'GET');
+    const data = Array.isArray(page?.data) ? page.data : [];
+    out.push(...data);
+    if (page?.has_more && data.length) {
+      starting_after = String(data[data.length - 1].id || '');
+      if (!starting_after) break;
+    } else break;
+  }
+  return { data: out };
 }
 
 function b64urlDecodeToBytes(s: string): Uint8Array {
