@@ -20,3 +20,4 @@
 - Jenkins: rename stage to "DB Migrate (All)", add `dbtool --version` diagnostics, and invoke `deploy/dbtool-migrate.sh` to apply pending migrations when `XATA_DATABASE_URL` is set.
 - Make `db/migrate_all.sh` database name parameter optional; when omitted, dbtool uses its own configuration.
 - Fix `db/migrate_all.sh` to execute SQL statements individually (split by semicolons) instead of squashing files into single-line queries, preventing Xata type catalog conflicts.
+- Fix `db/migrate_all.sh` to properly initialize sql_buffer as local variable and show SQL execution errors (was silently failing and recording migrations as applied without actually executing them).
