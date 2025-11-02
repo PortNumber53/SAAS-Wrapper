@@ -70,9 +70,13 @@ pipeline {
       }
     }
 
-    stage('DB Migrate (Stripe)') {
+    stage('DB Migrate (All)') {
       when { expression { return env.XATA_DATABASE_URL?.trim() } }
       steps {
+        sh label: 'dbtool diagnostics', script: '''
+          set -euo pipefail
+          echo "dbtool version: $(dbtool --version || echo not-found)"
+        '''
         sh 'bash deploy/dbtool-migrate.sh'
       }
     }

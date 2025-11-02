@@ -17,3 +17,4 @@
   - `db/migrations/20251102_0009_network_contents.sql`
 - Remove obsolete `db/migrate_stripe_with_dbtool.sh`.
 - Remove redundant `db/migrations/20251102_0006_users.sql`.
+ - Jenkins: rename stage to "DB Migrate (All)", add `dbtool --version` diagnostics, and invoke `deploy/dbtool-migrate.sh` to apply pending migrations when `XATA_DATABASE_URL` is set.
