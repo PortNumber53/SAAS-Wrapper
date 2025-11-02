@@ -55,6 +55,23 @@ function devOriginFromEnv(env: Env): string | null {
   return null;
 }
 
+// Short-lived idempotency cache for OAuth authorization codes to avoid
+// duplicate token exchanges caused by browser double-calls to the callback.
+const USED_OAUTH_CODES = new Map<string, number>();
+const OAUTH_CODE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+function pruneUsedCodes(now: number) {
+  if (USED_OAUTH_CODES.size === 0) return;
+  for (const [k, t] of USED_OAUTH_CODES.entries()) {
+    if (now - t > OAUTH_CODE_TTL_MS) USED_OAUTH_CODES.delete(k);
+  }
+  // Soft cap to prevent unbounded growth
+  if (USED_OAUTH_CODES.size > 5000) {
+    const target = Math.floor(USED_OAUTH_CODES.size * 0.6);
+    let i = 0;
+    for (const k of USED_OAUTH_CODES.keys()) { USED_OAUTH_CODES.delete(k); if (++i >= target) break; }
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -972,6 +989,27 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   const code = qs.get('code');
   const state = qs.get('state');
   if (!code) return new Response('Missing code', { status: 400 });
+  const nowMs = Date.now();
+  pruneUsedCodes(nowMs);
+  // Duplicate/refresh guard: if a valid session already exists, skip exchange and navigate opener
+  const existing = await getSessionFromCookie(request, env);
+  if (existing?.email) {
+    const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
+    const origin = effectiveOrigin(request, url);
+    const html = `<!doctype html><html><body><script>
+      (function(){ try { if (window.opener) { window.opener.location.href = ${JSON.stringify(origin + '/dashboard')}; } } catch (e) {} window.close(); })();
+    </script></body></html>`;
+    return new Response(html, { status: 200, headers });
+  }
+  // If this code was already used recently, short-circuit as success
+  if (USED_OAUTH_CODES.has(code)) {
+    const headers = new Headers({ 'content-type': 'text/html; charset=utf-8' });
+    const origin = effectiveOrigin(request, url);
+    const html = `<!doctype html><html><body><script>
+      (function(){ try { if (window.opener) { window.opener.location.href = ${JSON.stringify(origin + '/dashboard')}; } } catch (e) {} window.close(); })();
+    </script></body></html>`;
+    return new Response(html, { status: 200, headers });
+  }
   const cookies = getCookies(request);
   const signedOk = await verifySignedState(state, env.SESSION_SECRET);
   const cookieOk = (state && cookies.oauth_state === state);
@@ -996,6 +1034,7 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     const errTxt = await tokenRes.text();
     return new Response(`Token exchange failed: ${errTxt}`, { status: 502 });
   }
+  USED_OAUTH_CODES.set(code, nowMs);
   const tokenJson = await tokenRes.json() as { access_token?: string; id_token?: string };
   const accessToken = tokenJson.access_token;
   const idToken = tokenJson.id_token;

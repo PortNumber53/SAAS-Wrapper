@@ -19,6 +19,8 @@ import BottomBar from './components/BottomBar'
 function App() {
   const toast = useToast()
   // Landing page uses toolbar CTAs; remove boilerplate counters
+  const oauthWinRef = useRef<Window | null>(null)
+  const [loginBusy, setLoginBusy] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
@@ -115,16 +117,29 @@ function App() {
   }, [menuOpen])
 
   const startGoogleLogin = () => {
+    // If popup already open, focus it instead of opening a new one
+    const existing = oauthWinRef.current
+    if (existing && !existing.closed) { try { existing.focus() } catch {} return }
+    if (loginBusy) return
+    setLoginBusy(true)
     const w = 480, h = 640
     const y = window.top?.outerHeight ? Math.max(0, ((window.top!.outerHeight - h) / 2) + (window.top!.screenY || 0)) : 0
     const x = window.top?.outerWidth ? Math.max(0, ((window.top!.outerWidth - w) / 2) + (window.top!.screenX || 0)) : 0
     const start = new URL('/api/auth/google/start', window.location.origin)
     start.searchParams.set('origin', window.location.origin)
     const url = start.toString()
-    // Helpful in dev to confirm the exact URL opened
-    console.log('OAuth start URL:', url)
-    // Note: don't use `noopener` here since we rely on window.opener for postMessage
-    window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`)
+    const win = window.open(url, '_blank', `popup=yes,width=${w},height=${h},top=${y},left=${x}`) || null
+    oauthWinRef.current = win
+    // Reset busy when popup closes or after 2 minutes
+    const t0 = Date.now()
+    const iv = window.setInterval(() => {
+      const wref = oauthWinRef.current
+      if (!wref || wref.closed || Date.now() - t0 > 120000) {
+        window.clearInterval(iv)
+        setLoginBusy(false)
+        if (wref && wref.closed) oauthWinRef.current = null
+      }
+    }, 800)
   }
 
   const displayName = userName || userEmail || 'Account'
@@ -228,8 +243,8 @@ function App() {
           <div className='account'>
             { !userEmail ? (
               <>
-                <button className='btn' onClick={startGoogleLogin}>Login</button>
-                <button className='btn primary' onClick={startGoogleLogin}>Sign Up</button>
+                <button className='btn' onClick={startGoogleLogin} disabled={loginBusy}>Login</button>
+                <button className='btn primary' onClick={startGoogleLogin} disabled={loginBusy}>Sign Up</button>
               </>
             ) : (
               <div className='user-menu' ref={menuRef} onMouseEnter={() => setMenuOpen(true)} onMouseLeave={() => setMenuOpen(false)}>

@@ -8,6 +8,12 @@
   "main": "worker/index.ts",
   "compatibility_date": "2025-10-24",
   "compatibility_flags": ["nodejs_compat"],
+  "env": {
+    "production": {
+      // Define env-specific bindings/vars here if needed. Secrets are set via
+      // `wrangler secret put ... --env production` and are not stored in this file.
+    }
+  },
   "assets": {
     "directory": "./public",
     "not_found_handling": "none",
