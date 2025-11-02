@@ -19,11 +19,38 @@ fi
 apply_file() {
   f="$1"
   echo "[dbtool] Applying migration file: ${f}"
+  
+  # Read file and split by semicolons to execute statements individually
+  # This avoids Xata type catalog conflicts when creating multiple tables
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*-- ]] && continue
+    sql_buffer="${sql_buffer}${line}"$'\n'
+    # Check if line ends with semicolon (statement terminator)
+    if [[ "$line" =~ \;[[:space:]]*$ ]]; then
+      # Execute the buffered statement
+      if [[ -n "$DBNAME" ]]; then
+        dbtool query "$DBNAME" --query="$sql_buffer" >/dev/null || return 1
+      else
+        dbtool query --query="$sql_buffer" >/dev/null || return 1
+      fi
+      sql_buffer=""
+    fi
+  done < "$f"
+  
+  # Execute any remaining buffered SQL (file might not end with semicolon)
+  if [[ -n "$sql_buffer" ]]; then
+    if [[ -n "$DBNAME" ]]; then
+      dbtool query "$DBNAME" --query="$sql_buffer" >/dev/null || return 1
+    else
+      dbtool query --query="$sql_buffer" >/dev/null || return 1
+    fi
+  fi
+  
+  # Record migration as applied
   if [[ -n "$DBNAME" ]]; then
-    dbtool query "$DBNAME" --query="$(tr '\n' ' ' < "$f")"
     dbtool query "$DBNAME" --query="insert into public._migrations(filename) values ('${f}') on conflict (filename) do nothing;" >/dev/null
   else
-    dbtool query --query="$(tr '\n' ' ' < "$f")"
     dbtool query --query="insert into public._migrations(filename) values ('${f}') on conflict (filename) do nothing;" >/dev/null
   fi
 }
