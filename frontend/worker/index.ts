@@ -17,11 +17,8 @@ function effectiveOrigin(request: Request, url: URL): string {
     const proto = (xfProto && (xfProto === 'http' || xfProto === 'https')) ? xfProto : (url.protocol.replace(':','') || 'https');
     return `${proto}://${xfHost}`;
   }
-  // Fall back to Referer header's origin if present (common when called from SPA)
-  const ref = request.headers.get('referer') || request.headers.get('referrer');
-  if (ref) {
-    try { return new URL(ref).origin; } catch {}
-  }
+  // Do NOT fall back to Referer: it can be accounts.google.com on OAuth callback.
+  // Always prefer the request URL origin for correctness on custom domains.
   return url.origin;
 }
 
@@ -903,6 +900,21 @@ async function verifySignedState(state: string | null, secret: string | undefine
   return ok === 0;
 }
 
+function extractOriginFromState(state: string | null): string | null {
+  if (!state) return null;
+  try {
+    const parts = state.split('.');
+    const raw = parts[0] || '';
+    const data = b64urlToString(raw);
+    const fields = data.split('|');
+    if (fields.length >= 3) {
+      const origin = fields[2];
+      if (origin && (origin.startsWith('http://') || origin.startsWith('https://'))) return origin;
+    }
+  } catch {}
+  return null;
+}
+
 async function createSessionToken(payload: SessionPayload, secret?: string): Promise<string> {
   const header = { alg: secret ? 'HS256' : 'none', typ: 'JWT' };
   const encHeader = b64url(utf8Bytes(JSON.stringify(header)));
@@ -1021,7 +1033,11 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
     return new Response('Invalid state', { status: 400 });
   }
 
-  const origin = effectiveOrigin(request, url);
+  // Prefer the origin encoded into the signed state (created at start), as it reflects
+  // the exact domain we used to build the authorization request. This avoids any
+  // ambiguity from Referer or edge host headers on callback.
+  const originFromState = signedOk ? extractOriginFromState(state) : null;
+  const origin = originFromState || effectiveOrigin(request, url);
   const redirectUri = `${origin}/api/auth/google/callback`;
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -1036,7 +1052,12 @@ async function handleGoogleCallback(request: Request, env: Env, url: URL): Promi
   });
   if (!tokenRes.ok) {
     const errTxt = await tokenRes.text();
-    return new Response(`Token exchange failed: ${errTxt}`, { status: 502 });
+    // Include safe diagnostics to pinpoint env/redirect mismatches (no secrets)
+    const diag = {
+      client_id: clientId,
+      redirect_uri: redirectUri,
+    };
+    return new Response(`Token exchange failed: ${errTxt}\nDiag: ${JSON.stringify(diag)}` , { status: 502 });
   }
   USED_OAUTH_CODES.set(code, nowMs);
   const tokenJson = await tokenRes.json() as { access_token?: string; id_token?: string };
