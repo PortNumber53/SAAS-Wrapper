@@ -964,6 +964,10 @@ async function startGoogleOAuth(request: Request, env: Env, url: URL): Promise<R
   authorize.searchParams.set('scope', 'openid email profile');
   authorize.searchParams.set('access_type', 'offline');
   authorize.searchParams.set('include_granted_scopes', 'true');
+  // Ensure the Google account chooser appears after logout or when switching accounts.
+  // Allow overriding via `?prompt=` on the start URL; default to `select_account`.
+  const prompt = (url.searchParams.get('prompt') || 'select_account').trim();
+  if (prompt) authorize.searchParams.set('prompt', prompt);
   authorize.searchParams.set('state', state);
 
   // Debug mode: surface computed values instead of redirecting
