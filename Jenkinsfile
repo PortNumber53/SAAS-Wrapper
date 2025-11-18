@@ -104,7 +104,7 @@ pipeline {
             BIN_LOCAL="artifacts/saas-wrapper-backend-linux-amd64"
             # Upload binary and unit file to /tmp on target
             scp "$BIN_LOCAL" grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend
-            cat > saas-wrapper-backend.service << 'EOF'
+            cat > saas-wrapper-backend.service << EOF
             [Unit]
             Description=SAAS Wrapper Backend
             After=network-online.target
