@@ -27,6 +27,8 @@ pipeline {
     BACKEND_ORIGIN       = credentials('prod-backend-url-saas-wrapper')
     // Xata Postgres DSN used by both dbtool migrations and the Worker
     XATA_DATABASE_URL    = credentials('prod-xata-database-url-saas-wrapper')
+    // Cloudflare API token used by Wrangler for Worker deploys
+    CF_API_TOKEN         = credentials('cloudflare-api-token')
   }
 
   stages {
