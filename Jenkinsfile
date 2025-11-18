@@ -100,45 +100,31 @@ pipeline {
         unstash "bin-amd64"
         sshagent(credentials: [env.SSH_CREDENTIALS]) {
           sh label: 'Upload & install', script: '''
-            set -euo pipefail
-            BIN_LOCAL="artifacts/saas-wrapper-backend-linux-amd64"
-            # Upload binary and unit file to /tmp on target
-            scp "$BIN_LOCAL" grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend
-            cat > saas-wrapper-backend.service << EOF
-            [Unit]
-            Description=SAAS Wrapper Backend
-            After=network-online.target
-            [Service]
-            User=grimlock
-            Group=grimlock
-            WorkingDirectory=${TARGET_DIR}
-            EnvironmentFile=/etc/saas-wrapper-backend/config.ini
-            Environment=PORT=18000
-            ExecStart=${TARGET_DIR}/saas-wrapper-backend
-            Restart=always
-            RestartSec=2s
-            NoNewPrivileges=true
-            LimitNOFILE=65536
-            StandardOutput=append:${TARGET_DIR}/logs/app.log
-            StandardError=append:${TARGET_DIR}/logs/error.log
-            [Install]
-            WantedBy=multi-user.target
-EOF
-            scp saas-wrapper-backend.service grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend.service
+set -euo pipefail
+BIN_LOCAL="artifacts/saas-wrapper-backend-linux-amd64"
 
-            # Prepare target and (re)start service
-            ssh grimlock@${TARGET_HOST} "
-              set -euo pipefail
-              sudo mkdir -p ${TARGET_DIR} ${TARGET_DIR}/logs
-              sudo chown -R grimlock:grimlock ${TARGET_DIR}
-              sudo mv /tmp/saas-wrapper-backend ${TARGET_DIR}/saas-wrapper-backend
-              sudo chown grimlock:grimlock ${TARGET_DIR}/saas-wrapper-backend
-              sudo chmod 0755 ${TARGET_DIR}/saas-wrapper-backend
-              sudo mv /tmp/saas-wrapper-backend.service /etc/systemd/system/${SERVICE_NAME}.service
-              sudo systemctl daemon-reload
-              sudo systemctl enable ${SERVICE_NAME}
-              sudo systemctl restart ${SERVICE_NAME}
-            "
+# Upload binary to /tmp on target
+scp "$BIN_LOCAL" grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend
+
+# Generate systemd unit file (no indentation, variables expanded)
+bash deploy/generate-saas-wrapper-backend-service.sh "${TARGET_DIR}" saas-wrapper-backend.service
+
+# Upload unit file to systemd location
+scp saas-wrapper-backend.service grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend.service
+
+# Prepare target and (re)start service
+ssh grimlock@${TARGET_HOST} "
+  set -euo pipefail
+  sudo mkdir -p ${TARGET_DIR} ${TARGET_DIR}/logs
+  sudo chown -R grimlock:grimlock ${TARGET_DIR}
+  sudo mv /tmp/saas-wrapper-backend ${TARGET_DIR}/saas-wrapper-backend
+  sudo chown grimlock:grimlock ${TARGET_DIR}/saas-wrapper-backend
+  sudo chmod 0755 ${TARGET_DIR}/saas-wrapper-backend
+  sudo mv /tmp/saas-wrapper-backend.service /etc/systemd/system/${SERVICE_NAME}.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable ${SERVICE_NAME}
+  sudo systemctl restart ${SERVICE_NAME}
+"
           '''
         }
       }
