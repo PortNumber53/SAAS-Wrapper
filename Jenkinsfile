@@ -157,10 +157,10 @@ pipeline {
             npm ci
 
             # Push secrets non-interactively into the production Worker environment
-            printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID     --env production --yes
-            printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --env production --yes
-            printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET       --env production --yes
-            printf "%s" "$XATA_DATABASE_URL"    | npx wrangler secret put XATA_DATABASE_URL    --env production --yes
+            printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID     --env production
+            printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --env production
+            printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET       --env production
+            printf "%s" "$XATA_DATABASE_URL"    | npx wrangler secret put XATA_DATABASE_URL    --env production
 
             # Deploy Worker with backend origin configured
             npx wrangler deploy \
