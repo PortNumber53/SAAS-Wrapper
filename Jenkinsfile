@@ -123,7 +123,7 @@ pipeline {
             StandardError=append:${TARGET_DIR}/logs/error.log
             [Install]
             WantedBy=multi-user.target
-            EOF
+EOF
             scp saas-wrapper-backend.service grimlock@${TARGET_HOST}:/tmp/saas-wrapper-backend.service
 
             # Prepare target and (re)start service
