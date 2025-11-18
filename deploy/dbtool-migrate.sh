@@ -6,6 +6,12 @@ if ! command -v dbtool >/dev/null 2>&1; then
   exit 0
 fi
 
+# Basic sanity check: ensure dbtool is an executable binary/script, not an archive or placeholder.
+if ! dbtool --version >/dev/null 2>&1; then
+  echo "[dbtool] dbtool is present but not executable (or not a valid binary); skipping migration." >&2
+  exit 0
+fi
+
 DSN="${XATA_DATABASE_URL:-}"
 FILE="${1:-}"
 
