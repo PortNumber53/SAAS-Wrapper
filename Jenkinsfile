@@ -29,6 +29,8 @@ pipeline {
     XATA_DATABASE_URL    = credentials('prod-xata-database-url-saas-wrapper')
     // Cloudflare API token used by Wrangler for Worker deploys
     CF_API_TOKEN         = credentials('cloudflare-api-token')
+    // Cloudflare account id used by Wrangler (non-secret but stored as a credential for convenience)
+    CLOUDFLARE_ACCOUNT_ID = credentials('cloudflare-account-id')
   }
 
   stages {
