@@ -13,10 +13,21 @@ pipeline {
   environment {
     GO111MODULE = 'on'
     // Deployment targets
-    TARGET_HOST    = 'web1'
-    TARGET_DIR     = '/var/www/vhosts/social.portnumber53.com'
-    SERVICE_NAME   = 'saas-wrapper-backend'
+    TARGET_HOST     = 'web1'
+    TARGET_DIR      = '/var/www/vhosts/api-saas.truvis.co'
+    SERVICE_NAME    = 'saas-wrapper-backend'
     SSH_CREDENTIALS = 'brain-jenkins-private-key'  // Jenkins credential ID (Username with private key)
+
+    // Cloudflare Worker / OAuth / backend configuration (production)
+    GOOGLE_CLIENT_ID     = credentials('prod-google-client-id-saas-wrapper')
+    GOOGLE_CLIENT_SECRET = credentials('prod-google-client-secret-saas-wrapper')
+    // Shared secret used by the Worker to sign sessions (SESSION_SECRET)
+    // and, optionally, to secure calls to the Go backend when configured.
+    SESSION_SECRET       = credentials('prod-jwt-secret-saas-wrapper')
+    // Backend origin that the Worker proxies /api/* requests to
+    BACKEND_ORIGIN       = credentials('prod-backend-url-saas-wrapper')
+    // Xata Postgres DSN used by both dbtool migrations and the Worker
+    XATA_DATABASE_URL    = credentials('prod-xata-database-url-saas-wrapper')
   }
 
   stages {
@@ -125,6 +136,33 @@ pipeline {
               sudo systemctl enable ${SERVICE_NAME}
               sudo systemctl restart ${SERVICE_NAME}
             "
+          '''
+        }
+      }
+    }
+
+    stage('Deploy Worker (Cloudflare)') {
+      steps {
+        dir('frontend') {
+          sh label: 'Deploy Cloudflare Worker', script: '''
+            set -euo pipefail
+
+            # Ensure Cloudflare credentials are present
+            test -n "${CF_API_TOKEN:-}" || { echo "Missing CF_API_TOKEN for Wrangler"; exit 1; }
+            test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID for Wrangler"; exit 1; }
+
+            npm ci
+
+            # Push secrets non-interactively into the production Worker environment
+            printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID     --env production --yes
+            printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --env production --yes
+            printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET       --env production --yes
+            printf "%s" "$XATA_DATABASE_URL"    | npx wrangler secret put XATA_DATABASE_URL    --env production --yes
+
+            # Deploy Worker with backend origin configured
+            npx wrangler deploy \
+              --env production \
+              --var BACKEND_ORIGIN="$BACKEND_ORIGIN"
           '''
         }
       }
