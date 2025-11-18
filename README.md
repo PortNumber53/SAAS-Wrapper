@@ -1,49 +1,3 @@
-# SAAS Wrapper
-
-
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/serious-hosting/saas-wrapper.git
-git branch -M master
-git push -uf origin master
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.com/serious-hosting/saas-wrapper/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
 ## Cloudflare Workers Deployment
 
 - Frontend lives under `frontend/` and deploys to Cloudflare Workers via Wrangler.
@@ -64,7 +18,7 @@ Recommended: run Vite (HMR) + Wrangler together
 
 - In `frontend/` copy `.dev.vars.example` to `.dev.vars` and set your vars. For Worker auto-reload helpers, set `DEV_AUTORELOAD=1`.
 - For Stripe in dev, add `STRIPE_SECRET_KEY=sk_test_xxx` to `.dev.vars` (webhooks optional).
-- Start both dev servers (Workers on 8787, Vite on 5173):
+- Start both dev servers (Workers on 18312, Vite on 18310):
 
 ```
 cd frontend
@@ -72,7 +26,7 @@ npm i
 npm run dev:full
 ```
 
-- Open `http://localhost:5173` for full hot-module replacement. All `/api/*` calls proxy to Wrangler at `http://127.0.0.1:8787`.
+- Open `http://localhost:18310` for full hot-module replacement. All `/api/*` calls proxy to Wrangler at `http://127.0.0.1:18312`.
 
 Alternative: Worker-only dev
 

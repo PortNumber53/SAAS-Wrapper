@@ -1,7 +1,7 @@
 # Configuration for saas-wrapper-backend systemd service
 
 # Required: Go HTTP server port
-PORT=18000
+PORT=18311
 
 # Optional: custom storage root (default ./storage under WorkingDirectory)
 # STORAGE_DIR=/var/www/vhosts/social.portnumber53.com/storage

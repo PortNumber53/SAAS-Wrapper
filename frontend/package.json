@@ -5,8 +5,8 @@
 	"type": "module",
   "scripts": {
 		"dev": "vite",
-		"dev:vite": "VITE_API_PROXY_TARGET=http://127.0.0.1:8787 vite",
-    "dev:wrangler": "wrangler dev --config wrangler.jsonc",
+		"dev:vite": "VITE_API_PROXY_TARGET=http://127.0.0.1:18312 vite",
+    "dev:wrangler": "wrangler dev --config wrangler.jsonc --port 18312",
 		"dev:full": "concurrently -k -n wrangler,vite -c blue,green \"npm:dev:wrangler\" \"npm:dev:vite\"",
 		"build": "tsc -b && vite build",
 		"lint": "eslint .",
