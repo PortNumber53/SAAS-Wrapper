@@ -25,8 +25,8 @@ pipeline {
     SESSION_SECRET       = credentials('prod-jwt-secret-saas-wrapper')
     // Backend origin that the Worker proxies /api/* requests to
     BACKEND_ORIGIN       = credentials('prod-backend-url-saas-wrapper')
-    // Xata Postgres DSN used by both dbtool migrations and the Worker
-    XATA_DATABASE_URL    = credentials('prod-xata-database-url-saas-wrapper')
+    // Database Postgres DSN used by both dbtool migrations and the Worker
+    DATABASE_URL    = credentials('prod-xata-database-url-saas-wrapper')
     // Cloudflare API token used by Wrangler for Worker deploys
     CF_API_TOKEN         = credentials('cloudflare-api-token')
     // Cloudflare account id used by Wrangler (non-secret but stored as a credential for convenience)
@@ -85,7 +85,7 @@ pipeline {
     }
 
     stage('DB Migrate (All)') {
-      when { expression { return env.XATA_DATABASE_URL?.trim() } }
+      when { expression { return env.DATABASE_URL?.trim() } }
       steps {
         sh label: 'dbtool diagnostics', script: '''
           set -euo pipefail
@@ -146,7 +146,7 @@ ssh grimlock@${TARGET_HOST} "
             printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID     --env production
             printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --env production
             printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET       --env production
-            printf "%s" "$XATA_DATABASE_URL"    | npx wrangler secret put XATA_DATABASE_URL    --env production
+            printf "%s" "$DATABASE_URL"    | npx wrangler secret put DATABASE_URL    --env production
 
             # Deploy Worker with backend origin configured
             npx wrangler deploy \

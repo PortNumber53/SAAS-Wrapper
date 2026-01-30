@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <p>We use your information to authenticate you, operate the service, and improve user experience.</p>
 
       <h2>3. Data Storage</h2>
-      <p>Data may be stored in third-party services (e.g., Xata). Access is restricted and secured.</p>
+      <p>Data may be stored in third-party services (e.g., Database). Access is restricted and secured.</p>
 
       <h2>4. Cookies</h2>
       <p>We may set cookies for authentication state (e.g., oauth_state) and session management.</p>

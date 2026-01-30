@@ -14,14 +14,10 @@ fi
 
 FILE="${1:-}"
 
-# dbtool v1.x expects DATABASE_URL (or DB_NAME) to be set. In Jenkins we
-# already provide XATA_DATABASE_URL, so bridge it here if DATABASE_URL is empty.
-if [[ -z "${DATABASE_URL:-}" && -z "${XATA_DATABASE_URL:-}" ]]; then
-  echo "[dbtool] Neither DATABASE_URL nor XATA_DATABASE_URL is set; cannot run migrations." >&2
+# dbtool v1.x expects DATABASE_URL (or DB_NAME) to be set.
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "[dbtool] DATABASE_URL is not set; cannot run migrations." >&2
   exit 1
-fi
-if [[ -z "${DATABASE_URL:-}" && -n "${XATA_DATABASE_URL:-}" ]]; then
-  export DATABASE_URL="${XATA_DATABASE_URL}"
 fi
 
 run_sql() {

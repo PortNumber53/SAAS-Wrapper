@@ -1,5 +1,5 @@
 create table if not exists public.user_uploads (
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   key text not null,
   url text not null,
   thumb_url text,

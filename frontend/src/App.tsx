@@ -56,15 +56,13 @@ function App() {
         // Refresh the app store session after OAuth completes
         try {
           await storeLoadSession()
-          // Ensure guard sees authenticated session before navigating
-          const st = useAppStore.getState() as AppState
-          if (st.session?.ok) navigate('/dashboard')
+          // Redirect to /dashboard unless specifically on the integrations manage page
+          if (window.location.pathname !== '/account/integrations') {
+            navigate('/dashboard')
+          }
         } catch {
-          // Fallback: small delay then re-check
-          setTimeout(() => {
-            const st = useAppStore.getState() as AppState
-            if (st.session?.ok) navigate('/dashboard')
-          }, 100)
+          // Fallback: delay then re-check
+          setTimeout(() => navigate('/dashboard'), 200)
         }
       } else if (msg.type === 'oauth:instagram' && data?.ok) {
         // Integration linked; nothing to update in header
@@ -119,7 +117,7 @@ function App() {
   const startGoogleLogin = () => {
     // If popup already open, focus it instead of opening a new one
     const existing = oauthWinRef.current
-    if (existing && !existing.closed) { try { existing.focus() } catch {} return }
+    if (existing && !existing.closed) { try { existing.focus() } catch { } return }
     if (loginBusy) return
     setLoginBusy(true)
     const w = 480, h = 640
@@ -148,10 +146,10 @@ function App() {
     if (!src) return '🙂'
     const parts = src.replace(/[^\p{L} \-]/gu, '').trim().split(/\s+/)
     if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-    if (parts.length === 1 && parts[0]) return parts[0].slice(0,2).toUpperCase()
+    if (parts.length === 1 && parts[0]) return parts[0].slice(0, 2).toUpperCase()
     // Fallback from email like name@example.com
     const m = (userEmail || '').split('@')[0]
-    return m.slice(0,2).toUpperCase() || '🙂'
+    return m.slice(0, 2).toUpperCase() || '🙂'
   }, [userName, userEmail])
 
   return (
@@ -159,17 +157,17 @@ function App() {
       <header className='topbar'>
         <div className='toolbar' aria-label='Global Toolbar'>
           <div className='toolbar-group'>
-            <NavLink to='/' className={({isActive}) => `toolbar-link brand${isActive ? ' active' : ''}`}>SAAS Wrapper</NavLink>
-            { !userEmail ? (
+            <NavLink to='/' className={({ isActive }) => `toolbar-link brand${isActive ? ' active' : ''}`}>SAAS Wrapper</NavLink>
+            {!userEmail ? (
               <>
-                <NavLink to='/' end className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Home</NavLink>
-                <NavLink to='/features' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Features</NavLink>
-                <NavLink to='/pricing' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Pricing</NavLink>
-                <NavLink to='/about' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>About</NavLink>
+                <NavLink to='/' end className={({ isActive }) => `toolbar-link${isActive ? ' active' : ''}`}>Home</NavLink>
+                <NavLink to='/features' className={({ isActive }) => `toolbar-link${isActive ? ' active' : ''}`}>Features</NavLink>
+                <NavLink to='/pricing' className={({ isActive }) => `toolbar-link${isActive ? ' active' : ''}`}>Pricing</NavLink>
+                <NavLink to='/about' className={({ isActive }) => `toolbar-link${isActive ? ' active' : ''}`}>About</NavLink>
               </>
             ) : (
               <>
-                <NavLink to='/dashboard' className={({isActive}) => `toolbar-link${isActive ? ' active' : ''}`}>Dashboard</NavLink>
+                <NavLink to='/dashboard' className={({ isActive }) => `toolbar-link${isActive ? ' active' : ''}`}>Dashboard</NavLink>
                 <div className='menu'>
                   <button>Content ▾</button>
                   <div className='menu-dropdown'>
@@ -188,7 +186,7 @@ function App() {
                           return;
                         }
                         const j = await res.json() as any;
-                        const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b)||0), 0) : 0;
+                        const total = j && j.counts ? Object.values(j.counts).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : 0;
                         toast.show(`Fetched ${total} items across linked IG accounts`, 'success');
                       } catch (e) {
                         toast.show('Sync failed', 'error');
@@ -212,13 +210,13 @@ function App() {
                 <div className='menu'>
                   <button>Social Accounts ▾</button>
                   <div className='menu-dropdown'>
-                    { (!igAccountsLoaded && igAccounts.length === 0) && <span className='read-the-docs' style={{display:'block',padding:'8px 12px'}}>Loading…</span> }
-                    { igAccountsLoaded && igAccounts.length === 0 && (
-                      <div className='read-the-docs' style={{padding:'8px 12px'}}>No IG accounts.
+                    {(!igAccountsLoaded && igAccounts.length === 0) && <span className='read-the-docs' style={{ display: 'block', padding: '8px 12px' }}>Loading…</span>}
+                    {igAccountsLoaded && igAccounts.length === 0 && (
+                      <div className='read-the-docs' style={{ padding: '8px 12px' }}>No IG accounts.
                         <div><NavLink to='/account/integrations'>Manage Integrations</NavLink></div>
                       </div>
                     )}
-                    { igAccounts.length > 0 && igAccounts.map((acc: any) => {
+                    {igAccounts.length > 0 && igAccounts.map((acc: any) => {
                       // Keep items clickable in prod even if token_valid is unknown/false (e.g., missing FB app vars)
                       const disabled = acc.linked === false;
                       return (
@@ -234,14 +232,14 @@ function App() {
                           @{acc.username || acc.ig_user_id}
                         </button>
                       )
-                    }) }
+                    })}
                   </div>
                 </div>
               </>
             )}
           </div>
           <div className='account'>
-            { !userEmail ? (
+            {!userEmail ? (
               <>
                 <button className='btn' onClick={startGoogleLogin} disabled={loginBusy}>Login</button>
                 <button className='btn primary' onClick={startGoogleLogin} disabled={loginBusy}>Sign Up</button>
@@ -279,70 +277,70 @@ function App() {
 
       <main className={`content${userEmail ? ' wide' : ''}`}>
         <Routes>
-        <Route path='/' element={
-          <section className='card' style={{padding:'2rem', textAlign:'left'}}>
-            <h1>SAAS Wrapper</h1>
-            <p style={{marginTop:'0.5rem', color:'var(--muted)'}}>A customizable SaaS foundation with authentication, content, and integrations. Start fast, then tailor features to your business.</p>
-            <div style={{display:'flex', gap:'8px', marginTop:'1rem', flexWrap:'wrap'}}>
-              {!userEmail ? (
-                <button className='btn primary' onClick={startGoogleLogin}>Get Started</button>
-              ) : (
-                <Link className='btn primary' to='/dashboard'>Go to Dashboard</Link>
-              )}
-              <Link className='btn' to='/features'>Explore Features</Link>
-            </div>
-            {authError && <p style={{ marginTop:'0.75rem', color: 'tomato' }}>Error: {authError}</p>}
-            <div style={{display:'grid', gap:'8px', marginTop:'1.25rem'}}>
-              <div className='read-the-docs'>- OAuth sign-in and session handling</div>
-              <div className='read-the-docs'>- Instagram content and publishing</div>
-              <div className='read-the-docs'>- Agent chat with configurable models</div>
-              <div className='read-the-docs'>- Drafts, uploads, and thumbnails</div>
-            </div>
-          </section>
-        } />
-        <Route path='/features' element={
-          <section className='card'>
-            <h2>Features</h2>
-            <p>Modern React frontend hosted on Cloudflare Workers with OAuth and API proxying.</p>
-          </section>
-        } />
-        <Route path='/pricing' element={
-          <section className='card'>
-            <h2>Pricing</h2>
-            <p>Contact us to discuss plans and usage-based pricing.</p>
-          </section>
-        } />
-        <Route path='/about' element={
-          <section className='card'>
-            <h2>About</h2>
-            <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
-          </section>
-        } />
-        <Route path='/pages/terms-of-service' element={<TermsPage />} />
-        <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
-        <Route path='/profile' element={<ProfilePage />} />
-        <Route path='/settings' element={<RequireAuth><SettingsPage /></RequireAuth>} />
-        <Route path='/dashboard' element={<RequireAuth><DashboardPage /></RequireAuth>} />
-        {/* Common typo alias */}
-        <Route path='/dashbord' element={<Navigate to='/dashboard' replace />} />
-        <Route path='/content/instagram' element={<RequireAuth><IGContentPage /></RequireAuth>} />
-        <Route path='/agents/chat' element={<RequireAuth><AgentChatPage /></RequireAuth>} />
-        <Route path='/agents/settings' element={<RequireAuth><AgentSettingsPage /></RequireAuth>} />
-        <Route path='/account/commerce' element={<RequireAuth><CommercePage /></RequireAuth>} />
-        <Route path='/account/integrations' element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
-        <Route path='*' element={
-          <section className='card'>
-            <h2>404 — Page Not Found</h2>
-            <p>We couldn’t find what you’re looking for.</p>
-            <p><Link to='/'>Go back home</Link></p>
-          </section>
-        } />
+          <Route path='/' element={
+            <section className='card' style={{ padding: '2rem', textAlign: 'left' }}>
+              <h1>SAAS Wrapper</h1>
+              <p style={{ marginTop: '0.5rem', color: 'var(--muted)' }}>A customizable SaaS foundation with authentication, content, and integrations. Start fast, then tailor features to your business.</p>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '1rem', flexWrap: 'wrap' }}>
+                {!userEmail ? (
+                  <button className='btn primary' onClick={startGoogleLogin}>Get Started</button>
+                ) : (
+                  <Link className='btn primary' to='/dashboard'>Go to Dashboard</Link>
+                )}
+                <Link className='btn' to='/features'>Explore Features</Link>
+              </div>
+              {authError && <p style={{ marginTop: '0.75rem', color: 'tomato' }}>Error: {authError}</p>}
+              <div style={{ display: 'grid', gap: '8px', marginTop: '1.25rem' }}>
+                <div className='read-the-docs'>- OAuth sign-in and session handling</div>
+                <div className='read-the-docs'>- Instagram content and publishing</div>
+                <div className='read-the-docs'>- Agent chat with configurable models</div>
+                <div className='read-the-docs'>- Drafts, uploads, and thumbnails</div>
+              </div>
+            </section>
+          } />
+          <Route path='/features' element={
+            <section className='card'>
+              <h2>Features</h2>
+              <p>Modern React frontend hosted on Cloudflare Workers with OAuth and API proxying.</p>
+            </section>
+          } />
+          <Route path='/pricing' element={
+            <section className='card'>
+              <h2>Pricing</h2>
+              <p>Contact us to discuss plans and usage-based pricing.</p>
+            </section>
+          } />
+          <Route path='/about' element={
+            <section className='card'>
+              <h2>About</h2>
+              <p>This is a starter template showcasing Vite, React and Cloudflare Workers.</p>
+            </section>
+          } />
+          <Route path='/pages/terms-of-service' element={<TermsPage />} />
+          <Route path='/pages/privacy-policy' element={<PrivacyPage />} />
+          <Route path='/profile' element={<ProfilePage />} />
+          <Route path='/settings' element={<RequireAuth><SettingsPage /></RequireAuth>} />
+          <Route path='/dashboard' element={<RequireAuth><DashboardPage /></RequireAuth>} />
+          {/* Common typo alias */}
+          <Route path='/dashbord' element={<Navigate to='/dashboard' replace />} />
+          <Route path='/content/instagram' element={<RequireAuth><IGContentPage /></RequireAuth>} />
+          <Route path='/agents/chat' element={<RequireAuth><AgentChatPage /></RequireAuth>} />
+          <Route path='/agents/settings' element={<RequireAuth><AgentSettingsPage /></RequireAuth>} />
+          <Route path='/account/commerce' element={<RequireAuth><CommercePage /></RequireAuth>} />
+          <Route path='/account/integrations' element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
+          <Route path='*' element={
+            <section className='card'>
+              <h2>404 — Page Not Found</h2>
+              <p>We couldn’t find what you’re looking for.</p>
+              <p><Link to='/'>Go back home</Link></p>
+            </section>
+          } />
         </Routes>
       </main>
       {/* Global CTA bar */}
       <BottomBar />
       <footer className='footer'>
-        <div style={{display:'flex',justifyContent:'space-between',gap:'1rem',maxWidth:1100,margin:'0 auto'}}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', maxWidth: 1100, margin: '0 auto' }}>
           <span>© {new Date().getFullYear()} SAAS Wrapper</span>
           <span>
             <Link to='/pages/terms-of-service'>Terms</Link>

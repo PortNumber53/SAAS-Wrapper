@@ -21,12 +21,35 @@ import (
 	"github.com/google/uuid"
 	xdraw "golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type jsonResp map[string]any
 
 func main() {
+	_ = godotenv.Load()
+	dbURL := os.Getenv("DATABASE_URL")
+	if len(os.Args) >= 2 && os.Args[1] == "migrate" {
+		if dbURL == "" {
+			log.Fatal("DATABASE_URL must be set for migrations")
+		}
+		if err := handleMigrateCommand(dbURL, os.Args[2:]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	mux := http.NewServeMux()
+
+	if dbURL != "" {
+		if err := runMigrations(dbURL, "up", ""); err != nil {
+			log.Printf("Auto-migration warning: %v", err)
+		}
+	}
 
 	storageDir := os.Getenv("STORAGE_DIR")
 	if storageDir == "" {
@@ -206,6 +229,61 @@ func main() {
 	}
 	log.Printf("listening on %s (storage=%s)", addr, storageDir)
 	log.Fatal(http.ListenAndServe(addr, logRequest(mux)))
+}
+
+func handleMigrateCommand(dbURL string, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("missing migrate command (up, down, version, force)")
+	}
+	cmd := args[0]
+	switch cmd {
+	case "up", "down", "version":
+		return runMigrations(dbURL, cmd, "")
+	case "force":
+		if len(args) < 2 {
+			return fmt.Errorf("force command requires a version number")
+		}
+		return runMigrations(dbURL, "force", args[1])
+	default:
+		return fmt.Errorf("unknown migrate command: %s", cmd)
+	}
+}
+
+func runMigrations(dbURL, cmd, arg string) error {
+	m, err := migrate.New("file://../db/migrations", dbURL)
+	if err != nil {
+		return fmt.Errorf("migrate instance: %w", err)
+	}
+	defer m.Close()
+
+	switch cmd {
+	case "up":
+		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+			return fmt.Errorf("migrate up: %w", err)
+		}
+	case "down":
+		if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+			return fmt.Errorf("migrate down: %w", err)
+		}
+	case "version":
+		v, dirty, err := m.Version()
+		if err != nil && err != migrate.ErrNilVersion {
+			return fmt.Errorf("migrate version: %w", err)
+		}
+		log.Printf("Current migration version: %d (dirty: %v)", v, dirty)
+		return nil
+	case "force":
+		var version int
+		if _, err := fmt.Sscanf(arg, "%d", &version); err != nil {
+			return fmt.Errorf("invalid version number: %w", err)
+		}
+		if err := m.Force(version); err != nil {
+			return fmt.Errorf("migrate force: %w", err)
+		}
+	}
+
+	log.Printf("Database migration '%s' completed successfully", cmd)
+	return nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

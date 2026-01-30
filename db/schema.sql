@@ -1,4 +1,4 @@
--- Xata (Postgres) schema for Instagram media caching
+-- Database (Postgres) schema for Instagram media caching
 -- This table stores media fetched from the Instagram Graph API so the app
 -- does not need to refetch on every request.
 
@@ -26,9 +26,9 @@ alter table public.ig_media add column if not exists raw_payload jsonb;
 
 -- User-scoped settings and credentials
 -- Stores arbitrary JSON config per user and logical key.
--- Enforces uniqueness on (user_id, key) and references users.xata_id.
+-- Enforces uniqueness on (user_id, key) and references users.id.
 create table if not exists public.user_settings (
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   key text not null,
   config jsonb not null default '{}'::jsonb,
   created_at timestamptz default now(),
@@ -41,7 +41,7 @@ create unique index if not exists ux_user_settings_user_key on public.user_setti
 -- Stores metadata about files uploaded via the backend so we can
 -- list, audit, and manage them later.
 create table if not exists public.user_uploads (
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   key text not null,
   url text not null,
   thumb_url text,
@@ -57,7 +57,7 @@ create index if not exists idx_user_uploads_user_created on public.user_uploads 
 
 -- Per-account publish drafts, persisted for cross-device continuity
 create table if not exists public.user_drafts (
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   ig_user_id text not null,
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz default now(),
@@ -69,7 +69,7 @@ create index if not exists idx_user_drafts_user_updated on public.user_drafts (u
 -- Stripe integration tables
 create table if not exists public.stripe_products (
   id bigserial primary key,
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   stripe_product_id text not null unique,
   name text not null,
   description text default '',
@@ -79,7 +79,7 @@ create table if not exists public.stripe_products (
 
 create table if not exists public.stripe_prices (
   id bigserial primary key,
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   stripe_product_id text not null,
   stripe_price_id text not null unique,
   currency text not null,

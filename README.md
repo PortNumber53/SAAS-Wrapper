@@ -6,17 +6,16 @@
 ### Required runtime variables/secrets
 
 - BACKEND_ORIGIN: e.g. https://api.example.com
-- XATA_DATABASE_URL: e.g. https://<workspace>.<region>.xata.sh/db/<db>
-- XATA_BRANCH: e.g. main
+- DATABASE_URL: e.g. postgresql://user:password@localhost:5432/dbname?sslmode=disable
 - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (secrets)
-- XATA_API_KEY (secret)
 - STRIPE_SECRET_KEY (secret) — Stripe API key for product/price/Checkout APIs
 
 ### Local dev
 
 Recommended: run Vite (HMR) + Wrangler together
 
-- In `frontend/` copy `.dev.vars.example` to `.dev.vars` and set your vars. For Worker auto-reload helpers, set `DEV_AUTORELOAD=1`.
+- In `frontend/` copy `_dev.vars.example` to `.dev.vars` and set your vars. For Worker auto-reload helpers, set `DEV_AUTORELOAD=1`.
+- In `backend/` copy `_env.example` to `.env`.
 - For Stripe in dev, add `STRIPE_SECRET_KEY=sk_test_xxx` to `.dev.vars` (webhooks optional).
 - Start both dev servers (Workers on 18312, Vite on 18310):
 
@@ -34,7 +33,7 @@ Alternative: Worker-only dev
 
 ### GitLab CI example (production)
 
-Below is an example `deploy` job that installs dependencies and deploys the Worker with production variables. Store secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, XATA_API_KEY) as protected CI/CD variables in GitLab and non-secrets (BACKEND_ORIGIN, XATA_DATABASE_URL, XATA_BRANCH) as variables too.
+Below is an example `deploy` job that installs dependencies and deploys the Worker with production variables. Store secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) as protected CI/CD variables in GitLab and non-secrets (BACKEND_ORIGIN, DATABASE_URL) as variables too.
 
 ```
 stages:
@@ -54,12 +53,10 @@ deploy_production:
     # Provide secrets non-interactively
     - printf "%s" "$GOOGLE_CLIENT_ID" | npx wrangler secret put GOOGLE_CLIENT_ID --yes
     - printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --yes
-    - printf "%s" "$XATA_API_KEY" | npx wrangler secret put XATA_API_KEY --yes
   script:
     - npx wrangler deploy \
         --var BACKEND_ORIGIN="$BACKEND_ORIGIN" \
-        --var XATA_DATABASE_URL="$XATA_DATABASE_URL" \
-        --var XATA_BRANCH="$XATA_BRANCH"
+        --var DATABASE_URL="$DATABASE_URL"
   environment:
     name: production
     url: $WORKER_PUBLIC_URL

@@ -1,0 +1,39 @@
+BACKEND_ORIGIN=<BACKEND_ORIGIN_VALUE>
+
+# Copy this file to `.dev.vars` for local `wrangler dev`.
+
+# Enable auto-reload in development (the Worker injects a tiny polling script)
+DEV_AUTORELOAD=<DEV_AUTORELOAD_VALUE>
+# Force OAuth redirects back to Vite origin in dev
+DEV_ORIGIN=<DEV_ORIGIN_VALUE>
+
+# Security
+SESSION_SECRET=<SESSION_SECRET_VALUE>
+
+# Database
+DATABASE_URL=<DATABASE_URL_VALUE>
+
+# Google OAuth
+GOOGLE_CLIENT_ID=<GOOGLE_CLIENT_ID_VALUE>
+GOOGLE_CLIENT_SECRET=<GOOGLE_CLIENT_SECRET_VALUE>
+
+# Instagram OAuth (Basic Display)
+INSTAGRAM_CLIENT_ID=<INSTAGRAM_CLIENT_ID_VALUE>
+INSTAGRAM_CLIENT_SECRET=<INSTAGRAM_CLIENT_SECRET_VALUE>
+INSTAGRAM_VERIFY_TOKEN=<INSTAGRAM_VERIFY_TOKEN_VALUE>
+
+# Facebook (for Instagram Graph API)
+FACEBOOK_APP_ID=<FACEBOOK_APP_ID_VALUE>
+FACEBOOK_APP_SECRET=<FACEBOOK_APP_SECRET_VALUE>
+
+# Optional: R2 Bucket for image storage
+# (Configure via wrangler.jsonc or wrangler secret put)
+# IMAGES=your-r2-bucket-name
+
+# Stripe
+STRIPE_SECRET_KEY=<STRIPE_SECRET_KEY_VALUE>
+STRIPE_WEBHOOK_SECRET=<STRIPE_WEBHOOK_SECRET_VALUE>
+
+# Optional: R2 Bucket for image storage
+# (Configure via wrangler.jsonc or wrangler secret put)
+# IMAGES=your-r2-bucket-name

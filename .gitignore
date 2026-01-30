@@ -19,4 +19,6 @@ DEAD_frontend/
 
 # Env files
 .env
-.env.*
+.env.local
+.dev.vars
+.dev.vars.local

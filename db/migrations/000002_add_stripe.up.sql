@@ -1,7 +1,7 @@
 -- Stripe integration tables (idempotent)
 create table if not exists public.stripe_products (
   id bigserial primary key,
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   stripe_product_id text not null unique,
   name text not null,
   description text default '',
@@ -11,7 +11,7 @@ create table if not exists public.stripe_products (
 
 create table if not exists public.stripe_prices (
   id bigserial primary key,
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   stripe_product_id text not null,
   stripe_price_id text not null unique,
   currency text not null,

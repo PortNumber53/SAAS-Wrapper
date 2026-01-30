@@ -1,5 +1,5 @@
 create table if not exists public.user_drafts (
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   ig_user_id text not null,
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz default now(),

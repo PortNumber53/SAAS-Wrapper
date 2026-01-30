@@ -1,6 +1,6 @@
 -- user_settings table (idempotent)
 create table if not exists public.user_settings (
-  user_id text not null references public.users(xata_id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
   key text not null,
   config jsonb not null default '{}'::jsonb,
   created_at timestamptz default now(),
