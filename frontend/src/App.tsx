@@ -216,23 +216,28 @@ function App() {
                         <div><NavLink to='/account/integrations'>Manage Integrations</NavLink></div>
                       </div>
                     )}
-                    {igAccounts.length > 0 && igAccounts.map((acc: any) => {
-                      // Keep items clickable in prod even if token_valid is unknown/false (e.g., missing FB app vars)
-                      const disabled = acc.linked === false;
-                      return (
-                        <button
-                          key={acc.ig_user_id}
-                          disabled={disabled}
-                          className={acc.ig_user_id === currentPublishId ? 'active' : undefined}
-                          onClick={() => {
-                            setPublishCurrent(acc.ig_user_id);
-                            navigate('/dashboard')
-                          }}
-                        >
-                          @{acc.username || acc.ig_user_id}
-                        </button>
-                      )
-                    })}
+                    {igAccounts.length > 0 && (
+                      <>
+                        <button key="all-accounts" onClick={() => { setPublishCurrent('all'); navigate('/dashboard') }}>All Accounts</button>
+                        {igAccounts.map((acc: any) => {
+                          // Keep items clickable in prod even if token_valid is unknown/false (e.g., missing FB app vars)
+                          const disabled = acc.linked === false;
+                          return (
+                            <button
+                              key={acc.ig_user_id}
+                              disabled={disabled}
+                              className={acc.ig_user_id === currentPublishId ? 'active' : undefined}
+                              onClick={() => {
+                                setPublishCurrent(acc.ig_user_id);
+                                navigate('/dashboard')
+                              }}
+                            >
+                              @{acc.username || acc.ig_user_id}
+                            </button>
+                          )
+                        })}
+                      </>
+                    )}
                   </div>
                 </div>
               </>
@@ -341,7 +346,7 @@ function App() {
       <BottomBar />
       <footer className='footer'>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', maxWidth: 1100, margin: '0 auto' }}>
-          <span>© {new Date().getFullYear()} SAAS Wrapper</span>
+          <span> SAAS Wrapper</span>
           <span>
             <Link to='/pages/terms-of-service'>Terms</Link>
             {' · '}
