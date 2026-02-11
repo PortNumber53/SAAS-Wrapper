@@ -776,25 +776,16 @@ export default {
               await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, payment_intent_id, amount, currency, status, metadata, created_at)
                 values (${event.id}, ${event.type}, ${session.customer || null}, ${session.subscription || null}, ${session.payment_intent || null}, ${session.amount_total || 0}, ${session.currency || 'usd'}, ${session.payment_status || 'unknown'}, ${JSON.stringify(session.metadata || {})}, ${new Date(event.created * 1000)})
                 on conflict (event_id) do nothing`;
-              // Handle subscription checkout: update user_subscriptions
-              if (session.mode === 'subscription' && session.subscription) {
-                const meta = session.metadata || {};
-                const userId = meta.user_id;
-                const tierSlug = meta.tier_slug;
-                if (userId && tierSlug) {
-                  const tierRows = await sql`select id from public.subscription_tiers where slug=${tierSlug} limit 1` as Array<any>;
-                  const tierId = tierRows[0]?.id;
-                  if (tierId) {
-                    // Fetch subscription details from Stripe to get price info
-                    const subData = await stripe(env, `/v1/subscriptions/${session.subscription}`, 'GET').catch(() => null);
-                    const priceId = subData?.items?.data?.[0]?.price?.id || null;
-                    const periodStart = subData?.current_period_start ? new Date(subData.current_period_start * 1000) : null;
-                    const periodEnd = subData?.current_period_end ? new Date(subData.current_period_end * 1000) : null;
-                    await sql`insert into public.user_subscriptions (user_id, tier_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_start, current_period_end)
-                      values (${userId}, ${tierId}, ${session.customer || null}, ${session.subscription}, ${priceId}, 'active', ${periodStart}, ${periodEnd})
-                      on conflict (user_id) do update set tier_id=excluded.tier_id, stripe_customer_id=excluded.stripe_customer_id, stripe_subscription_id=excluded.stripe_subscription_id, stripe_price_id=excluded.stripe_price_id, status='active', current_period_start=excluded.current_period_start, current_period_end=excluded.current_period_end, cancel_at_period_end=false, updated_at=now()`;
-                  }
-                }
+
+              // If this checkout created a subscription, link it to the user
+              if (session.subscription && session.metadata?.user_id && session.metadata?.tier_id) {
+                const userId = session.metadata.user_id;
+                const tierId = session.metadata.tier_id;
+                const customerId = session.customer || null;
+                const subId = session.subscription;
+                await sql`insert into public.user_subscriptions (user_id, tier_id, stripe_subscription_id, stripe_customer_id, status)
+                  values (${userId}, ${tierId}, ${subId}, ${customerId}, 'active')
+                  on conflict (user_id) do update set tier_id=excluded.tier_id, stripe_subscription_id=excluded.stripe_subscription_id, stripe_customer_id=excluded.stripe_customer_id, status='active', updated_at=now()`;
               }
               break;
             }
@@ -812,28 +803,17 @@ export default {
               await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, amount, currency, status, metadata, created_at)
                 values (${event.id}, ${event.type}, ${sub.customer || null}, ${sub.id}, ${sub.items?.data?.[0]?.price?.unit_amount || 0}, ${sub.currency || 'usd'}, ${sub.status || 'unknown'}, ${JSON.stringify(sub.metadata || {})}, ${new Date(event.created * 1000)})
                 on conflict (event_id) do nothing`;
-              // Update user_subscriptions with latest status
+
+              // Update user_subscriptions status based on Stripe event
               if (sub.id) {
-                const priceId = sub.items?.data?.[0]?.price?.id || null;
-                const periodStart = sub.current_period_start ? new Date(sub.current_period_start * 1000) : null;
-                const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
-                const cancelAtEnd = !!sub.cancel_at_period_end;
-                await sql`update public.user_subscriptions set status=${sub.status || 'active'}, stripe_price_id=${priceId}, current_period_start=${periodStart}, current_period_end=${periodEnd}, cancel_at_period_end=${cancelAtEnd}, updated_at=now() where stripe_subscription_id=${sub.id}`;
-              }
-              break;
-            }
-            case 'customer.subscription.deleted': {
-              const sub = event.data.object as any;
-              await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, amount, currency, status, metadata, created_at)
-                values (${event.id}, ${event.type}, ${sub.customer || null}, ${sub.id}, ${sub.items?.data?.[0]?.price?.unit_amount || 0}, ${sub.currency || 'usd'}, ${sub.status || 'unknown'}, ${JSON.stringify(sub.metadata || {})}, ${new Date(event.created * 1000)})
-                on conflict (event_id) do nothing`;
-              // Move user back to free tier
-              if (sub.id) {
-                const freeTier = await sql`select id from public.subscription_tiers where slug='free' limit 1` as Array<any>;
-                const freeId = freeTier[0]?.id;
-                if (freeId) {
-                  await sql`update public.user_subscriptions set tier_id=${freeId}, stripe_subscription_id=null, stripe_price_id=null, status='active', cancel_at_period_end=false, updated_at=now() where stripe_subscription_id=${sub.id}`;
-                }
+                const stripeStatus = (sub.status || 'unknown') as string;
+                let dbStatus = stripeStatus;
+                if (stripeStatus === 'canceled' || event.type === 'customer.subscription.deleted') dbStatus = 'canceled';
+                else if (stripeStatus === 'past_due') dbStatus = 'past_due';
+                else if (stripeStatus === 'trialing') dbStatus = 'trialing';
+                else if (stripeStatus === 'active') dbStatus = 'active';
+
+                await sql`update public.user_subscriptions set status=${dbStatus}, current_period_start=${sub.current_period_start ? new Date(sub.current_period_start * 1000) : null}, current_period_end=${sub.current_period_end ? new Date(sub.current_period_end * 1000) : null}, updated_at=now() where stripe_subscription_id=${sub.id}`;
               }
               break;
             }
@@ -850,6 +830,288 @@ export default {
           });
         }
       }
+
+      // ── Subscription Endpoints ──────────────────────────────────────
+      // GET /api/subscriptions/tiers — public, returns active tiers
+      if (url.pathname === '/api/subscriptions/tiers' && request.method === 'GET') {
+        try {
+          const sql = getPg(env);
+          const rows = await sql`
+            SELECT id, name, slug, stripe_product_id, stripe_price_id,
+                   price_cents, currency, billing_interval,
+                   max_integrations, max_api_calls, max_storage_mb,
+                   features, sort_order
+            FROM public.subscription_tiers
+            WHERE active = true AND deprecated_by IS NULL
+            ORDER BY sort_order ASC
+          ` as Array<any>;
+          return new Response(JSON.stringify({ ok: true, tiers: rows }), {
+            headers: { 'content-type': 'application/json' }
+          });
+        } catch (e: any) {
+          console.error('tiers error', e);
+          return new Response(JSON.stringify({ ok: false, error: e.message }), {
+            status: 500, headers: { 'content-type': 'application/json' }
+          });
+        }
+      }
+
+      // POST /api/subscriptions/subscribe — create Stripe Checkout session for a tier
+      if (url.pathname === '/api/subscriptions/subscribe' && request.method === 'POST') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        try {
+          const sql = getPg(env);
+          const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+          if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+
+          const body = await request.json() as any;
+          const tierSlug = body?.tier_slug;
+          if (!tierSlug) return new Response(JSON.stringify({ ok: false, error: 'missing tier_slug' }), { status: 400, headers: { 'content-type': 'application/json' } });
+
+          // Look up tier
+          const tiers = await sql`SELECT id, name, slug, stripe_price_id, price_cents FROM public.subscription_tiers WHERE slug=${tierSlug} AND active=true LIMIT 1` as Array<any>;
+          if (!tiers.length) return new Response(JSON.stringify({ ok: false, error: 'tier_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+          const tier = tiers[0];
+
+          // Free tier — just assign directly
+          if (tier.price_cents === 0) {
+            await sql`insert into public.user_subscriptions (user_id, tier_id, status)
+              values (${user.id}, ${tier.id}, 'active')
+              on conflict (user_id) do update set tier_id=excluded.tier_id, status='active', updated_at=now()`;
+            return new Response(JSON.stringify({ ok: true, tier: tier.slug, message: 'Free tier activated' }), {
+              headers: { 'content-type': 'application/json' }
+            });
+          }
+
+          // Paid tier — need Stripe price ID
+          if (!tier.stripe_price_id) return new Response(JSON.stringify({ ok: false, error: 'tier_not_configured_in_stripe' }), { status: 400, headers: { 'content-type': 'application/json' } });
+
+          const origin = effectiveOrigin(request, url);
+          const checkoutParams = new URLSearchParams({
+            'mode': 'subscription',
+            'line_items[0][price]': tier.stripe_price_id,
+            'line_items[0][quantity]': '1',
+            'success_url': `${origin}/account/billing?session_id={CHECKOUT_SESSION_ID}&success=true`,
+            'cancel_url': `${origin}/account/billing?canceled=true`,
+            'metadata[user_id]': user.id,
+            'metadata[tier_id]': tier.id,
+          });
+          checkoutParams.set('customer_email', sess.email);
+
+          const session = await stripe(env, '/v1/checkout/sessions', 'POST', checkoutParams);
+          const checkoutUrl = session?.url as string;
+          if (!checkoutUrl) throw new Error('checkout session missing url');
+
+          return new Response(JSON.stringify({ ok: true, checkout_url: checkoutUrl }), {
+            headers: { 'content-type': 'application/json' }
+          });
+        } catch (e: any) {
+          console.error('subscribe error', e);
+          return new Response(JSON.stringify({ ok: false, error: e.message }), {
+            status: 500, headers: { 'content-type': 'application/json' }
+          });
+        }
+      }
+
+      // GET /api/subscriptions/current — user's active subscription
+      if (url.pathname === '/api/subscriptions/current' && request.method === 'GET') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        try {
+          const sql = getPg(env);
+          const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+          if (!user?.id) return new Response(JSON.stringify({ ok: true, subscription: null }), { headers: { 'content-type': 'application/json' } });
+
+          const rows = await sql`
+            SELECT us.id, us.tier_id, us.stripe_subscription_id, us.status,
+                   us.current_period_start, us.current_period_end,
+                   st.name as tier_name, st.slug as tier_slug, st.price_cents,
+                   st.max_integrations, st.max_api_calls, st.max_storage_mb
+            FROM public.user_subscriptions us
+            JOIN public.subscription_tiers st ON st.id = us.tier_id
+            WHERE us.user_id = ${user.id}
+            LIMIT 1
+          ` as Array<any>;
+
+          if (!rows.length) {
+            return new Response(JSON.stringify({ ok: true, subscription: null, message: 'No active subscription' }), {
+              headers: { 'content-type': 'application/json' }
+            });
+          }
+
+          return new Response(JSON.stringify({ ok: true, subscription: rows[0] }), {
+            headers: { 'content-type': 'application/json' }
+          });
+        } catch (e: any) {
+          console.error('current subscription error', e);
+          return new Response(JSON.stringify({ ok: false, error: e.message }), {
+            status: 500, headers: { 'content-type': 'application/json' }
+          });
+        }
+      }
+
+      // POST /api/subscriptions/change-tier — upgrade/downgrade
+      if (url.pathname === '/api/subscriptions/change-tier' && request.method === 'POST') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        try {
+          const sql = getPg(env);
+          const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+          if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+
+          const body = await request.json() as any;
+          const newTierSlug = body?.tier_slug;
+          if (!newTierSlug) return new Response(JSON.stringify({ ok: false, error: 'missing tier_slug' }), { status: 400, headers: { 'content-type': 'application/json' } });
+
+          // Get new tier
+          const newTiers = await sql`SELECT id, slug, stripe_price_id, price_cents FROM public.subscription_tiers WHERE slug=${newTierSlug} AND active=true LIMIT 1` as Array<any>;
+          if (!newTiers.length) return new Response(JSON.stringify({ ok: false, error: 'tier_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+          const newTier = newTiers[0];
+
+          // Get user's current subscription
+          const currentSubs = await sql`SELECT id, stripe_subscription_id, tier_id FROM public.user_subscriptions WHERE user_id=${user.id} LIMIT 1` as Array<any>;
+
+          // Switching to free tier
+          if (newTier.price_cents === 0) {
+            if (currentSubs.length && currentSubs[0].stripe_subscription_id) {
+              // Cancel the Stripe subscription at period end
+              await stripe(env, `/v1/subscriptions/${currentSubs[0].stripe_subscription_id}`, 'POST', new URLSearchParams({ cancel_at_period_end: 'true' }));
+            }
+            await sql`insert into public.user_subscriptions (user_id, tier_id, status)
+              values (${user.id}, ${newTier.id}, 'active')
+              on conflict (user_id) do update set tier_id=excluded.tier_id, status='active', stripe_subscription_id=null, updated_at=now()`;
+            return new Response(JSON.stringify({ ok: true, tier: newTier.slug, message: 'Switched to free tier' }), {
+              headers: { 'content-type': 'application/json' }
+            });
+          }
+
+          // Upgrading/downgrading between paid tiers
+          if (!newTier.stripe_price_id) return new Response(JSON.stringify({ ok: false, error: 'tier_not_configured_in_stripe' }), { status: 400, headers: { 'content-type': 'application/json' } });
+
+          if (currentSubs.length && currentSubs[0].stripe_subscription_id) {
+            // Update existing Stripe subscription
+            const sub = await stripe(env, `/v1/subscriptions/${currentSubs[0].stripe_subscription_id}`, 'GET');
+            const itemId = sub?.items?.data?.[0]?.id;
+            if (!itemId) throw new Error('subscription has no items');
+
+            await stripe(env, `/v1/subscriptions/${currentSubs[0].stripe_subscription_id}`, 'POST', new URLSearchParams({
+              'items[0][id]': itemId,
+              'items[0][price]': newTier.stripe_price_id,
+              'proration_behavior': 'create_prorations',
+            }));
+
+            await sql`update public.user_subscriptions set tier_id=${newTier.id}, updated_at=now() where user_id=${user.id}`;
+            return new Response(JSON.stringify({ ok: true, tier: newTier.slug, message: 'Subscription updated' }), {
+              headers: { 'content-type': 'application/json' }
+            });
+          } else {
+            // No existing subscription — redirect to checkout
+            const origin = effectiveOrigin(request, url);
+            const checkoutParams = new URLSearchParams({
+              'mode': 'subscription',
+              'line_items[0][price]': newTier.stripe_price_id,
+              'line_items[0][quantity]': '1',
+              'success_url': `${origin}/account/billing?session_id={CHECKOUT_SESSION_ID}&success=true`,
+              'cancel_url': `${origin}/account/billing?canceled=true`,
+              'metadata[user_id]': user.id,
+              'metadata[tier_id]': newTier.id,
+            });
+            checkoutParams.set('customer_email', sess.email);
+            const session = await stripe(env, '/v1/checkout/sessions', 'POST', checkoutParams);
+            return new Response(JSON.stringify({ ok: true, checkout_url: session?.url }), {
+              headers: { 'content-type': 'application/json' }
+            });
+          }
+        } catch (e: any) {
+          console.error('change-tier error', e);
+          return new Response(JSON.stringify({ ok: false, error: e.message }), {
+            status: 500, headers: { 'content-type': 'application/json' }
+          });
+        }
+      }
+
+      // GET /api/subscriptions/history — billing event history
+      if (url.pathname === '/api/subscriptions/history' && request.method === 'GET') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        try {
+          const sql = getPg(env);
+          const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+          if (!user?.id) return new Response(JSON.stringify({ ok: true, events: [] }), { headers: { 'content-type': 'application/json' } });
+
+          // Get user's stripe customer ID
+          const subRows = await sql`SELECT stripe_customer_id FROM public.user_subscriptions WHERE user_id=${user.id} LIMIT 1` as Array<any>;
+          const customerId = subRows?.[0]?.stripe_customer_id;
+          if (!customerId) return new Response(JSON.stringify({ ok: true, events: [] }), { headers: { 'content-type': 'application/json' } });
+
+          const events = await sql`
+            SELECT event_id, event_type, subscription_id, payment_intent_id, amount, currency, status, created_at
+            FROM public.stripe_events
+            WHERE customer_id = ${customerId}
+            ORDER BY created_at DESC
+            LIMIT 50
+          ` as Array<any>;
+
+          return new Response(JSON.stringify({ ok: true, events }), { headers: { 'content-type': 'application/json' } });
+        } catch (e: any) {
+          return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: { 'content-type': 'application/json' } });
+        }
+      }
+
+      // POST /api/subscriptions/cancel — cancel subscription (at period end)
+      if (url.pathname === '/api/subscriptions/cancel' && request.method === 'POST') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        try {
+          const sql = getPg(env);
+          const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+          if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+
+          const subs = await sql`SELECT id, stripe_subscription_id FROM public.user_subscriptions WHERE user_id=${user.id} AND status='active' LIMIT 1` as Array<any>;
+          if (!subs.length || !subs[0].stripe_subscription_id) {
+            return new Response(JSON.stringify({ ok: false, error: 'no_active_subscription' }), { status: 400, headers: { 'content-type': 'application/json' } });
+          }
+
+          // Cancel at period end in Stripe
+          await stripe(env, `/v1/subscriptions/${subs[0].stripe_subscription_id}`, 'POST', new URLSearchParams({
+            'cancel_at_period_end': 'true',
+          }));
+
+          return new Response(JSON.stringify({ ok: true, message: 'Subscription will cancel at end of billing period' }), {
+            headers: { 'content-type': 'application/json' }
+          });
+        } catch (e: any) {
+          return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: { 'content-type': 'application/json' } });
+        }
+      }
+
+      // POST /api/subscriptions/reactivate — re-enable auto-renewal
+      if (url.pathname === '/api/subscriptions/reactivate' && request.method === 'POST') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        try {
+          const sql = getPg(env);
+          const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+          if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+
+          const subs = await sql`SELECT id, stripe_subscription_id FROM public.user_subscriptions WHERE user_id=${user.id} LIMIT 1` as Array<any>;
+          if (!subs.length || !subs[0].stripe_subscription_id) {
+            return new Response(JSON.stringify({ ok: false, error: 'no_subscription' }), { status: 400, headers: { 'content-type': 'application/json' } });
+          }
+
+          await stripe(env, `/v1/subscriptions/${subs[0].stripe_subscription_id}`, 'POST', new URLSearchParams({
+            'cancel_at_period_end': 'false',
+          }));
+
+          return new Response(JSON.stringify({ ok: true, message: 'Auto-renewal re-enabled' }), {
+            headers: { 'content-type': 'application/json' }
+          });
+        } catch (e: any) {
+          return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: { 'content-type': 'application/json' } });
+        }
+      }
+
       if (url.pathname === '/api/files' && request.method === 'POST') {
         const sess = await getSessionFromCookie(request, env);
         if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });

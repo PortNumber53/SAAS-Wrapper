@@ -22,14 +22,14 @@ import (
 
 // testContext holds state between steps
 type testContext struct {
-	server      *httptest.Server
-	storageDir  string
-	response    *http.Response
+	server       *httptest.Server
+	storageDir   string
+	response     *http.Response
 	responseBody []byte
-	jsonResp    map[string]any
-	uploadedURL string
-	thumbURL    string
-	uploadedKey string
+	jsonResp     map[string]any
+	uploadedURL  string
+	thumbURL     string
+	uploadedKey  string
 }
 
 func (tc *testContext) reset() {
@@ -350,154 +350,7 @@ func createTestContent(contentType string) []byte {
 	return buf.Bytes()
 }
 
-// setupHandlers configures the HTTP handlers (extracted for testing)
-func setupHandlers(mux *http.ServeMux, storageDir, backendSecret string) {
-	// Upload endpoint
-	mux.HandleFunc("/uploads", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			r.Body = http.MaxBytesReader(w, r.Body, 25<<20)
-			if err := r.ParseMultipartForm(25 << 20); err != nil {
-				writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "invalid_form"})
-				return
-			}
-			file, header, err := r.FormFile("file")
-			if err != nil {
-				writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "missing_file"})
-				return
-			}
-			defer file.Close()
-
-			sniffBuf := make([]byte, 512)
-			n, _ := io.ReadFull(file, sniffBuf)
-			if n <= 0 {
-				writeJSON(w, http.StatusBadRequest, jsonResp{"ok": false, "error": "empty_file"})
-				return
-			}
-			sniff := http.DetectContentType(sniffBuf[:n])
-			if !strings.HasPrefix(sniff, "image/") {
-				writeJSON(w, http.StatusUnsupportedMediaType, jsonResp{"ok": false, "error": "unsupported_type"})
-				return
-			}
-			name := strings.ToLower(header.Filename)
-			ext := filepath.Ext(name)
-			if ext == "" {
-				parts := strings.Split(sniff, "/")
-				if len(parts) == 2 {
-					ext = "." + parts[1]
-				} else {
-					ext = ".bin"
-				}
-			}
-			id := fmt.Sprintf("test-%d", os.Getpid())
-			key := fmt.Sprintf("uploads/%s%s", id, ext)
-			dstPath := filepath.Join(storageDir, key)
-			os.MkdirAll(filepath.Dir(dstPath), 0o755)
-
-			reader := io.MultiReader(bytes.NewReader(sniffBuf[:n]), file)
-			dst, err := os.Create(dstPath)
-			if err != nil {
-				writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "write_failed"})
-				return
-			}
-			defer dst.Close()
-			nbytes, _ := io.Copy(dst, io.LimitReader(reader, 25<<20))
-
-			publicURL := "/api/media/" + id + ext
-			thumbName := id + ".thumb.jpg"
-			thumbPath := filepath.Join(storageDir, "uploads", thumbName)
-			createThumbnail(dstPath, thumbPath, 512)
-
-			writeJSON(w, http.StatusOK, jsonResp{
-				"ok":           true,
-				"url":          publicURL,
-				"thumb_url":    "/api/media/" + thumbName,
-				"key":          key,
-				"content_type": sniff,
-				"size_bytes":   nbytes,
-			})
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	// Delete endpoint
-	mux.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if backendSecret != "" && r.Header.Get("X-Backend-Secret") != backendSecret {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		base := strings.TrimPrefix(r.URL.Path, "/uploads/")
-		if base == "" {
-			http.NotFound(w, r)
-			return
-		}
-		rel := filepath.Join("uploads", base)
-		fp := filepath.Join(storageDir, rel)
-		if !isPathWithin(fp, storageDir) {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		if err := os.Remove(fp); err != nil {
-			if os.IsNotExist(err) {
-				http.NotFound(w, r)
-				return
-			}
-			writeJSON(w, http.StatusInternalServerError, jsonResp{"ok": false, "error": "delete_failed"})
-			return
-		}
-		writeJSON(w, http.StatusOK, jsonResp{"ok": true})
-	})
-
-	// Media serving endpoint
-	mux.HandleFunc("/media/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		base := strings.TrimPrefix(r.URL.Path, "/media/")
-		if base == "" {
-			http.NotFound(w, r)
-			return
-		}
-		var rel string
-		if strings.Contains(base, "/") {
-			rel = base
-		} else {
-			rel = filepath.Join("uploads", base)
-		}
-		fp := filepath.Join(storageDir, rel)
-		if !isPathWithin(fp, storageDir) {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		f, err := os.Open(fp)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		defer f.Close()
-
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		switch strings.ToLower(filepath.Ext(fp)) {
-		case ".jpg", ".jpeg":
-			w.Header().Set("Content-Type", "image/jpeg")
-		case ".png":
-			w.Header().Set("Content-Type", "image/png")
-		case ".webp":
-			w.Header().Set("Content-Type", "image/webp")
-		default:
-			w.Header().Set("Content-Type", "application/octet-stream")
-		}
-
-		stat, _ := f.Stat()
-		http.ServeContent(w, r, filepath.Base(fp), stat.ModTime(), f)
-	})
-}
+// setupHandlers is now defined in main.go and shared with tests
 
 func InitializeScenario(sc *godog.ScenarioContext) {
 	tc := &testContext{}

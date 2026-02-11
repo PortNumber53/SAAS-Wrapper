@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,15 +32,20 @@ import (
 
 type jsonResp map[string]any
 
+// appLog is the global leveled logger instance
+var appLog *Logger
+
 func main() {
 	_ = godotenv.Load()
+	appLog = NewLoggerFromEnv()
+
 	dbURL := os.Getenv("DATABASE_URL")
 	if len(os.Args) >= 2 && os.Args[1] == "migrate" {
 		if dbURL == "" {
-			log.Fatal("DATABASE_URL must be set for migrations")
+			appLog.Fatal("DATABASE_URL must be set for migrations")
 		}
 		if err := handleMigrateCommand(dbURL, os.Args[2:]); err != nil {
-			log.Fatal(err)
+			appLog.Fatal("%v", err)
 		}
 		return
 	}
@@ -49,7 +53,7 @@ func main() {
 
 	if dbURL != "" {
 		if err := runMigrations(dbURL, "up", ""); err != nil {
-			log.Printf("Auto-migration warning: %v", err)
+			appLog.Warn("Auto-migration warning: %v", err)
 		}
 	}
 
@@ -59,10 +63,35 @@ func main() {
 	}
 	storageDir, _ = filepath.Abs(storageDir)
 	if err := os.MkdirAll(filepath.Join(storageDir, "uploads"), 0o755); err != nil {
-		log.Fatalf("create storage: %v", err)
+		appLog.Fatal("create storage: %v", err)
 	}
 	backendSecret := os.Getenv("BACKEND_SECRET")
 
+	setupHandlers(mux, storageDir, backendSecret)
+
+	// Start background subscription migration job
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if dbURL != "" && stripeKey != "" {
+		// Sync tiers to Stripe (create products/prices for any missing ones)
+		syncTiersToStripe(dbURL, stripeKey)
+		go runMigrationWorker(dbURL, stripeKey)
+	} else {
+		appLog.Info("Subscription migration worker disabled (missing DATABASE_URL or STRIPE_SECRET_KEY)")
+	}
+
+	addr := os.Getenv("PORT")
+	if addr == "" {
+		addr = ":18311"
+	} else if !strings.HasPrefix(addr, ":") {
+		addr = ":" + addr
+	}
+	appLog.Info("listening on %s (storage=%s, log_level=%s)", addr, storageDir, os.Getenv("LOG_LEVEL"))
+	if err := http.ListenAndServe(addr, logRequest(mux)); err != nil {
+		appLog.Fatal("server error: %v", err)
+	}
+}
+
+func setupHandlers(mux *http.ServeMux, storageDir, backendSecret string) {
 	// Upload endpoint (Worker proxies /api/uploads -> /uploads)
 	mux.HandleFunc("/uploads", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -128,7 +157,9 @@ func main() {
 			thumbKey := filepath.Join("uploads", thumbName)
 			thumbPath := filepath.Join(storageDir, thumbKey)
 			if err := createThumbnail(dstPath, thumbPath, 512); err != nil {
-				log.Printf("thumb generation failed for %s: %v", dstPath, err)
+				if appLog != nil {
+					appLog.Warn("thumb generation failed for %s: %v", dstPath, err)
+				}
 			}
 			writeJSON(w, http.StatusOK, jsonResp{"ok": true, "url": publicURL, "thumb_url": "/api/media/" + thumbName, "key": key, "content_type": sniff, "size_bytes": nbytes})
 			return
@@ -223,24 +254,20 @@ func main() {
 		http.ServeContent(w, r, filepath.Base(fp), modTime, f)
 	})
 
-	// Stripe startup sync + migration worker
-	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
-	if dbURL != "" && stripeKey != "" {
-		if err := syncStripeProductsAndPrices(dbURL, stripeKey); err != nil {
-			log.Printf("Stripe sync warning: %v", err)
-		}
-		go runMigrationWorker(dbURL, stripeKey)
-		log.Println("Price migration worker started")
-	}
+	// Subscription tiers (public, no auth required)
+	mux.HandleFunc("/api/subscriptions/tiers", handleSubscriptionTiers)
 
-	addr := os.Getenv("PORT")
-	if addr == "" {
-		addr = "0.0.0.0:18311"
-	} else if !strings.HasPrefix(addr, ":") {
-		addr = ":" + addr
-	}
-	log.Printf("listening on %s (storage=%s)", addr, storageDir)
-	log.Fatal(http.ListenAndServe(addr, logRequest(mux)))
+	// WebSocket Hub
+	hub := NewWSHub()
+	go hub.Run()
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		hub.handleWebsocket(w, r)
+	})
+
+	// Stripe Webhook
+	mux.HandleFunc("/webhook/stripe/snapshot", func(w http.ResponseWriter, r *http.Request) {
+		handleStripeWebhook(w, r, hub)
+	})
 }
 
 func handleMigrateCommand(dbURL string, args []string) error {
@@ -282,7 +309,9 @@ func runMigrations(dbURL, cmd, arg string) error {
 		if err != nil && err != migrate.ErrNilVersion {
 			return fmt.Errorf("migrate version: %w", err)
 		}
-		log.Printf("Current migration version: %d (dirty: %v)", v, dirty)
+		if appLog != nil {
+			appLog.Info("Current migration version: %d (dirty: %v)", v, dirty)
+		}
 		return nil
 	case "force":
 		var version int
@@ -294,7 +323,9 @@ func runMigrations(dbURL, cmd, arg string) error {
 		}
 	}
 
-	log.Printf("Database migration '%s' completed successfully", cmd)
+	if appLog != nil {
+		appLog.Info("Database migration '%s' completed successfully", cmd)
+	}
 	return nil
 }
 
@@ -334,7 +365,9 @@ func logRequest(next http.Handler) http.Handler {
 		sr := &statusRecorder{ResponseWriter: w}
 		next.ServeHTTP(sr, r)
 		dur := time.Since(start)
-		log.Printf("%s %s -> %d %dB %s", r.Method, r.URL.Path, sr.status, sr.nbytes, dur)
+		if appLog != nil {
+			appLog.Info("%s %s -> %d %dB %s", r.Method, r.URL.Path, sr.status, sr.nbytes, dur)
+		}
 	})
 }
 
@@ -448,21 +481,21 @@ func syncStripeProductsAndPrices(dbURL, stripeKey string) error {
 			}
 			prod, err := stripeRequest(stripeKey, "POST", "/v1/products", params)
 			if err != nil {
-				log.Printf("stripe-sync: create product for tier %q: %v", t.Slug, err)
+				appLog.Warn("stripe-sync: create product for tier %q: %v", t.Slug, err)
 				continue
 			}
 			productID, _ = prod["id"].(string)
 			_, err = db.Exec(`UPDATE public.subscription_tiers SET stripe_product_id=$1, updated_at=now() WHERE id=$2`, productID, t.ID)
 			if err != nil {
-				log.Printf("stripe-sync: save product id for tier %q: %v", t.Slug, err)
+				appLog.Info("stripe-sync: save product id for tier %q: %v", t.Slug, err)
 				continue
 			}
-			log.Printf("stripe-sync: created product %s for tier %q", productID, t.Slug)
+			appLog.Info("stripe-sync: created product %s for tier %q", productID, t.Slug)
 		} else {
 			// Stripe → Local: fetch product, push local name/description updates
 			prod, err := stripeRequest(stripeKey, "GET", "/v1/products/"+productID, nil)
 			if err != nil {
-				log.Printf("stripe-sync: fetch product %s: %v", productID, err)
+				appLog.Info("stripe-sync: fetch product %s: %v", productID, err)
 				continue
 			}
 			// Push local name/description to Stripe if they differ
@@ -477,9 +510,9 @@ func syncStripeProductsAndPrices(dbURL, stripeKey string) error {
 				}
 				_, err = stripeRequest(stripeKey, "POST", "/v1/products/"+productID, params)
 				if err != nil {
-					log.Printf("stripe-sync: update product %s: %v", productID, err)
+					appLog.Info("stripe-sync: update product %s: %v", productID, err)
 				} else {
-					log.Printf("stripe-sync: updated product %s for tier %q", productID, t.Slug)
+					appLog.Info("stripe-sync: updated product %s for tier %q", productID, t.Slug)
 				}
 			}
 		}
@@ -503,21 +536,21 @@ func syncStripeProductsAndPrices(dbURL, stripeKey string) error {
 			}
 			price, err := stripeRequest(stripeKey, "POST", "/v1/prices", params)
 			if err != nil {
-				log.Printf("stripe-sync: create price for tier %q: %v", t.Slug, err)
+				appLog.Info("stripe-sync: create price for tier %q: %v", t.Slug, err)
 				continue
 			}
 			priceID, _ = price["id"].(string)
 			_, err = db.Exec(`UPDATE public.subscription_tiers SET stripe_price_id=$1, updated_at=now() WHERE id=$2`, priceID, t.ID)
 			if err != nil {
-				log.Printf("stripe-sync: save price id for tier %q: %v", t.Slug, err)
+				appLog.Info("stripe-sync: save price id for tier %q: %v", t.Slug, err)
 				continue
 			}
-			log.Printf("stripe-sync: created price %s for tier %q", priceID, t.Slug)
+			appLog.Info("stripe-sync: created price %s for tier %q", priceID, t.Slug)
 		} else {
 			// Stripe → Local: fetch price, update local DB with Stripe's truth
 			price, err := stripeRequest(stripeKey, "GET", "/v1/prices/"+priceID, nil)
 			if err != nil {
-				log.Printf("stripe-sync: fetch price %s: %v", priceID, err)
+				appLog.Info("stripe-sync: fetch price %s: %v", priceID, err)
 				continue
 			}
 			// Stripe prices are immutable for amount, but we sync active status and read current values
@@ -539,15 +572,15 @@ func syncStripeProductsAndPrices(dbURL, stripeKey string) error {
 					WHERE id=$5
 				`, stripeAmount, stripeCurrency, stripeInterval, stripeActive, t.ID)
 				if err != nil {
-					log.Printf("stripe-sync: update tier %q from Stripe: %v", t.Slug, err)
+					appLog.Info("stripe-sync: update tier %q from Stripe: %v", t.Slug, err)
 				} else {
-					log.Printf("stripe-sync: synced tier %q from Stripe (amount=%d, currency=%s)", t.Slug, stripeAmount, stripeCurrency)
+					appLog.Info("stripe-sync: synced tier %q from Stripe (amount=%d, currency=%s)", t.Slug, stripeAmount, stripeCurrency)
 				}
 			}
 		}
 	}
 
-	log.Println("stripe-sync: two-way sync completed")
+	appLog.Info("stripe-sync: two-way sync completed")
 	return nil
 }
 
@@ -568,7 +601,7 @@ func runMigrationWorker(dbURL, stripeKey string) {
 func processPendingMigrations(dbURL, stripeKey string) {
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Printf("migration-worker: db open: %v", err)
+		appLog.Info("migration-worker: db open: %v", err)
 		return
 	}
 	defer db.Close()
@@ -593,12 +626,12 @@ func processPendingMigrations(dbURL, stripeKey string) {
 	`).Scan(&job.ID, &job.TierID, &job.OldStripeProductID, &job.OldStripePriceID, &job.NewStripePriceID, &job.Status)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Printf("migration-worker: query job: %v", err)
+			appLog.Info("migration-worker: query job: %v", err)
 		}
 		return
 	}
 
-	log.Printf("migration-worker: processing job %d (status=%s)", job.ID, job.Status)
+	appLog.Info("migration-worker: processing job %d (status=%s)", job.ID, job.Status)
 
 	// Mark as running if pending
 	if job.Status == "pending" {
@@ -614,7 +647,7 @@ func processPendingMigrations(dbURL, stripeKey string) {
 		LIMIT 50
 	`, job.ID)
 	if err != nil {
-		log.Printf("migration-worker: query items: %v", err)
+		appLog.Info("migration-worker: query items: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -628,7 +661,7 @@ func processPendingMigrations(dbURL, stripeKey string) {
 	for rows.Next() {
 		var it item
 		if err := rows.Scan(&it.ID, &it.UserID, &it.StripeSubscriptionID); err != nil {
-			log.Printf("migration-worker: scan item: %v", err)
+			appLog.Info("migration-worker: scan item: %v", err)
 			continue
 		}
 		items = append(items, it)
@@ -645,12 +678,12 @@ func processPendingMigrations(dbURL, stripeKey string) {
 			if job.OldStripeProductID != "" {
 				_, err := stripeRequest(stripeKey, "POST", "/v1/products/"+job.OldStripeProductID, url.Values{"active": {"false"}})
 				if err != nil {
-					log.Printf("migration-worker: archive old product %s: %v", job.OldStripeProductID, err)
+					appLog.Info("migration-worker: archive old product %s: %v", job.OldStripeProductID, err)
 				} else {
-					log.Printf("migration-worker: archived old product %s", job.OldStripeProductID)
+					appLog.Info("migration-worker: archived old product %s", job.OldStripeProductID)
 				}
 			}
-			log.Printf("migration-worker: job %d completed", job.ID)
+			appLog.Info("migration-worker: job %d completed", job.ID)
 		}
 		return
 	}
@@ -664,13 +697,13 @@ func processPendingMigrations(dbURL, stripeKey string) {
 			}
 			_, _ = db.Exec(`UPDATE public.price_migration_items SET status='failed', error_message=$1 WHERE id=$2`, errMsg, it.ID)
 			_, _ = db.Exec(`UPDATE public.price_migration_jobs SET failed_users = failed_users + 1 WHERE id=$1`, job.ID)
-			log.Printf("migration-worker: failed item %d (sub=%s): %v", it.ID, it.StripeSubscriptionID, err)
+			appLog.Info("migration-worker: failed item %d (sub=%s): %v", it.ID, it.StripeSubscriptionID, err)
 		} else {
 			_, _ = db.Exec(`UPDATE public.price_migration_items SET status='migrated', migrated_at=now() WHERE id=$1`, it.ID)
 			_, _ = db.Exec(`UPDATE public.price_migration_jobs SET migrated_users = migrated_users + 1 WHERE id=$1`, job.ID)
 			// Update user_subscriptions to reflect new price
 			_, _ = db.Exec(`UPDATE public.user_subscriptions SET stripe_price_id=$1, updated_at=now() WHERE user_id=$2`, job.NewStripePriceID, it.UserID)
-			log.Printf("migration-worker: migrated item %d (sub=%s)", it.ID, it.StripeSubscriptionID)
+			appLog.Info("migration-worker: migrated item %d (sub=%s)", it.ID, it.StripeSubscriptionID)
 		}
 	}
 }

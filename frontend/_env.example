@@ -4,7 +4,8 @@ BACKEND_ORIGIN=<BACKEND_ORIGIN_VALUE>
 
 # Enable auto-reload in development (the Worker injects a tiny polling script)
 DEV_AUTORELOAD=<DEV_AUTORELOAD_VALUE>
-# Force OAuth redirects back to Vite origin in dev
+# Force OAuth redirects back to Vite origin in dev.
+# Example: http://localhost:18310 or https://example.com
 DEV_ORIGIN=<DEV_ORIGIN_VALUE>
 
 # Security
@@ -17,7 +18,9 @@ DATABASE_URL=<DATABASE_URL_VALUE>
 GOOGLE_CLIENT_ID=<GOOGLE_CLIENT_ID_VALUE>
 GOOGLE_CLIENT_SECRET=<GOOGLE_CLIENT_SECRET_VALUE>
 
-# Instagram OAuth (Basic Display)
+# Instagram OAuth (uses Facebook App credentials - Meta merged the products)
+# Note: The "Instagram" button uses FACEBOOK_APP_ID/SECRET
+# INSTAGRAM_CLIENT_ID and INSTAGRAM_CLIENT_SECRET are deprecated
 INSTAGRAM_CLIENT_ID=<INSTAGRAM_CLIENT_ID_VALUE>
 INSTAGRAM_CLIENT_SECRET=<INSTAGRAM_CLIENT_SECRET_VALUE>
 INSTAGRAM_VERIFY_TOKEN=<INSTAGRAM_VERIFY_TOKEN_VALUE>

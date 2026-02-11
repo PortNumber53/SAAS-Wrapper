@@ -13,5 +13,12 @@ BACKEND_SECRET=<BACKEND_SECRET_VALUE>
 GOOGLE_CLIENT_ID=<GOOGLE_CLIENT_ID_VALUE>
 GOOGLE_CLIENT_SECRET=<GOOGLE_CLIENT_SECRET_VALUE>
 
-# Stripe (needed for price migration worker)
+# Logging (DEBUG, INFO, WARN, ERROR) — default: INFO
+LOG_LEVEL=INFO
+
+# Unique identifier for this SaaS instance (used as Stripe product metadata)
+SAAS_ID=saas_wrapper_dev
+
+# Stripe
 STRIPE_SECRET_KEY=<STRIPE_SECRET_KEY_VALUE>
+STRIPE_WEBHOOK_SECRET=<STRIPE_WEBHOOK_SECRET_VALUE>

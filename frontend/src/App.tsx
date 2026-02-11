@@ -12,6 +12,8 @@ import './App.css'
 import AgentChatPage from './pages/AgentChat'
 import AgentSettingsPage from './pages/AgentSettings'
 import CommercePage from './pages/Commerce'
+import PricingPage from './pages/Pricing'
+import BillingPage from './pages/Billing'
 import SubscriptionPage from './pages/Subscription'
 import AdminDashboardPage from './pages/AdminDashboard'
 import useAppStore, { type AppState } from './store/app'
@@ -271,6 +273,7 @@ function App() {
                     <NavLink to='/agents/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Agent Settings</NavLink>
                     <NavLink to='/account/subscription' role='menuitem' onClick={() => setMenuOpen(false)}>Subscription</NavLink>
                     <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
+                    <NavLink to='/account/billing' role='menuitem' onClick={() => setMenuOpen(false)}>Billing</NavLink>
                     {isAdmin && <NavLink to='/admin' role='menuitem' onClick={() => setMenuOpen(false)}>Admin</NavLink>}
                     <button role='menuitem' onClick={() => {
                       fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
@@ -337,6 +340,7 @@ function App() {
           <Route path='/account/subscription' element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
           <Route path='/account/commerce' element={<RequireAuth><CommercePage /></RequireAuth>} />
           <Route path='/account/integrations' element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
+          <Route path='/account/billing' element={<RequireAuth><BillingPage /></RequireAuth>} />
           <Route path='*' element={
             <section className='card'>
               <h2>404 — Page Not Found</h2>

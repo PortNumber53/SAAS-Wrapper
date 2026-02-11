@@ -22,10 +22,16 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 # Note: The "Instagram" button uses FACEBOOK_APP_ID/SECRET
 # INSTAGRAM_CLIENT_ID and INSTAGRAM_CLIENT_SECRET are deprecated
 INSTAGRAM_VERIFY_TOKEN=your-instagram-verify-token
+INSTAGRAM_CLIENT_SECRET=<INSTAGRAM_CLIENT_SECRET_VALUE>
+INSTAGRAM_VERIFY_TOKEN=<INSTAGRAM_VERIFY_TOKEN_VALUE>
 
 # Facebook (for Instagram Graph API)
 FACEBOOK_APP_ID=your-facebook-app-id
 FACEBOOK_APP_SECRET=your-facebook-app-secret
+
+# Optional: R2 Bucket for image storage
+# (Configure via wrangler.jsonc or wrangler secret put)
+# IMAGES=your-r2-bucket-name
 
 # Stripe
 STRIPE_SECRET_KEY=sk_test_your-stripe-secret-key
