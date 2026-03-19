@@ -150,17 +150,22 @@ ssh grimlock@${TARGET_HOST} "
             npm ci
             npm run build
 
-            # Push secrets non-interactively into the Worker
-            printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID
-            printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET
-            printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET
-            printf "%s" "$DATABASE_URL"         | npx wrangler secret put DATABASE_URL
-            printf "%s" "$STRIPE_SECRET_KEY"    | npx wrangler secret put STRIPE_SECRET_KEY
-            printf "%s" "$ADMIN_EMAILS"         | npx wrangler secret put ADMIN_EMAILS
+            # Push all secrets in a single bulk call (one deployment instead of six)
+            npx wrangler secret bulk <(cat <<SECRETS
+{
+  "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+  "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+  "SESSION_SECRET": "${SESSION_SECRET}",
+  "DATABASE_URL": "${DATABASE_URL}",
+  "STRIPE_SECRET_KEY": "${STRIPE_SECRET_KEY}",
+  "ADMIN_EMAILS": "${ADMIN_EMAILS}",
+  "BACKEND_ORIGIN": "${BACKEND_ORIGIN}"
+}
+SECRETS
+            )
 
-            # Deploy Worker with backend origin configured
-            npx wrangler deploy \
-              --var BACKEND_ORIGIN="$BACKEND_ORIGIN"
+            # Deploy Worker
+            npx wrangler deploy
           '''
         }
       }
