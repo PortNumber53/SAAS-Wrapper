@@ -12,6 +12,8 @@ import './App.css'
 import AgentChatPage from './pages/AgentChat'
 import AgentSettingsPage from './pages/AgentSettings'
 import CommercePage from './pages/Commerce'
+import SubscriptionPage from './pages/Subscription'
+import AdminDashboardPage from './pages/AdminDashboard'
 import useAppStore, { type AppState } from './store/app'
 import usePublishStore from './store/publish'
 import BottomBar from './components/BottomBar'
@@ -82,12 +84,15 @@ function App() {
     return () => window.removeEventListener('focus', onFocus)
   }, [storeSessionOk])
 
-  // Ensure IG accounts are loaded when session is authenticated
+  const isAdmin = useAppStore((s: AppState) => s.isAdmin)
+  const isAdminLoaded = useAppStore((s: AppState) => s.isAdminLoaded)
+  const loadAdminStatus = useAppStore((s: AppState) => s.loadAdminStatus)
+
+  // Ensure IG accounts and admin status are loaded when session is authenticated
   useEffect(() => {
-    if (storeSessionOk && !igAccountsLoaded) {
-      loadIGAccounts()
-    }
-  }, [storeSessionOk, igAccountsLoaded])
+    if (storeSessionOk && !igAccountsLoaded) loadIGAccounts()
+    if (storeSessionOk && !isAdminLoaded) loadAdminStatus()
+  }, [storeSessionOk, igAccountsLoaded, isAdminLoaded])
 
   // Reflect store session into header display
   const storeSession = useAppStore((s: AppState) => s.session)
@@ -264,7 +269,9 @@ function App() {
                     <NavLink to='/profile' role='menuitem' onClick={() => setMenuOpen(false)}>Profile</NavLink>
                     <NavLink to='/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Settings</NavLink>
                     <NavLink to='/agents/settings' role='menuitem' onClick={() => setMenuOpen(false)}>Agent Settings</NavLink>
+                    <NavLink to='/account/subscription' role='menuitem' onClick={() => setMenuOpen(false)}>Subscription</NavLink>
                     <NavLink to='/account/integrations' role='menuitem' onClick={() => setMenuOpen(false)}>Integrations</NavLink>
+                    {isAdmin && <NavLink to='/admin' role='menuitem' onClick={() => setMenuOpen(false)}>Admin</NavLink>}
                     <button role='menuitem' onClick={() => {
                       fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
                         setUserEmail(null); setUserName(null); setUserAvatar(null); setMenuOpen(false);
@@ -309,12 +316,7 @@ function App() {
               <p>Modern React frontend hosted on Cloudflare Workers with OAuth and API proxying.</p>
             </section>
           } />
-          <Route path='/pricing' element={
-            <section className='card'>
-              <h2>Pricing</h2>
-              <p>Contact us to discuss plans and usage-based pricing.</p>
-            </section>
-          } />
+          <Route path='/pricing' element={<PricingPage />} />
           <Route path='/about' element={
             <section className='card'>
               <h2>About</h2>
@@ -331,6 +333,8 @@ function App() {
           <Route path='/content/instagram' element={<RequireAuth><IGContentPage /></RequireAuth>} />
           <Route path='/agents/chat' element={<RequireAuth><AgentChatPage /></RequireAuth>} />
           <Route path='/agents/settings' element={<RequireAuth><AgentSettingsPage /></RequireAuth>} />
+          <Route path='/admin' element={<RequireAuth><AdminDashboardPage /></RequireAuth>} />
+          <Route path='/account/subscription' element={<RequireAuth><SubscriptionPage /></RequireAuth>} />
           <Route path='/account/commerce' element={<RequireAuth><CommercePage /></RequireAuth>} />
           <Route path='/account/integrations' element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
           <Route path='*' element={
@@ -359,6 +363,46 @@ function App() {
 }
 
 export default App
+
+function PricingPage() {
+  const [tiers, setTiers] = useState<Array<{ slug: string; name: string; description: string; unit_amount: number; currency: string; interval: string; features: string[] }>>([])
+  useEffect(() => {
+    fetch('/api/subscription/tiers')
+      .then(r => r.ok ? r.json() : { ok: false })
+      .then(j => { if (j?.ok && Array.isArray(j.tiers)) setTiers(j.tiers) })
+      .catch(() => {})
+  }, [])
+  const fmt = (amount: number, currency: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(amount / 100)
+  return (
+    <section className='card'>
+      <h2>Pricing</h2>
+      <p className='read-the-docs' style={{ marginBottom: 16 }}>Simple, transparent pricing for every stage.</p>
+      {tiers.length === 0 ? <p>Loading...</p> : (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(tiers.length, 3)}, 1fr)`, gap: 16 }}>
+          {tiers.map(t => {
+            const features = Array.isArray(t.features) ? t.features : []
+            const isFree = t.slug === 'free'
+            return (
+              <div key={t.slug} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 20, background: 'var(--surface)' }}>
+                <h3 style={{ margin: 0 }}>{t.name}</h3>
+                <p className='read-the-docs' style={{ margin: '4px 0 12px' }}>{t.description}</p>
+                <div style={{ fontSize: '1.75em', fontWeight: 700, marginBottom: 4 }}>{isFree ? 'Free' : fmt(t.unit_amount, t.currency)}</div>
+                {!isFree && <div className='read-the-docs'>per {t.interval}</div>}
+                <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0' }}>
+                  {features.map((f, i) => <li key={i} style={{ padding: '4px 0', fontSize: '0.9em' }}>{f}</li>)}
+                </ul>
+                <Link className='btn primary' to='/account/subscription' style={{ display: 'inline-block' }}>
+                  {isFree ? 'Get Started' : 'Subscribe'}
+                </Link>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useAppStore((s: AppState) => s.session)

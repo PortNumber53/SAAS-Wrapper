@@ -15,8 +15,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react(), isBuild ? cloudflare() : undefined].filter(Boolean) as any,
     server: {
       port: 18310,
-      allowedHosts: ['sasswrapper14.dev.portnumber53.com',
-        'sasswrapper16.dev.portnumber53.com'
+      allowedHosts: ['saas14.dev.portnumber53.com',
+        'saas16.dev.portnumber53.com'
       ],
       proxy: {
         '/api': {

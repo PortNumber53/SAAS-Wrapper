@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -221,9 +223,16 @@ func main() {
 		http.ServeContent(w, r, filepath.Base(fp), modTime, f)
 	})
 
+	// Start price migration worker if Stripe key is configured
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if dbURL != "" && stripeKey != "" {
+		go runMigrationWorker(dbURL, stripeKey)
+		log.Println("Price migration worker started")
+	}
+
 	addr := os.Getenv("PORT")
 	if addr == "" {
-		addr = ":18311"
+		addr = "0.0.0.0:18311"
 	} else if !strings.HasPrefix(addr, ":") {
 		addr = ":" + addr
 	}
@@ -335,6 +344,205 @@ func isPathWithin(path, base string) bool {
 		return false
 	}
 	return !strings.HasPrefix(rel, "..") && !strings.Contains(rel, string(filepath.Separator)+"..")
+}
+
+// --- Stripe API helper ---
+
+func stripeRequest(key, method, path string, params url.Values) (map[string]interface{}, error) {
+	var body io.Reader
+	if params != nil && (method == "POST" || method == "PUT" || method == "PATCH") {
+		body = strings.NewReader(params.Encode())
+	}
+	reqURL := "https://api.stripe.com" + path
+	if method == "GET" && params != nil {
+		reqURL += "?" + params.Encode()
+	}
+	req, err := http.NewRequest(method, reqURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+key)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("stripe request: %w", err)
+	}
+	defer resp.Body.Close()
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("stripe decode: %w", err)
+	}
+	if resp.StatusCode >= 400 {
+		errMsg := "unknown"
+		if e, ok := result["error"].(map[string]interface{}); ok {
+			if m, ok := e["message"].(string); ok {
+				errMsg = m
+			}
+		}
+		return result, fmt.Errorf("stripe %d: %s", resp.StatusCode, errMsg)
+	}
+	return result, nil
+}
+
+// --- Price migration worker ---
+
+func runMigrationWorker(dbURL, stripeKey string) {
+	// Initial delay to let the server start up
+	time.Sleep(10 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+	// Run once immediately, then on tick
+	processPendingMigrations(dbURL, stripeKey)
+	for range ticker.C {
+		processPendingMigrations(dbURL, stripeKey)
+	}
+}
+
+func processPendingMigrations(dbURL, stripeKey string) {
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Printf("migration-worker: db open: %v", err)
+		return
+	}
+	defer db.Close()
+
+	// Find a job that is ready to process (grace period elapsed)
+	var job struct {
+		ID                 int64
+		TierID             int64
+		OldStripeProductID string
+		OldStripePriceID   string
+		NewStripePriceID   string
+		Status             string
+	}
+	err = db.QueryRow(`
+		SELECT id, tier_id, old_stripe_product_id, old_stripe_price_id, new_stripe_price_id, status
+		FROM public.price_migration_jobs
+		WHERE status IN ('pending','running')
+		  AND (status='running' OR created_at + (grace_period_days * interval '1 day') <= now())
+		ORDER BY created_at ASC
+		LIMIT 1
+		FOR UPDATE SKIP LOCKED
+	`).Scan(&job.ID, &job.TierID, &job.OldStripeProductID, &job.OldStripePriceID, &job.NewStripePriceID, &job.Status)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Printf("migration-worker: query job: %v", err)
+		}
+		return
+	}
+
+	log.Printf("migration-worker: processing job %d (status=%s)", job.ID, job.Status)
+
+	// Mark as running if pending
+	if job.Status == "pending" {
+		_, _ = db.Exec(`UPDATE public.price_migration_jobs SET status='running', started_at=now() WHERE id=$1`, job.ID)
+	}
+
+	// Process pending items in batches
+	rows, err := db.Query(`
+		SELECT id, user_id, stripe_subscription_id
+		FROM public.price_migration_items
+		WHERE job_id=$1 AND status='pending'
+		ORDER BY id ASC
+		LIMIT 50
+	`, job.ID)
+	if err != nil {
+		log.Printf("migration-worker: query items: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	type item struct {
+		ID                   int64
+		UserID               string
+		StripeSubscriptionID string
+	}
+	var items []item
+	for rows.Next() {
+		var it item
+		if err := rows.Scan(&it.ID, &it.UserID, &it.StripeSubscriptionID); err != nil {
+			log.Printf("migration-worker: scan item: %v", err)
+			continue
+		}
+		items = append(items, it)
+	}
+	rows.Close()
+
+	if len(items) == 0 {
+		// No pending items - check if job is done
+		var pendingCount int
+		_ = db.QueryRow(`SELECT count(*) FROM public.price_migration_items WHERE job_id=$1 AND status='pending'`, job.ID).Scan(&pendingCount)
+		if pendingCount == 0 {
+			_, _ = db.Exec(`UPDATE public.price_migration_jobs SET status='completed', completed_at=now() WHERE id=$1`, job.ID)
+			// Archive old Stripe product
+			if job.OldStripeProductID != "" {
+				_, err := stripeRequest(stripeKey, "POST", "/v1/products/"+job.OldStripeProductID, url.Values{"active": {"false"}})
+				if err != nil {
+					log.Printf("migration-worker: archive old product %s: %v", job.OldStripeProductID, err)
+				} else {
+					log.Printf("migration-worker: archived old product %s", job.OldStripeProductID)
+				}
+			}
+			log.Printf("migration-worker: job %d completed", job.ID)
+		}
+		return
+	}
+
+	for _, it := range items {
+		err := migrateSubscription(stripeKey, it.StripeSubscriptionID, job.NewStripePriceID)
+		if err != nil {
+			errMsg := err.Error()
+			if len(errMsg) > 500 {
+				errMsg = errMsg[:500]
+			}
+			_, _ = db.Exec(`UPDATE public.price_migration_items SET status='failed', error_message=$1 WHERE id=$2`, errMsg, it.ID)
+			_, _ = db.Exec(`UPDATE public.price_migration_jobs SET failed_users = failed_users + 1 WHERE id=$1`, job.ID)
+			log.Printf("migration-worker: failed item %d (sub=%s): %v", it.ID, it.StripeSubscriptionID, err)
+		} else {
+			_, _ = db.Exec(`UPDATE public.price_migration_items SET status='migrated', migrated_at=now() WHERE id=$1`, it.ID)
+			_, _ = db.Exec(`UPDATE public.price_migration_jobs SET migrated_users = migrated_users + 1 WHERE id=$1`, job.ID)
+			// Update user_subscriptions to reflect new price
+			_, _ = db.Exec(`UPDATE public.user_subscriptions SET stripe_price_id=$1, updated_at=now() WHERE user_id=$2`, job.NewStripePriceID, it.UserID)
+			log.Printf("migration-worker: migrated item %d (sub=%s)", it.ID, it.StripeSubscriptionID)
+		}
+	}
+}
+
+func migrateSubscription(stripeKey, subscriptionID, newPriceID string) error {
+	// Get current subscription to find the subscription item ID
+	sub, err := stripeRequest(stripeKey, "GET", "/v1/subscriptions/"+subscriptionID, nil)
+	if err != nil {
+		return fmt.Errorf("get subscription: %w", err)
+	}
+	// Extract first item ID
+	itemsObj, _ := sub["items"].(map[string]interface{})
+	dataArr, _ := itemsObj["data"].([]interface{})
+	if len(dataArr) == 0 {
+		return fmt.Errorf("subscription has no items")
+	}
+	firstItem, _ := dataArr[0].(map[string]interface{})
+	itemID, _ := firstItem["id"].(string)
+	if itemID == "" {
+		return fmt.Errorf("could not find subscription item ID")
+	}
+	// Check subscription status
+	status, _ := sub["status"].(string)
+	if status == "canceled" || status == "incomplete_expired" {
+		return fmt.Errorf("subscription status is %s, skipping", status)
+	}
+	// Update subscription item to new price
+	params := url.Values{
+		"items[0][id]":         {itemID},
+		"items[0][price]":      {newPriceID},
+		"proration_behavior":   {"create_prorations"},
+	}
+	_, err = stripeRequest(stripeKey, "POST", "/v1/subscriptions/"+subscriptionID, params)
+	if err != nil {
+		return fmt.Errorf("update subscription: %w", err)
+	}
+	return nil
 }
 
 // createThumbnail decodes src image and writes a JPEG thumbnail at dst with max dimension maxDim

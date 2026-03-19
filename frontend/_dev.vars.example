@@ -31,6 +31,9 @@ FACEBOOK_APP_SECRET=your-facebook-app-secret
 STRIPE_SECRET_KEY=sk_test_your-stripe-secret-key
 STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
 
+# Admin emails (comma-separated) for gating admin subscription endpoints
+ADMIN_EMAILS=admin@example.com
+
 # Optional: R2 Bucket for image storage
 # (Configure via wrangler.jsonc or wrangler secret put)
 # IMAGES=your-r2-bucket-name

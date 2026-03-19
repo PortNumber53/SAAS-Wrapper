@@ -4,10 +4,9 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "vite --host",
+		"dev": "concurrently -k -n wrangler,vite -c blue,green \"npm:dev:wrangler\" \"npm:dev:vite\"",
 		"dev:vite": "VITE_API_PROXY_TARGET=http://127.0.0.1:18312 vite --host",
-		"dev:wrangler": "wrangler dev --config wrangler.jsonc --port 18312",
-		"dev:full": "concurrently -k -n wrangler,vite -c blue,green \"npm:dev:wrangler\" \"npm:dev:vite\"",
+		"dev:wrangler": "wrangler dev --config wrangler.jsonc --port 18312 --ip 0.0.0.0",
 		"build": "tsc -b && vite build",
 		"lint": "eslint .",
 		"preview": "npm run build && vite preview",

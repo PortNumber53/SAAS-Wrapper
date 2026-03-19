@@ -23,4 +23,6 @@ interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   // Postgres DSN
   DATABASE_URL: string;
+  // Admin emails (comma-separated) for gating admin endpoints
+  ADMIN_EMAILS?: string;
 }

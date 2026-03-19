@@ -400,6 +400,177 @@ export default {
         }
         return new Response(null, { status: 405 });
       }
+      // --- Subscription tiers ---
+      if (url.pathname === '/api/subscription/tiers' && request.method === 'GET') {
+        const sql = getPg(env);
+        const rows = await sql`select id, slug, name, description, unit_amount, currency, interval, features, sort_order from public.subscription_tiers where active=true order by sort_order` as Array<any>;
+        return new Response(JSON.stringify({ ok: true, tiers: rows }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (url.pathname === '/api/subscription/me' && request.method === 'GET') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+        if (!user?.id) return new Response(JSON.stringify({ ok: true, subscription: null }), { headers: { 'content-type': 'application/json' } });
+        const sql = getPg(env);
+        const rows = await sql`select us.stripe_customer_id, us.stripe_subscription_id, us.stripe_price_id, us.status, us.current_period_start, us.current_period_end, us.cancel_at_period_end, st.slug as tier, st.name as tier_name, st.features from public.user_subscriptions us join public.subscription_tiers st on st.id = us.tier_id where us.user_id=${user.id} limit 1` as Array<any>;
+        return new Response(JSON.stringify({ ok: true, subscription: rows[0] || null }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (url.pathname === '/api/subscription/checkout' && request.method === 'POST') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const sql = getPg(env);
+        // Find or create user record
+        let user = await findUserByEmail(env, sess.email).catch(() => null as any);
+        if (!user?.id) {
+          // Auto-create user if they authenticated via OAuth but row is missing
+          await sql`insert into public.users (email, password, name) values (${sess.email}, 'oauth', ${(sess as any).name || ''}) on conflict (email) do nothing`;
+          user = await findUserByEmail(env, sess.email).catch(() => null as any);
+        }
+        if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+        const body = (await request.json().catch(() => ({}))) as any;
+        const tierSlug = (body?.tier_slug || '').toString().trim();
+        if (!tierSlug) return new Response(JSON.stringify({ ok: false, error: 'missing_tier' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        const tiers = await sql`select id, stripe_price_id from public.subscription_tiers where slug=${tierSlug} and active=true limit 1` as Array<any>;
+        const tier = tiers[0];
+        if (!tier) return new Response(JSON.stringify({ ok: false, error: 'tier_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+        if (!tier.stripe_price_id) return new Response(JSON.stringify({ ok: false, error: 'tier_not_configured', message: 'This tier does not have a Stripe price configured yet. An admin must set it up first.' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        // Get or create Stripe customer
+        const existing = await sql`select stripe_customer_id from public.user_subscriptions where user_id=${user.id} limit 1` as Array<any>;
+        let customerId = existing[0]?.stripe_customer_id || '';
+        if (!customerId) {
+          const cust = await stripe(env, '/v1/customers', 'POST', new URLSearchParams({ email: sess.email, 'metadata[user_id]': user.id }));
+          customerId = cust?.id as string;
+          if (!customerId) return new Response(JSON.stringify({ ok: false, error: 'stripe_customer_failed' }), { status: 502, headers: { 'content-type': 'application/json' } });
+          // Upsert with free tier as placeholder
+          const freeTier = await sql`select id from public.subscription_tiers where slug='free' limit 1` as Array<any>;
+          const freeTierId = freeTier[0]?.id || tier.id;
+          await sql`insert into public.user_subscriptions (user_id, tier_id, stripe_customer_id, status) values (${user.id}, ${freeTierId}, ${customerId}, 'active') on conflict (user_id) do update set stripe_customer_id=excluded.stripe_customer_id, updated_at=now()`;
+        }
+        const origin = effectiveOrigin(request, url);
+        const params = new URLSearchParams();
+        params.set('mode', 'subscription');
+        params.set('customer', customerId);
+        params.set('line_items[0][price]', tier.stripe_price_id);
+        params.set('line_items[0][quantity]', '1');
+        params.set('success_url', `${origin}/account/subscription?success=1`);
+        params.set('cancel_url', `${origin}/account/subscription?canceled=1`);
+        params.set('subscription_data[metadata][user_id]', user.id);
+        params.set('subscription_data[metadata][tier_slug]', tierSlug);
+        const s = await stripe(env, '/v1/checkout/sessions', 'POST', params);
+        const checkoutUrl = s?.url as string;
+        if (!checkoutUrl) return new Response(JSON.stringify({ ok: false }), { status: 502, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ ok: true, url: checkoutUrl }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (url.pathname === '/api/subscription/portal' && request.method === 'POST') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const user = await findUserByEmail(env, sess.email).catch(() => null as any);
+        if (!user?.id) return new Response(JSON.stringify({ ok: false, error: 'user_not_found' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        const sql = getPg(env);
+        const rows = await sql`select stripe_customer_id from public.user_subscriptions where user_id=${user.id} limit 1` as Array<any>;
+        const customerId = rows[0]?.stripe_customer_id;
+        if (!customerId) return new Response(JSON.stringify({ ok: false, error: 'no_subscription' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        const origin = effectiveOrigin(request, url);
+        const portal = await stripe(env, '/v1/billing_portal/sessions', 'POST', new URLSearchParams({ customer: customerId, return_url: `${origin}/account/subscription` }));
+        const portalUrl = portal?.url as string;
+        if (!portalUrl) return new Response(JSON.stringify({ ok: false }), { status: 502, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ ok: true, url: portalUrl }), { headers: { 'content-type': 'application/json' } });
+      }
+      // --- Admin: subscription tier management ---
+      if (url.pathname === '/api/admin/check' && request.method === 'GET') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const adminEmails = ((env as any).ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+        const isAdmin = adminEmails.includes(sess.email.toLowerCase());
+        return new Response(JSON.stringify({ ok: true, is_admin: isAdmin }), { headers: { 'content-type': 'application/json' } });
+      }
+      if (url.pathname === '/api/admin/subscription/tiers') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const adminEmails = ((env as any).ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+        if (!adminEmails.includes(sess.email.toLowerCase())) return new Response(JSON.stringify({ ok: false, error: 'forbidden' }), { status: 403, headers: { 'content-type': 'application/json' } });
+        const sql = getPg(env);
+        if (request.method === 'GET') {
+          const rows = await sql`select * from public.subscription_tiers order by sort_order` as Array<any>;
+          return new Response(JSON.stringify({ ok: true, tiers: rows }), { headers: { 'content-type': 'application/json' } });
+        }
+        return new Response(null, { status: 405 });
+      }
+      if (url.pathname.startsWith('/api/admin/subscription/tiers/')) {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const adminEmails = ((env as any).ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+        if (!adminEmails.includes(sess.email.toLowerCase())) return new Response(JSON.stringify({ ok: false, error: 'forbidden' }), { status: 403, headers: { 'content-type': 'application/json' } });
+        const sql = getPg(env);
+        const parts = url.pathname.split('/');
+        const slug = parts[5] || '';
+        // PUT /api/admin/subscription/tiers/:slug - update tier display info
+        if (request.method === 'PUT' && parts.length === 6) {
+          const body = (await request.json().catch(() => ({}))) as any;
+          const name = body?.name !== undefined ? String(body.name) : undefined;
+          const description = body?.description !== undefined ? String(body.description) : undefined;
+          const features = body?.features !== undefined ? body.features : undefined;
+          const sort_order = body?.sort_order !== undefined ? Number(body.sort_order) : undefined;
+          const active = body?.active !== undefined ? !!body.active : undefined;
+          const updates: string[] = [];
+          if (name !== undefined) updates.push('name');
+          if (description !== undefined) updates.push('description');
+          // Build dynamic update - use individual field updates for simplicity
+          await sql`update public.subscription_tiers set
+            name = coalesce(${name ?? null}, name),
+            description = coalesce(${description ?? null}, description),
+            features = coalesce(${features !== undefined ? JSON.stringify(features) : null}::jsonb, features),
+            sort_order = coalesce(${sort_order ?? null}, sort_order),
+            active = coalesce(${active ?? null}, active),
+            updated_at = now()
+            where slug=${slug}`;
+          return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } });
+        }
+        // POST /api/admin/subscription/tiers/:slug/update-price - create price migration
+        if (request.method === 'POST' && parts[6] === 'update-price') {
+          const body = (await request.json().catch(() => ({}))) as any;
+          const newProductName = (body?.new_product_name || '').toString().trim();
+          const newUnitAmount = Math.max(50, Number(body?.new_unit_amount || 0) | 0);
+          const currency = (body?.currency || 'usd').toString().toLowerCase();
+          const interval = (body?.interval || 'month').toString();
+          const gracePeriodDays = Math.max(0, Number(body?.grace_period_days || 0) | 0);
+          if (!newProductName) return new Response(JSON.stringify({ ok: false, error: 'missing_product_name' }), { status: 400, headers: { 'content-type': 'application/json' } });
+          // Look up current tier
+          const tiers = await sql`select id, stripe_product_id, stripe_price_id from public.subscription_tiers where slug=${slug} limit 1` as Array<any>;
+          const tier = tiers[0];
+          if (!tier) return new Response(JSON.stringify({ ok: false, error: 'tier_not_found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+          // Create new Stripe product + price
+          const newProduct = await stripe(env, '/v1/products', 'POST', new URLSearchParams({ name: newProductName }));
+          const newProductId = newProduct?.id as string;
+          if (!newProductId) return new Response(JSON.stringify({ ok: false, error: 'stripe_product_failed' }), { status: 502, headers: { 'content-type': 'application/json' } });
+          const priceParams = new URLSearchParams({ currency, unit_amount: String(newUnitAmount), product: newProductId, 'recurring[interval]': interval });
+          const newPrice = await stripe(env, '/v1/prices', 'POST', priceParams);
+          const newPriceId = newPrice?.id as string;
+          if (!newPriceId) return new Response(JSON.stringify({ ok: false, error: 'stripe_price_failed' }), { status: 502, headers: { 'content-type': 'application/json' } });
+          // Count affected users and create migration job
+          const countRows = await sql`select count(*)::int as cnt from public.user_subscriptions where tier_id=${tier.id} and stripe_price_id=${tier.stripe_price_id} and status='active'` as Array<any>;
+          const totalUsers = countRows[0]?.cnt || 0;
+          const jobRows = await sql`insert into public.price_migration_jobs (tier_id, old_stripe_product_id, old_stripe_price_id, new_stripe_product_id, new_stripe_price_id, grace_period_days, status, total_users) values (${tier.id}, ${tier.stripe_product_id || ''}, ${tier.stripe_price_id || ''}, ${newProductId}, ${newPriceId}, ${gracePeriodDays}, 'pending', ${totalUsers}) returning id` as Array<any>;
+          const jobId = jobRows[0]?.id;
+          // Create migration items for each affected user
+          if (totalUsers > 0) {
+            await sql`insert into public.price_migration_items (job_id, user_id, stripe_subscription_id) select ${jobId}, us.user_id, us.stripe_subscription_id from public.user_subscriptions us where us.tier_id=${tier.id} and us.stripe_price_id=${tier.stripe_price_id} and us.status='active' and us.stripe_subscription_id is not null`;
+          }
+          // Update the tier to point to the new product/price immediately (new subscribers get the new price)
+          await sql`update public.subscription_tiers set stripe_product_id=${newProductId}, stripe_price_id=${newPriceId}, unit_amount=${newUnitAmount}, currency=${currency}, interval=${interval}, updated_at=now() where id=${tier.id}`;
+          return new Response(JSON.stringify({ ok: true, job_id: jobId, total_users: totalUsers, new_product_id: newProductId, new_price_id: newPriceId }), { headers: { 'content-type': 'application/json' } });
+        }
+        return new Response(null, { status: 405 });
+      }
+      if (url.pathname === '/api/admin/subscription/migrations' && request.method === 'GET') {
+        const sess = await getSessionFromCookie(request, env);
+        if (!sess) return new Response(JSON.stringify({ ok: false }), { status: 401, headers: { 'content-type': 'application/json' } });
+        const adminEmails = ((env as any).ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+        if (!adminEmails.includes(sess.email.toLowerCase())) return new Response(JSON.stringify({ ok: false, error: 'forbidden' }), { status: 403, headers: { 'content-type': 'application/json' } });
+        const sql = getPg(env);
+        const rows = await sql`select pmj.*, st.slug as tier_slug, st.name as tier_name from public.price_migration_jobs pmj join public.subscription_tiers st on st.id = pmj.tier_id order by pmj.created_at desc limit 50` as Array<any>;
+        return new Response(JSON.stringify({ ok: true, migrations: rows }), { headers: { 'content-type': 'application/json' } });
+      }
       // Stripe: create/list products, create/list prices, checkout session
       if (url.pathname === '/api/stripe/products') {
         const sess = await getSessionFromCookie(request, env);
@@ -602,26 +773,68 @@ export default {
           switch (event.type) {
             case 'checkout.session.completed': {
               const session = event.data.object as any;
-              await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, payment_intent_id, amount, currency, status, metadata, created_at) 
+              await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, payment_intent_id, amount, currency, status, metadata, created_at)
                 values (${event.id}, ${event.type}, ${session.customer || null}, ${session.subscription || null}, ${session.payment_intent || null}, ${session.amount_total || 0}, ${session.currency || 'usd'}, ${session.payment_status || 'unknown'}, ${JSON.stringify(session.metadata || {})}, ${new Date(event.created * 1000)})
                 on conflict (event_id) do nothing`;
+              // Handle subscription checkout: update user_subscriptions
+              if (session.mode === 'subscription' && session.subscription) {
+                const meta = session.metadata || {};
+                const userId = meta.user_id;
+                const tierSlug = meta.tier_slug;
+                if (userId && tierSlug) {
+                  const tierRows = await sql`select id from public.subscription_tiers where slug=${tierSlug} limit 1` as Array<any>;
+                  const tierId = tierRows[0]?.id;
+                  if (tierId) {
+                    // Fetch subscription details from Stripe to get price info
+                    const subData = await stripe(env, `/v1/subscriptions/${session.subscription}`, 'GET').catch(() => null);
+                    const priceId = subData?.items?.data?.[0]?.price?.id || null;
+                    const periodStart = subData?.current_period_start ? new Date(subData.current_period_start * 1000) : null;
+                    const periodEnd = subData?.current_period_end ? new Date(subData.current_period_end * 1000) : null;
+                    await sql`insert into public.user_subscriptions (user_id, tier_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, status, current_period_start, current_period_end)
+                      values (${userId}, ${tierId}, ${session.customer || null}, ${session.subscription}, ${priceId}, 'active', ${periodStart}, ${periodEnd})
+                      on conflict (user_id) do update set tier_id=excluded.tier_id, stripe_customer_id=excluded.stripe_customer_id, stripe_subscription_id=excluded.stripe_subscription_id, stripe_price_id=excluded.stripe_price_id, status='active', current_period_start=excluded.current_period_start, current_period_end=excluded.current_period_end, cancel_at_period_end=false, updated_at=now()`;
+                  }
+                }
+              }
               break;
             }
             case 'payment_intent.succeeded':
             case 'payment_intent.payment_failed': {
               const pi = event.data.object as any;
-              await sql`insert into public.stripe_events (event_id, event_type, customer_id, payment_intent_id, amount, currency, status, created_at) 
+              await sql`insert into public.stripe_events (event_id, event_type, customer_id, payment_intent_id, amount, currency, status, created_at)
                 values (${event.id}, ${event.type}, ${pi.customer || null}, ${pi.id}, ${pi.amount || 0}, ${pi.currency || 'usd'}, ${pi.status || 'unknown'}, ${new Date(event.created * 1000)})
                 on conflict (event_id) do nothing`;
               break;
             }
             case 'customer.subscription.created':
-            case 'customer.subscription.updated':
-            case 'customer.subscription.deleted': {
+            case 'customer.subscription.updated': {
               const sub = event.data.object as any;
-              await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, amount, currency, status, metadata, created_at) 
+              await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, amount, currency, status, metadata, created_at)
                 values (${event.id}, ${event.type}, ${sub.customer || null}, ${sub.id}, ${sub.items?.data?.[0]?.price?.unit_amount || 0}, ${sub.currency || 'usd'}, ${sub.status || 'unknown'}, ${JSON.stringify(sub.metadata || {})}, ${new Date(event.created * 1000)})
                 on conflict (event_id) do nothing`;
+              // Update user_subscriptions with latest status
+              if (sub.id) {
+                const priceId = sub.items?.data?.[0]?.price?.id || null;
+                const periodStart = sub.current_period_start ? new Date(sub.current_period_start * 1000) : null;
+                const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+                const cancelAtEnd = !!sub.cancel_at_period_end;
+                await sql`update public.user_subscriptions set status=${sub.status || 'active'}, stripe_price_id=${priceId}, current_period_start=${periodStart}, current_period_end=${periodEnd}, cancel_at_period_end=${cancelAtEnd}, updated_at=now() where stripe_subscription_id=${sub.id}`;
+              }
+              break;
+            }
+            case 'customer.subscription.deleted': {
+              const sub = event.data.object as any;
+              await sql`insert into public.stripe_events (event_id, event_type, customer_id, subscription_id, amount, currency, status, metadata, created_at)
+                values (${event.id}, ${event.type}, ${sub.customer || null}, ${sub.id}, ${sub.items?.data?.[0]?.price?.unit_amount || 0}, ${sub.currency || 'usd'}, ${sub.status || 'unknown'}, ${JSON.stringify(sub.metadata || {})}, ${new Date(event.created * 1000)})
+                on conflict (event_id) do nothing`;
+              // Move user back to free tier
+              if (sub.id) {
+                const freeTier = await sql`select id from public.subscription_tiers where slug='free' limit 1` as Array<any>;
+                const freeId = freeTier[0]?.id;
+                if (freeId) {
+                  await sql`update public.user_subscriptions set tier_id=${freeId}, stripe_subscription_id=null, stripe_price_id=null, status='active', cancel_at_period_end=false, updated_at=now() where stripe_subscription_id=${sub.id}`;
+                }
+              }
               break;
             }
           }

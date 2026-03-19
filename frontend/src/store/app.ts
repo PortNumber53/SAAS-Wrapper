@@ -5,6 +5,7 @@ type Session = { ok: boolean; email?: string; name?: string; picture?: string }
 type AgentSettings = { models: string[]; default_model: string }
 type GeminiKey = { configured: boolean; last4: string }
 type IGAccount = { ig_user_id: string; page_id: string; page_name: string; username: string; token_valid?: boolean; token_expires_at?: number | null; linked?: boolean }
+type Subscription = { tier: string; tier_name: string; status: string; cancel_at_period_end: boolean; current_period_end: string | null; stripe_customer_id: string | null }
 
 export type AppState = {
   // Session
@@ -31,6 +32,16 @@ export type AppState = {
   igAccountsLoaded: boolean
   loadIGAccounts: () => Promise<void>
 
+  // Admin
+  isAdmin: boolean
+  isAdminLoaded: boolean
+  loadAdminStatus: () => Promise<void>
+
+  // Subscription
+  subscription: Subscription | null
+  subscriptionLoaded: boolean
+  loadSubscription: () => Promise<void>
+
   // Preferences
   prefs: Record<string, unknown>
   prefsLoaded: boolean
@@ -56,6 +67,10 @@ export const useAppStore = create<AppState>()(
       sessionLoaded: true,
       igAccounts: [],
       igAccountsLoaded: false,
+      isAdmin: false,
+      isAdminLoaded: false,
+      subscription: null,
+      subscriptionLoaded: false,
     })
   },
 
@@ -111,6 +126,30 @@ export const useAppStore = create<AppState>()(
       if (j?.ok && Array.isArray(j.accounts)) set({ igAccounts: j.accounts, igAccountsLoaded: true })
       else set({ igAccountsLoaded: true })
     } catch { set({ igAccountsLoaded: true }) }
+  },
+
+  isAdmin: false,
+  isAdminLoaded: false,
+  async loadAdminStatus() {
+    try {
+      const r = await fetch('/api/admin/check')
+      if (!r.ok) { set({ isAdminLoaded: true }); return }
+      const j = await r.json()
+      set({ isAdmin: !!j?.is_admin, isAdminLoaded: true })
+    } catch { set({ isAdminLoaded: true }) }
+  },
+
+  subscription: null,
+  subscriptionLoaded: false,
+  async loadSubscription() {
+    try {
+      const r = await fetch('/api/subscription/me')
+      if (!r.ok) { set({ subscriptionLoaded: true }); return }
+      const j = await r.json()
+      if (j?.ok) {
+        set({ subscription: j.subscription || null, subscriptionLoaded: true })
+      } else { set({ subscriptionLoaded: true }) }
+    } catch { set({ subscriptionLoaded: true }) }
   },
 
   prefs: {},
