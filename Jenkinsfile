@@ -26,11 +26,15 @@ pipeline {
     // Backend origin that the Worker proxies /api/* requests to
     BACKEND_ORIGIN       = credentials('prod-backend-url-saas-wrapper')
     // Database Postgres DSN used by both dbtool migrations and the Worker
-    DATABASE_URL    = credentials('prod-xata-database-url-saas-wrapper')
+    DATABASE_URL    = credentials('prod-database-url-saas-wrapper')
     // Cloudflare API token used by Wrangler for Worker deploys
     CF_API_TOKEN         = credentials('cloudflare-api-token')
     // Cloudflare account id used by Wrangler (non-secret but stored as a credential for convenience)
     CLOUDFLARE_ACCOUNT_ID = credentials('cloudflare-account-id')
+    // Stripe secret key used by backend (via config.ini) and Worker
+    STRIPE_SECRET_KEY     = credentials('prod-stripe-secret-key-saas-wrapper')
+    // Comma-separated admin emails for admin-gated endpoints
+    ADMIN_EMAILS          = credentials('prod-admin-emails-saas-wrapper')
   }
 
   stages {
@@ -147,6 +151,8 @@ ssh grimlock@${TARGET_HOST} "
             printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --env production
             printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET       --env production
             printf "%s" "$DATABASE_URL"    | npx wrangler secret put DATABASE_URL    --env production
+            printf "%s" "$STRIPE_SECRET_KEY" | npx wrangler secret put STRIPE_SECRET_KEY --env production
+            printf "%s" "$ADMIN_EMAILS"      | npx wrangler secret put ADMIN_EMAILS      --env production
 
             # Deploy Worker with backend origin configured
             npx wrangler deploy \
