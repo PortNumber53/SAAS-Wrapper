@@ -167,6 +167,6 @@ ssh grimlock@${TARGET_HOST} "
   post {
     success { echo 'Pipeline completed successfully.' }
     failure { echo 'Pipeline failed.' }
-    always  { node { sh 'ls -lah artifacts || true' } }
+    always  { echo 'Pipeline finished.' }
   }
 }
