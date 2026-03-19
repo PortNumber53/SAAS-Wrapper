@@ -151,18 +151,16 @@ ssh grimlock@${TARGET_HOST} "
             npm run build
 
             # Push all secrets in a single bulk call (one deployment instead of six)
-            npx wrangler secret bulk <(cat <<SECRETS
-{
-  "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
-  "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
-  "SESSION_SECRET": "${SESSION_SECRET}",
-  "DATABASE_URL": "${DATABASE_URL}",
-  "STRIPE_SECRET_KEY": "${STRIPE_SECRET_KEY}",
-  "ADMIN_EMAILS": "${ADMIN_EMAILS}",
-  "BACKEND_ORIGIN": "${BACKEND_ORIGIN}"
-}
-SECRETS
-            )
+            # Use Node to safely build JSON from env vars (avoids shell escaping issues)
+            node -e 'const s=k=>process.env[k]||"";console.log(JSON.stringify({
+              GOOGLE_CLIENT_ID:s("GOOGLE_CLIENT_ID"),
+              GOOGLE_CLIENT_SECRET:s("GOOGLE_CLIENT_SECRET"),
+              SESSION_SECRET:s("SESSION_SECRET"),
+              DATABASE_URL:s("DATABASE_URL"),
+              STRIPE_SECRET_KEY:s("STRIPE_SECRET_KEY"),
+              ADMIN_EMAILS:s("ADMIN_EMAILS"),
+              BACKEND_ORIGIN:s("BACKEND_ORIGIN")
+            }))' | npx wrangler secret bulk
 
             # Deploy Worker
             npx wrangler deploy
