@@ -88,14 +88,17 @@ pipeline {
       }
     }
 
-    stage('DB Migrate (All)') {
+    stage('DB Migrate') {
       when { expression { return env.DATABASE_URL?.trim() } }
       steps {
-        sh label: 'dbtool diagnostics', script: '''
-          set -euo pipefail
-          echo "dbtool version: $(dbtool --version || echo not-found)"
-        '''
-        sh 'bash deploy/dbtool-migrate.sh'
+        unstash "bin-amd64"
+        dir('backend') {
+          sh label: 'Run golang-migrate via backend binary', script: '''
+            set -euo pipefail
+            chmod +x ../artifacts/saas-wrapper-backend-linux-amd64
+            ../artifacts/saas-wrapper-backend-linux-amd64 migrate up
+          '''
+        }
       }
     }
 
