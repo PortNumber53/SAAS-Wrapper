@@ -14,6 +14,12 @@
 		"production": {
 			// Define env-specific bindings/vars here if needed. Secrets are set via
 			// `wrangler secret put ... --env production` and are not stored in this file.
+			"hyperdrive": [
+				{
+					"binding": "SAAS_WRAPPER_HYPERDRIVE",
+					"id": "a7d3f279829f457589536dfeec21617f"
+				}
+			]
 		}
 	},
 	"assets": {
