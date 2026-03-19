@@ -148,6 +148,7 @@ ssh grimlock@${TARGET_HOST} "
             test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "Missing CLOUDFLARE_ACCOUNT_ID for Wrangler"; exit 1; }
 
             npm ci
+            npm run build
 
             # Push secrets non-interactively into the production Worker environment
             printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID     --env production
