@@ -530,7 +530,7 @@ export default {
         if (request.method === 'POST' && parts[6] === 'update-price') {
           const body = (await request.json().catch(() => ({}))) as any;
           const newProductName = (body?.new_product_name || '').toString().trim();
-          const newUnitAmount = Math.max(50, Number(body?.new_unit_amount || 0) | 0);
+          const newUnitAmount = Math.max(50, Math.round(Number(body?.new_unit_amount || 0)));
           const currency = (body?.currency || 'usd').toString().toLowerCase();
           const interval = (body?.interval || 'month').toString();
           const gracePeriodDays = Math.max(0, Number(body?.grace_period_days || 0) | 0);
@@ -618,7 +618,7 @@ export default {
           const body = (await request.json().catch(() => ({}))) as any;
           const stripe_product_id = (body?.product_id || '').toString().trim();
           const currency = (body?.currency || 'usd').toString().toLowerCase();
-          const unit_amount = Math.max(50, Number(body?.unit_amount || 0) | 0); // min 50 cents
+          const unit_amount = Math.max(50, Math.round(Number(body?.unit_amount || 0))); // min 50 cents
           const kind = (body?.type || 'one_time').toString();
           if (!stripe_product_id || !currency || !unit_amount) return new Response(JSON.stringify({ ok: false, error: 'missing_fields' }), { status: 400, headers: { 'content-type': 'application/json' } });
           const params = new URLSearchParams({ currency, unit_amount: String(unit_amount), product: stripe_product_id });

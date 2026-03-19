@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
   const startSetPrice = (tier: Tier) => {
     setPriceSlug(tier.slug)
     setPriceProductName(`${tier.name} Plan`)
-    setPriceAmount(tier.unit_amount || 990)
+    setPriceAmount((tier.unit_amount || 990) / 100)
     setPriceCurrency(tier.currency || 'usd')
     setPriceInterval(tier.interval || 'month')
     setPriceGraceDays(0)
@@ -137,7 +137,7 @@ export default function AdminDashboardPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           new_product_name: priceProductName,
-          new_unit_amount: priceAmount,
+          new_unit_amount: Math.round(priceAmount * 100),
           currency: priceCurrency,
           interval: priceInterval,
           grace_period_days: priceGraceDays,
@@ -218,8 +218,8 @@ export default function AdminDashboardPage() {
                     <option value='eur'>EUR</option>
                   </select>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <input type='number' min={50} step={50} value={priceAmount} onChange={e => setPriceAmount(Number(e.target.value) || 0)} style={{ width: 120 }} />
-                    <span className='read-the-docs' style={{ fontSize: '0.85em' }}>cents</span>
+                    <span className='read-the-docs' style={{ fontSize: '0.85em' }}>$</span>
+                    <input type='text' inputMode='decimal' value={priceAmount} onChange={e => setPriceAmount(Number(e.target.value) || 0)} style={{ width: 120 }} />
                   </div>
                   <select value={priceInterval} onChange={e => setPriceInterval(e.target.value)}>
                     <option value='month'>Monthly</option>

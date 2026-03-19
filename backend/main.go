@@ -223,9 +223,12 @@ func main() {
 		http.ServeContent(w, r, filepath.Base(fp), modTime, f)
 	})
 
-	// Start price migration worker if Stripe key is configured
+	// Stripe startup sync + migration worker
 	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
 	if dbURL != "" && stripeKey != "" {
+		if err := syncStripeProductsAndPrices(dbURL, stripeKey); err != nil {
+			log.Printf("Stripe sync warning: %v", err)
+		}
 		go runMigrationWorker(dbURL, stripeKey)
 		log.Println("Price migration worker started")
 	}
@@ -384,6 +387,168 @@ func stripeRequest(key, method, path string, params url.Values) (map[string]inte
 		return result, fmt.Errorf("stripe %d: %s", resp.StatusCode, errMsg)
 	}
 	return result, nil
+}
+
+// --- Stripe two-way sync on startup ---
+
+func syncStripeProductsAndPrices(dbURL, stripeKey string) error {
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		return fmt.Errorf("db open: %w", err)
+	}
+	defer db.Close()
+
+	rows, err := db.Query(`
+		SELECT id, slug, name, description, stripe_product_id, stripe_price_id,
+		       unit_amount, currency, interval, active
+		FROM public.subscription_tiers
+		ORDER BY sort_order ASC
+	`)
+	if err != nil {
+		return fmt.Errorf("query tiers: %w", err)
+	}
+	defer rows.Close()
+
+	type tier struct {
+		ID              int64
+		Slug            string
+		Name            string
+		Description     string
+		StripeProductID sql.NullString
+		StripePriceID   sql.NullString
+		UnitAmount      int
+		Currency        string
+		Interval        string
+		Active          bool
+	}
+	var tiers []tier
+	for rows.Next() {
+		var t tier
+		if err := rows.Scan(&t.ID, &t.Slug, &t.Name, &t.Description,
+			&t.StripeProductID, &t.StripePriceID,
+			&t.UnitAmount, &t.Currency, &t.Interval, &t.Active); err != nil {
+			return fmt.Errorf("scan tier: %w", err)
+		}
+		tiers = append(tiers, t)
+	}
+	rows.Close()
+
+	for _, t := range tiers {
+		productID := t.StripeProductID.String
+		priceID := t.StripePriceID.String
+
+		// --- Product sync ---
+		if productID == "" {
+			// Local → Stripe: create product
+			params := url.Values{
+				"name":        {t.Name},
+				"description": {t.Description},
+				"active":      {fmt.Sprintf("%v", t.Active)},
+				"metadata[tier_slug]": {t.Slug},
+			}
+			prod, err := stripeRequest(stripeKey, "POST", "/v1/products", params)
+			if err != nil {
+				log.Printf("stripe-sync: create product for tier %q: %v", t.Slug, err)
+				continue
+			}
+			productID, _ = prod["id"].(string)
+			_, err = db.Exec(`UPDATE public.subscription_tiers SET stripe_product_id=$1, updated_at=now() WHERE id=$2`, productID, t.ID)
+			if err != nil {
+				log.Printf("stripe-sync: save product id for tier %q: %v", t.Slug, err)
+				continue
+			}
+			log.Printf("stripe-sync: created product %s for tier %q", productID, t.Slug)
+		} else {
+			// Stripe → Local: fetch product, push local name/description updates
+			prod, err := stripeRequest(stripeKey, "GET", "/v1/products/"+productID, nil)
+			if err != nil {
+				log.Printf("stripe-sync: fetch product %s: %v", productID, err)
+				continue
+			}
+			// Push local name/description to Stripe if they differ
+			stripeName, _ := prod["name"].(string)
+			stripeDesc, _ := prod["description"].(string)
+			stripeActive, _ := prod["active"].(bool)
+			if stripeName != t.Name || stripeDesc != t.Description || stripeActive != t.Active {
+				params := url.Values{
+					"name":        {t.Name},
+					"description": {t.Description},
+					"active":      {fmt.Sprintf("%v", t.Active)},
+				}
+				_, err = stripeRequest(stripeKey, "POST", "/v1/products/"+productID, params)
+				if err != nil {
+					log.Printf("stripe-sync: update product %s: %v", productID, err)
+				} else {
+					log.Printf("stripe-sync: updated product %s for tier %q", productID, t.Slug)
+				}
+			}
+		}
+
+		// --- Price sync ---
+		if t.UnitAmount == 0 {
+			// Free tier, no price needed
+			continue
+		}
+
+		if priceID == "" {
+			// Local → Stripe: create price
+			params := url.Values{
+				"product":        {productID},
+				"unit_amount":    {fmt.Sprintf("%d", t.UnitAmount)},
+				"currency":       {t.Currency},
+				"metadata[tier_slug]": {t.Slug},
+			}
+			if t.Interval != "" {
+				params.Set("recurring[interval]", t.Interval)
+			}
+			price, err := stripeRequest(stripeKey, "POST", "/v1/prices", params)
+			if err != nil {
+				log.Printf("stripe-sync: create price for tier %q: %v", t.Slug, err)
+				continue
+			}
+			priceID, _ = price["id"].(string)
+			_, err = db.Exec(`UPDATE public.subscription_tiers SET stripe_price_id=$1, updated_at=now() WHERE id=$2`, priceID, t.ID)
+			if err != nil {
+				log.Printf("stripe-sync: save price id for tier %q: %v", t.Slug, err)
+				continue
+			}
+			log.Printf("stripe-sync: created price %s for tier %q", priceID, t.Slug)
+		} else {
+			// Stripe → Local: fetch price, update local DB with Stripe's truth
+			price, err := stripeRequest(stripeKey, "GET", "/v1/prices/"+priceID, nil)
+			if err != nil {
+				log.Printf("stripe-sync: fetch price %s: %v", priceID, err)
+				continue
+			}
+			// Stripe prices are immutable for amount, but we sync active status and read current values
+			stripeAmount := 0
+			if amt, ok := price["unit_amount"].(float64); ok {
+				stripeAmount = int(amt)
+			}
+			stripeCurrency, _ := price["currency"].(string)
+			stripeActive, _ := price["active"].(bool)
+			stripeInterval := ""
+			if rec, ok := price["recurring"].(map[string]interface{}); ok {
+				stripeInterval, _ = rec["interval"].(string)
+			}
+			// Update local DB if Stripe values differ
+			if stripeAmount != t.UnitAmount || stripeCurrency != t.Currency || stripeInterval != t.Interval || stripeActive != t.Active {
+				_, err = db.Exec(`
+					UPDATE public.subscription_tiers
+					SET unit_amount=$1, currency=$2, interval=$3, active=$4, updated_at=now()
+					WHERE id=$5
+				`, stripeAmount, stripeCurrency, stripeInterval, stripeActive, t.ID)
+				if err != nil {
+					log.Printf("stripe-sync: update tier %q from Stripe: %v", t.Slug, err)
+				} else {
+					log.Printf("stripe-sync: synced tier %q from Stripe (amount=%d, currency=%s)", t.Slug, stripeAmount, stripeCurrency)
+				}
+			}
+		}
+	}
+
+	log.Println("stripe-sync: two-way sync completed")
+	return nil
 }
 
 // --- Price migration worker ---
