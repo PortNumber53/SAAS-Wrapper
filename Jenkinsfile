@@ -150,17 +150,16 @@ ssh grimlock@${TARGET_HOST} "
             npm ci
             npm run build
 
-            # Push secrets non-interactively into the production Worker environment
-            printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID     --env production
-            printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET --env production
-            printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET       --env production
-            printf "%s" "$DATABASE_URL"    | npx wrangler secret put DATABASE_URL    --env production
-            printf "%s" "$STRIPE_SECRET_KEY" | npx wrangler secret put STRIPE_SECRET_KEY --env production
-            printf "%s" "$ADMIN_EMAILS"      | npx wrangler secret put ADMIN_EMAILS      --env production
+            # Push secrets non-interactively into the Worker
+            printf "%s" "$GOOGLE_CLIENT_ID"     | npx wrangler secret put GOOGLE_CLIENT_ID
+            printf "%s" "$GOOGLE_CLIENT_SECRET" | npx wrangler secret put GOOGLE_CLIENT_SECRET
+            printf "%s" "$SESSION_SECRET"       | npx wrangler secret put SESSION_SECRET
+            printf "%s" "$DATABASE_URL"         | npx wrangler secret put DATABASE_URL
+            printf "%s" "$STRIPE_SECRET_KEY"    | npx wrangler secret put STRIPE_SECRET_KEY
+            printf "%s" "$ADMIN_EMAILS"         | npx wrangler secret put ADMIN_EMAILS
 
             # Deploy Worker with backend origin configured
             npx wrangler deploy \
-              --env production \
               --var BACKEND_ORIGIN="$BACKEND_ORIGIN"
           '''
         }
