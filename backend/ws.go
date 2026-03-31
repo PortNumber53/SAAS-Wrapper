@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,8 +78,17 @@ func (h *WSHub) Run() {
 
 // handleWebsocket handles WebSocket requests from the peer.
 func (h *WSHub) handleWebsocket(w http.ResponseWriter, r *http.Request) {
+	allowedOrigins := []string{"localhost:*", "127.0.0.1:*", "*.portnumber53.com"}
+	if extra := os.Getenv("WS_ALLOWED_ORIGINS"); extra != "" {
+		for _, o := range strings.Split(extra, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				allowedOrigins = append(allowedOrigins, o)
+			}
+		}
+	}
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"*"}, // Allow all origins for now (or strict: "localhost:5173", "*.portnumber53.com")
+		OriginPatterns: allowedOrigins,
 	})
 	if err != nil {
 		if appLog != nil {
