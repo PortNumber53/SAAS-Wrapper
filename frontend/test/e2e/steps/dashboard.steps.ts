@@ -3,24 +3,24 @@ import { expect } from 'chai';
 import { PuppeteerWorld } from '../support/world.js';
 
 Given('I have no uploaded content', async function (this: PuppeteerWorld) {
-  // This is a precondition — test user has no content by default
+  // Default state — interceptor returns empty content list
 });
 
 Given('I have uploaded content', async function (this: PuppeteerWorld) {
-  // Mark as pending — requires seeded test data
+  // Would require seeding IG content — for now pending
   return 'pending';
 });
 
 Then('I should see an empty state message', async function (this: PuppeteerWorld) {
-  // The dashboard shows a muted message or prompt when no content exists
   const content = await this.page.content();
-  const hasEmpty = content.includes('No image') || content.includes('upload') || content.includes('Choose');
+  const hasEmpty = content.includes('No image') || content.includes('Click to choose') || content.includes('drag and drop');
   expect(hasEmpty).to.be.true;
 });
 
 Then('I should see a prompt to upload content', async function (this: PuppeteerWorld) {
-  const content = await this.page.content();
-  const hasPrompt = content.includes('Click to choose') || content.includes('drag and drop');
+  const hasPrompt = await this.page.evaluate(() => {
+    return !!document.querySelector('.file-drop');
+  });
   expect(hasPrompt).to.be.true;
 });
 

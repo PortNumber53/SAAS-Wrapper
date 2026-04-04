@@ -20,6 +20,11 @@ export default defineConfig(({ command, mode }) => {
         'saas16.dev.portnumber53.com',
         'saas14.dev.portnumber53.com',
       ],
+      hmr: {
+        // Use the client's host so HMR WebSocket works through reverse proxies
+        clientPort: 443,
+        protocol: 'wss',
+      },
       proxy: {
         '/api': {
           target: API_PROXY_TARGET,

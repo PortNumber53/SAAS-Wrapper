@@ -29,6 +29,6 @@ module.exports = {
   e2e: {
     ...common,
     paths: ['test/e2e/features/**/*.feature'],
-    require: ['test/e2e/steps/**/*.ts', 'test/e2e/support/**/*.ts'],
+    require: ['test/e2e/support/setup.ts', 'test/e2e/support/**/*.ts', 'test/e2e/steps/**/*.ts'],
   },
 };

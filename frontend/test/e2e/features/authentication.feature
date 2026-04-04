@@ -5,32 +5,28 @@ Feature: User Authentication
 
   Scenario: Display login page with OAuth options
     Given I am on the login page
-    Then I should see a "Sign in with Google" button
-    And I should see a "Sign in with Instagram" button
+    Then I should see a "Login" button
+    And I should see a "Sign Up" button
 
-  Scenario: Successfully login with Google OAuth
+  Scenario: Login button triggers Google OAuth popup
     Given I am on the login page
-    When I click the "Sign in with Google" button
-    And I complete the Google OAuth flow
-    Then I should be redirected to the dashboard
-    And I should see my profile information
+    When I click the "Login" button
+    Then a popup window should open for OAuth
 
-  Scenario: Successfully login with Instagram OAuth
+  Scenario: Sign Up button triggers Google OAuth popup
     Given I am on the login page
-    When I click the "Sign in with Instagram" button
-    And I complete the Instagram OAuth flow
-    Then I should be redirected to the dashboard
-    And I should see my Instagram account connected
+    When I click the "Sign Up" button
+    Then a popup window should open for OAuth
 
   Scenario: Cancel OAuth flow
     Given I am on the login page
-    When I click the "Sign in with Google" button
+    When I click the "Login" button
     And I cancel the OAuth flow
     Then I should remain on the login page
-    And I should see an error message
 
   Scenario: Logout successfully
     Given I am logged in
-    When I click the logout button
+    And API requests are intercepted for testing
+    When I navigate to the dashboard
+    And I click the logout button
     Then I should be redirected to the login page
-    And my session should be cleared

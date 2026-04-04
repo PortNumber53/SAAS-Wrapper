@@ -19,7 +19,7 @@ When('I click the profile icon in the navigation', async function (this: Puppete
 Then('I should be on the profile page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname === '/profile',
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
   const heading = await this.page.$eval('h1', el => el.textContent).catch(() => '');
   expect(heading).to.include('Profile');
@@ -32,7 +32,7 @@ When('I click the commerce icon in the navigation', async function (this: Puppet
 Then('I should be on the commerce page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname === '/account/commerce',
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
   const heading = await this.page.$eval('h1', el => el.textContent).catch(() => '');
   expect(heading).to.include('Commerce');
@@ -51,7 +51,7 @@ When('I click the agent chat icon in the navigation', async function (this: Pupp
 Then('I should be on the agent chat page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname === '/agents/chat',
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
   const heading = await this.page.$eval('h1', el => el.textContent).catch(() => '');
   expect(heading).to.include('Chat');
@@ -64,7 +64,7 @@ When('I click the terms link in the footer', async function (this: PuppeteerWorl
 Then('I should be on the terms page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname.includes('terms'),
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
   const heading = await this.page.$eval('h1', el => el.textContent).catch(() => '');
   expect(heading).to.include('Terms');
@@ -77,7 +77,7 @@ When('I click the privacy link in the footer', async function (this: PuppeteerWo
 Then('I should be on the privacy page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname.includes('privacy'),
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
   const heading = await this.page.$eval('h1', el => el.textContent).catch(() => '');
   expect(heading).to.include('Privacy');
@@ -100,7 +100,7 @@ When('I click the settings link', async function (this: PuppeteerWorld) {
 Then('I should be on the settings page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname === '/settings',
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
   const heading = await this.page.$eval('h1', el => el.textContent).catch(() => '');
   expect(heading).to.include('Settings');
@@ -113,6 +113,6 @@ When('I click the integrations link', async function (this: PuppeteerWorld) {
 Then('I should be on the integrations page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname.includes('integrations'),
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
 });

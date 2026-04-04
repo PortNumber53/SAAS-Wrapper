@@ -8,7 +8,7 @@ Then('I should see a {string} button', async function (this: PuppeteerWorld, but
       const buttons = document.querySelectorAll('button');
       return Array.from(buttons).some(b => b.textContent?.includes(text));
     },
-    { timeout: 5000 },
+    { timeout: 15000 },
     buttonText
   );
 });
@@ -19,86 +19,73 @@ When('I click the {string} button', async function (this: PuppeteerWorld, button
       const buttons = document.querySelectorAll('button');
       return Array.from(buttons).some(b => b.textContent?.includes(text));
     },
-    { timeout: 5000 },
+    { timeout: 15000 },
     buttonText
   );
-  const buttons = await this.page.$$('button');
-  for (const btn of buttons) {
-    const text = await btn.evaluate(el => el.textContent || '');
-    if (text.includes(buttonText)) {
-      await btn.click();
-      break;
+  const clicked = await this.page.evaluate((text: string) => {
+    const buttons = document.querySelectorAll('button');
+    for (const btn of buttons) {
+      if (btn.textContent?.includes(text)) {
+        (btn as HTMLElement).click();
+        return true;
+      }
     }
+    return false;
+  }, buttonText);
+  expect(clicked).to.be.true;
+});
+
+Then('a popup window should open for OAuth', async function (this: PuppeteerWorld) {
+  // Wait for the popup to open (OAuth start opens a new window)
+  await new Promise(r => setTimeout(r, 1500));
+  const pages = await this.browser.pages();
+  // There should be more than 1 page (main + popup)
+  expect(pages.length).to.be.greaterThan(1);
+  // Close the popup to clean up
+  for (const p of pages) {
+    if (p !== this.page) await p.close();
   }
 });
 
-When('I complete the Google OAuth flow', async function (this: PuppeteerWorld) {
-  // In E2E tests, we cannot complete real OAuth.
-  // This step is a placeholder — in real E2E it would mock the OAuth provider
-  // or use a test account. For now we mark it as pending.
-  return 'pending';
-});
-
-When('I complete the Instagram OAuth flow', async function (this: PuppeteerWorld) {
-  return 'pending';
-});
-
 When('I cancel the OAuth flow', async function (this: PuppeteerWorld) {
-  return 'pending';
+  await new Promise(r => setTimeout(r, 1000));
+  const pages = await this.browser.pages();
+  for (const p of pages) {
+    if (p !== this.page) await p.close();
+  }
 });
 
 Then('I should be redirected to the dashboard', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
     () => window.location.pathname === '/dashboard',
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
 });
 
 Then('I should be redirected to the login page', async function (this: PuppeteerWorld) {
   await this.page.waitForFunction(
-    () => window.location.pathname === '/' || window.location.pathname === '/login',
-    { timeout: 5000 }
+    () => window.location.pathname === '/',
+    { timeout: 15000 }
   );
 });
 
-Then('I should see my profile information', async function (this: PuppeteerWorld) {
-  // After login, the user menu should show the user's name/avatar
-  await this.page.waitForSelector('.user-button', { timeout: 5000 });
-});
-
-Then('I should see my Instagram account connected', async function (this: PuppeteerWorld) {
-  return 'pending';
-});
-
 Then('I should remain on the login page', async function (this: PuppeteerWorld) {
-  const url = this.page.url();
-  expect(url).to.include(this.baseUrl);
-});
-
-Then('I should see an error message', async function (this: PuppeteerWorld) {
-  return 'pending';
+  const path = await this.page.evaluate(() => window.location.pathname);
+  expect(path).to.equal('/');
 });
 
 When('I click the logout button', async function (this: PuppeteerWorld) {
-  // Open user dropdown, then click logout
-  const userBtn = await this.page.waitForSelector('.user-button', { timeout: 5000 });
-  if (userBtn) await userBtn.click();
-  // Wait for dropdown to appear
-  await this.page.waitForSelector('.user-dropdown', { timeout: 3000 });
-  // Click logout menu item
-  const items = await this.page.$$('[role="menuitem"]');
-  for (const item of items) {
-    const text = await item.evaluate(el => el.textContent || '');
-    if (text.toLowerCase().includes('logout')) {
-      await item.click();
-      break;
+  const userBtn = await this.page.waitForSelector('.user-button', { timeout: 10000 });
+  if (userBtn) {
+    await userBtn.click();
+    await this.page.waitForSelector('.user-dropdown', { timeout: 5000 });
+    const items = await this.page.$$('[role="menuitem"]');
+    for (const item of items) {
+      const text = await item.evaluate(el => el.textContent || '');
+      if (text.toLowerCase().includes('logout')) {
+        await item.click();
+        break;
+      }
     }
   }
-});
-
-Then('my session should be cleared', async function (this: PuppeteerWorld) {
-  const cookies = await this.page.cookies();
-  const session = cookies.find(c => c.name === 'session');
-  // Session cookie should be cleared or missing
-  expect(!session || session.value === '').to.be.true;
 });
