@@ -28,7 +28,10 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+
+	"bufio"
 )
+
 
 type jsonResp map[string]any
 
@@ -36,6 +39,7 @@ type jsonResp map[string]any
 var appLog *Logger
 
 func main() {
+	loadConfigINI()
 	_ = godotenv.Load()
 	appLog = NewLoggerFromEnv()
 
@@ -792,4 +796,38 @@ func createThumbnail(src, dst string, maxDim int) error {
 	defer out.Close()
 	// JPEG quality
 	return jpeg.Encode(out, dstImg, &jpeg.Options{Quality: 80})
+}
+
+func loadConfigINI() {
+	paths := []string{"/etc/saas-wrapper/config.ini"}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		paths = append(paths, filepath.Join(home, ".config", "saas-wrapper", "config.ini"))
+	}
+	for _, p := range paths {
+		f, err := os.Open(p)
+		if err != nil {
+			continue
+		}
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			line := strings.TrimSpace(sc.Text())
+			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
+				continue
+			}
+			if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+				continue
+			}
+			key, val, ok := strings.Cut(line, "=")
+			if !ok {
+				continue
+			}
+			key = strings.TrimSpace(key)
+			val = strings.TrimSpace(val)
+			val = strings.Trim(val, "'")
+			if key != "" && os.Getenv(key) == "" {
+				os.Setenv(key, val)
+			}
+		}
+		f.Close()
+	}
 }
