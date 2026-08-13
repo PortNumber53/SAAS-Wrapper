@@ -46,6 +46,7 @@
 		"wrangler": "^4.45.0"
 	},
 	"overrides": {
-		"ip-address": "10.4.0"
+		"ip-address": "10.4.0",
+		"undici": "7.29.0"
 	}
 }

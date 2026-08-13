@@ -22,3 +22,13 @@ Feature: Dependency security version checks
     Given I read the package-lock.json
     When I look up the version of "ip-address" under "node_modules/ip-address"
     Then the version should not equal "10.1.0"
+
+  Scenario: undici is patched to at least 7.29.0
+    Given I read the package-lock.json
+    When I look up the version of "undici" under "node_modules/undici"
+    Then the version should be at least "7.29.0"
+
+  Scenario: undici is not the vulnerable 7.18.2
+    Given I read the package-lock.json
+    When I look up the version of "undici" under "node_modules/undici"
+    Then the version should not equal "7.18.2"
