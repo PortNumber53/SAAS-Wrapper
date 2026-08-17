@@ -3,15 +3,15 @@ Feature: Dependency security version checks
   I want to verify that vulnerable dependencies are upgraded to patched versions
   So that known CVEs do not regress in future updates
 
-  Scenario: @remix-run/router is patched to at least 1.23.3
+  Scenario: react-router-dom is patched to at least 7.18.2
     Given I read the package-lock.json
-    When I look up the version of "@remix-run/router" under "node_modules/@remix-run/router"
-    Then the version should be at least "1.23.3"
+    When I look up the version of "react-router-dom" under "node_modules/react-router-dom"
+    Then the version should be at least "7.18.2"
 
-  Scenario: @remix-run/router is not the vulnerable 1.23.2
+  Scenario: react-router-dom is not the vulnerable 6.30.4
     Given I read the package-lock.json
-    When I look up the version of "@remix-run/router" under "node_modules/@remix-run/router"
-    Then the version should not equal "1.23.2"
+    When I look up the version of "react-router-dom" under "node_modules/react-router-dom"
+    Then the version should not equal "6.30.4"
 
   Scenario: ip-address is patched to at least 10.4.0
     Given I read the package-lock.json
@@ -32,3 +32,13 @@ Feature: Dependency security version checks
     Given I read the package-lock.json
     When I look up the version of "undici" under "node_modules/undici"
     Then the version should not equal "7.18.2"
+
+  Scenario: brace-expansion in glob is patched to at least 5.0.9
+    Given I read the package-lock.json
+    When I look up the version of "brace-expansion" under "node_modules/minimatch/node_modules/brace-expansion"
+    Then the version should be at least "5.0.9"
+
+  Scenario: brace-expansion under glob is not the vulnerable 5.0.5
+    Given I read the package-lock.json
+    When I look up the version of "brace-expansion" under "node_modules/minimatch/node_modules/brace-expansion"
+    Then the version should not equal "5.0.5"

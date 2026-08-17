@@ -21,7 +21,7 @@
 		"postgres": "^3.4.7",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1",
-		"react-router-dom": "^7.0.0",
+		"react-router-dom": "^7.18.2",
 		"zustand": "^4.5.2"
 	},
 	"devDependencies": {
@@ -33,6 +33,7 @@
 		"@types/react-dom": "^19.1.7",
 		"@vitejs/plugin-react-swc": "^4.3.3",
 		"basic-ftp": "^5.3.1",
+		"brace-expansion": "^1.1.16",
 		"chai": "^6.2.2",
 		"concurrently": "^9.2.4",
 		"eslint": "^10.8.1",
@@ -42,6 +43,8 @@
 		"globals": "^16.3.0",
 		"picomatch": "^4.0.5",
 		"minimatch": "^10.2.6",
+		"js-yaml": "^4.3.1",
+		"postcss": "^8.5.26",
 		"puppeteer": "^24.40.0",
 		"rollup": "^4.59.0",
 		"tsx": "^4.21.0",
@@ -54,6 +57,10 @@
 		"ip-address": "10.4.0",
 		"undici": "7.29.0",
 		"sharp": "0.35.0",
-		"ws": "8.21.0"
+		"ws": "8.21.0",
+		"shell-quote": "1.9.0",
+		"glob": {
+			"brace-expansion": "5.0.9"
+		}
 	}
 }
