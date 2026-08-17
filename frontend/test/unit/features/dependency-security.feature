@@ -35,10 +35,10 @@ Feature: Dependency security version checks
 
   Scenario: brace-expansion in glob is patched to at least 5.0.9
     Given I read the package-lock.json
-    When I look up the version of "brace-expansion" under "node_modules/glob/node_modules/brace-expansion"
+    When I look up the version of "brace-expansion" under "node_modules/minimatch/node_modules/brace-expansion"
     Then the version should be at least "5.0.9"
 
   Scenario: brace-expansion under glob is not the vulnerable 5.0.5
     Given I read the package-lock.json
-    When I look up the version of "brace-expansion" under "node_modules/glob/node_modules/brace-expansion"
+    When I look up the version of "brace-expansion" under "node_modules/minimatch/node_modules/brace-expansion"
     Then the version should not equal "5.0.5"
