@@ -33,6 +33,7 @@
 		"@types/react-dom": "^19.1.7",
 		"@vitejs/plugin-react-swc": "^4.0.0",
 		"basic-ftp": "^5.2.2",
+		"brace-expansion": "^1.1.16",
 		"chai": "^6.2.2",
 		"concurrently": "^9.1.2",
 		"eslint": "^9.33.0",
