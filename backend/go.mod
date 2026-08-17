@@ -1,17 +1,18 @@
 module github.com/yourorg/saas-wrapper-backend
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	golang.org/x/image v0.18.0
+	golang.org/x/image v0.41.0
 )
 
 require (
 	github.com/cucumber/godog v0.15.1
 	github.com/joho/godotenv v1.5.1
+	nhooyr.io/websocket v1.8.17
 )
 
 require (
@@ -22,5 +23,4 @@ require (
 	github.com/hashicorp/go-memdb v1.3.4 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/spf13/pflag v1.0.7 // indirect
-	nhooyr.io/websocket v1.8.17 // indirect
 )
