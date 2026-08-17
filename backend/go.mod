@@ -6,7 +6,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	golang.org/x/image v0.18.0
+	golang.org/x/image v0.41.0
 )
 
 require (
